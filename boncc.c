@@ -29,6 +29,7 @@ int main(int argc, char **argv) {
     }
 
     fprintf(stderr, "unexpected charactor: '%c'\n", *p);
+    exit(1);
   }
 
   printf("  ret\n");

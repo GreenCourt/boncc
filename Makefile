@@ -1,6 +1,11 @@
 CFLAGS:=-std=c11 -g -static
+SRCS=$(wildcard *.c)
+OBJS=$(SRCS:.c=.o)
 
-boncc: boncc.c
+boncc: $(OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+$(OBJS): boncc.h
 
 test: boncc
 	./test.sh

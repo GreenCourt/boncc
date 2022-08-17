@@ -3,7 +3,13 @@ assert() {
     expected="$1"
     input="$2"
 
-    ./boncc "$input" > tmp.s || exit $?
+    ./boncc "$input" > tmp.s
+    if [ $? -ne 0 ]
+    then
+      echo RE
+      echo "input: '$input'"
+      exit 1
+    fi
     cc -o tmp tmp.s
     ./tmp
     actual="$?"
@@ -17,30 +23,31 @@ assert() {
     fi
 }
 
-assert 0 0
-assert 42 42
-assert 21 "5+20-4"
-assert 41 " 12 + 34 - 5 "
-assert 47 '5+6*7'
-assert 15 '5*(9-6)'
-assert 4 '(3+5)/2'
-assert 24 '-2*(9-6)+30'
-assert 24 '-2*(+9-6)+30'
-assert 36 '+2*(+9-6)+30'
-assert 12 '+2*+6'
-assert 10 '- -10'
-assert 10 '- - +10'
-assert 1 '-3 < 2'
-assert 0 '2 < 1'
-assert 0 '-3 > 2'
-assert 1 '2 > 1'
-assert 1 '-3 == -3'
-assert 0 '-3 != -3'
-assert 1 '-3 <= 2'
-assert 1 '2 <= 2'
-assert 0 '2 <= 1'
-assert 0 '-3 >= 2'
-assert 1 '2 >= 2'
-assert 1 '2 >= 1'
+assert 0 '0;'
+assert 42 '42;'
+assert 21 '5+20-4;'
+assert 41 ' 12 + 34 - 5 ; '
+assert 47 '5+6*7;'
+assert 15 '5*(9-6);'
+assert 4 '(3+5)/2;'
+assert 24 '-2*(9-6)+30;'
+assert 24 '-2*(+9-6)+30;'
+assert 36 '+2*(+9-6)+30;'
+assert 12 '+2*+6;'
+assert 10 '- -10;'
+assert 10 '- - +10;'
+assert 1 '-3 < 2;'
+assert 0 '2 < 1;'
+assert 0 '-3 > 2;'
+assert 1 '2 > 1;'
+assert 1 '-3 == -3;'
+assert 0 '-3 != -3;'
+assert 1 '-3 <= 2;'
+assert 1 '2 <= 2;'
+assert 0 '2 <= 1;'
+assert 0 '-3 >= 2;'
+assert 1 '2 >= 2;'
+assert 1 '2 >= 1;'
+assert 14 'a = 3; b = 5 * 6 - 8; a + b / 2;'
 
 echo OK

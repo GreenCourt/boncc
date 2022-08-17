@@ -28,5 +28,7 @@ assert 24 '-2*(9-6)+30'
 assert 24 '-2*(+9-6)+30'
 assert 36 '+2*(+9-6)+30'
 assert 12 '+2*+6'
+assert 10 '- -10'
+assert 10 '- - +10'
 
 echo OK

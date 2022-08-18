@@ -15,6 +15,7 @@ typedef enum {
   TK_LPAREN,    // (
   TK_RPAREN,    // )
   TK_SEMICOLON, // ;
+  TK_RETURN,    // return
   TK_IDENT,
   TK_NUM,
   TK_EOF,
@@ -44,6 +45,7 @@ typedef enum {
   ND_ASSIGN, // =
   ND_LVAR,   // local variable
   ND_NUM,    // integer
+  ND_RETURN, // return
 } NodeKind;
 
 typedef struct Node Node;

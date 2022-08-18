@@ -11,7 +11,8 @@ LVar *locals;
 
 const char *token_str[] = {
     // corresponding to TokenKind
-    "+", "-", "*", "/", "==", "!=", "<", "<=", ">", ">=", "=", "(", ")", ";",
+    "+", "-",  "*", "/", "==", "!=", "<",      "<=",
+    ">", ">=", "=", "(", ")",  ";",  "return",
 };
 
 void error_at(char *loc, char *fmt, ...) {

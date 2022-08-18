@@ -67,7 +67,14 @@ void program() {
 }
 
 Node *stmt() {
-  Node *node = expr();
+  Node *node;
+  if (consume(TK_RETURN)) {
+    node = calloc(1, sizeof(Node));
+    node->kind = ND_RETURN;
+    node->lhs = expr();
+  } else {
+    node = expr();
+  }
   expect(TK_SEMICOLON);
   return node;
 }

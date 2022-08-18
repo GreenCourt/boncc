@@ -49,5 +49,6 @@ assert 0 '-3 >= 2;'
 assert 1 '2 >= 2;'
 assert 1 '2 >= 1;'
 assert 14 'a = 3; b = 5 * 6 - 8; a + b / 2;'
+assert 14 'aaa = 3; bb = 5 * 6 - 8; aaa + bb / 2;'
 
 echo OK

@@ -39,9 +39,18 @@ struct Node {
   int offset; // only for ND_LVAR
 };
 
+typedef struct LVar LVar;
+struct LVar {
+  LVar *next;
+  char *name;
+  int len;
+  int offset;
+};
+
 extern char *user_input;
 extern Token *token;
 extern Node *code[];
+extern LVar *locals;
 
 void error(char *fmt, ...);
 void gen(Node *node);

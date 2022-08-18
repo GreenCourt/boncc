@@ -7,6 +7,7 @@
 #include <string.h>
 
 Node *code[100];
+LVar *locals;
 
 void error_at(char *loc, char *fmt, ...) {
   va_list ap;
@@ -27,6 +28,10 @@ void error(char *fmt, ...) {
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
   exit(1);
+}
+
+bool is_alphabet(char c) {
+  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
 }
 
 bool consume(char *op) {
@@ -99,8 +104,12 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if ('a' <= *p && *p <= 'z') {
-      cur = new_token(TK_IDENT, cur, p++, 1);
+    if (is_alphabet(*p) || *p == '_') {
+      char *q = p;
+      while (is_alphabet(*(q + 1)) || isdigit(*(q + 1)) || *(q + 1) == '_')
+        q++;
+      cur = new_token(TK_IDENT, cur, p, q - p + 1);
+      p = q + 1;
       continue;
     }
 
@@ -123,6 +132,13 @@ Node *new_node_num(int val) {
   node->kind = ND_NUM;
   node->val = val;
   return node;
+}
+
+LVar *find_lvar(Token *tok) {
+  for (LVar *var = locals; var; var = var->next)
+    if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
+      return var;
+  return NULL;
 }
 
 void program();
@@ -229,7 +245,20 @@ Node *primary() {
   if (tok) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
-    node->offset = (tok->str[0] - 'a' + 1) * 8;
+
+    LVar *lvar = find_lvar(tok);
+    if (lvar) {
+      node->offset = lvar->offset;
+    } else {
+      lvar = calloc(1, sizeof(LVar));
+      lvar->next = locals;
+      lvar->name = tok->str;
+      lvar->len = tok->len;
+      lvar->offset = locals ? locals->offset + 8 : 0;
+      node->offset = lvar->offset;
+      locals = lvar;
+    }
+
     return node;
   }
 

@@ -52,5 +52,7 @@ assert 14 'a = 3; b = 5 * 6 - 8; a + b / 2;'
 assert 14 'aaa = 3; bb = 5 * 6 - 8; aaa + bb / 2;'
 assert 5 'aaa = 3; bb = 5 * 6 - 8; aaa + bb / 2; return aaa+2; return 14;'
 assert 14 'aaa = 3; bb = 5 * 6 - 8; return aaa + bb / 2;'
+assert 5 'a = 3; if(a==3) a+2; else a;'
+assert 3 'a = 3; if(a < 3) a+2; else a;'
 
 echo OK

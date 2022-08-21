@@ -12,6 +12,12 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   return tok;
 }
 
+bool compare(char *p, const char *keyword) {
+  int len = strlen(keyword);
+  return strncmp(p, keyword, len) == 0 &&
+         !is_alphanumeric_or_underscore(p[len]);
+}
+
 Token *tokenize(char *p) {
   Token head;
   head.next = NULL;
@@ -22,9 +28,21 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strncmp(p, "return", 6) == 0 && !is_alphanumeric_or_underscore(p[6])) {
+    if (compare(p, "return")) {
       cur = new_token(TK_RETURN, cur, p, 6);
       p += 6;
+      continue;
+    }
+
+    if (compare(p, "if")) {
+      cur = new_token(TK_IF, cur, p, 2);
+      p += 2;
+      continue;
+    }
+
+    if (compare(p, "else")) {
+      cur = new_token(TK_ELSE, cur, p, 4);
+      p += 4;
       continue;
     }
 

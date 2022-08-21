@@ -1,6 +1,8 @@
 #include "boncc.h"
 #include <stdio.h>
 
+static int label = 0;
+
 void gen_lval(Node *node) {
   if (node->kind != ND_LVAR)
     error("left-value of assignment operation must be a variable");
@@ -9,8 +11,32 @@ void gen_lval(Node *node) {
   printf("  push rax\n");
 }
 
+void gen_if(Node *node) {
+  gen(node->condition);
+  printf("  pop rax\n");
+  printf("  cmp rax, 0\n");
+
+  int l = label++;
+
+  if (node->else_) {
+    printf("  je .Lelse%d\n", l);
+    gen(node->body);
+    printf("  jmp .Lend%d\n", l);
+    printf(".Lelse%d:\n", l);
+    gen(node->else_);
+    printf(".Lend%d:\n", l);
+  } else {
+    printf("  je .Lend%d\n", l);
+    gen(node->body);
+    printf(".Lend%d:\n", l);
+  }
+}
+
 void gen(Node *node) {
   switch (node->kind) {
+  case ND_IF:
+    gen_if(node);
+    return;
   case ND_RETURN:
     gen(node->lhs);
     printf("  pop rax\n");

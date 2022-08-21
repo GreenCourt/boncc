@@ -59,6 +59,8 @@ Node *mul();
 Node *primary();
 Node *unary();
 
+Node *stmt_if();
+
 void program() {
   int i = 0;
   while (!at_eof())
@@ -67,15 +69,33 @@ void program() {
 }
 
 Node *stmt() {
-  Node *node;
-  if (consume(TK_RETURN)) {
-    node = calloc(1, sizeof(Node));
+  if (consume(TK_IF)) {
+    return stmt_if();
+  } else if (consume(TK_RETURN)) {
+    Node *node = calloc(1, sizeof(Node));
     node->kind = ND_RETURN;
     node->lhs = expr();
+    expect(TK_SEMICOLON);
+    return node;
   } else {
-    node = expr();
+    Node *node = expr();
+    expect(TK_SEMICOLON);
+    return node;
   }
-  expect(TK_SEMICOLON);
+}
+
+Node *stmt_if() {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_IF;
+
+  expect(TK_LPAREN);
+  node->condition = expr();
+  expect(TK_RPAREN);
+  node->body = stmt();
+
+  if (consume(TK_ELSE))
+    node->else_ = stmt();
+
   return node;
 }
 

@@ -16,6 +16,8 @@ typedef enum {
   TK_RPAREN,    // )
   TK_SEMICOLON, // ;
   TK_RETURN,    // return
+  TK_IF,        // if
+  TK_ELSE,      // else
   TK_IDENT,
   TK_NUM,
   TK_EOF,
@@ -46,6 +48,7 @@ typedef enum {
   ND_LVAR,   // local variable
   ND_NUM,    // integer
   ND_RETURN, // return
+  ND_IF,     // if
 } NodeKind;
 
 typedef struct Node Node;
@@ -56,6 +59,11 @@ struct Node {
   Node *rhs;
   int val;    // only for ND_NUM
   int offset; // only for ND_LVAR
+
+  // if-else
+  Node *condition;
+  Node *body;
+  Node *else_;
 };
 
 typedef struct LVar LVar;

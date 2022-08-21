@@ -54,6 +54,7 @@ assert 5 'aaa = 3; bb = 5 * 6 - 8; aaa + bb / 2; return aaa+2; return 14;'
 assert 14 'aaa = 3; bb = 5 * 6 - 8; return aaa + bb / 2;'
 assert 5 'a = 3; if(a==3) a+2; else a;'
 assert 3 'a = 3; if(a < 3) a+2; else a;'
-assert 3 'a = 0; while(a < 3) a = a + 1; return a;'
+assert 18 'b = 0; for(a=0; a<10; a = a + 1) b = a * 2; return b;'
+assert 10 'a = 0; for(; a<10; ) a=a+1; return a;'
 
 echo OK

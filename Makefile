@@ -13,4 +13,7 @@ test: boncc
 clean:
 	rm -f boncc *.o tmp*
 
-.PHONY: test clean
+fmt:
+	clang-format -i *.c *.h
+
+.PHONY: test clean fmt

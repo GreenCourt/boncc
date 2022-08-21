@@ -18,6 +18,7 @@ typedef enum {
   TK_RETURN,    // return
   TK_IF,        // if
   TK_ELSE,      // else
+  TK_WHILE,     // while
   TK_IDENT,
   TK_NUM,
   TK_EOF,
@@ -49,6 +50,7 @@ typedef enum {
   ND_NUM,    // integer
   ND_RETURN, // return
   ND_IF,     // if
+  ND_WHILE,  // while
 } NodeKind;
 
 typedef struct Node Node;
@@ -60,7 +62,8 @@ struct Node {
   int val;    // only for ND_NUM
   int offset; // only for ND_LVAR
 
-  // if-else
+  // if(condition) body else else_
+  // while(condition) body
   Node *condition;
   Node *body;
   Node *else_;

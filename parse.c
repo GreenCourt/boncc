@@ -60,6 +60,7 @@ Node *primary();
 Node *unary();
 
 Node *stmt_if();
+Node *stmt_while();
 
 void program() {
   int i = 0;
@@ -71,6 +72,8 @@ void program() {
 Node *stmt() {
   if (consume(TK_IF)) {
     return stmt_if();
+  } else if (consume(TK_WHILE)) {
+    return stmt_while();
   } else if (consume(TK_RETURN)) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_RETURN;
@@ -95,6 +98,18 @@ Node *stmt_if() {
 
   if (consume(TK_ELSE))
     node->else_ = stmt();
+
+  return node;
+}
+
+Node *stmt_while() {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_WHILE;
+
+  expect(TK_LPAREN);
+  node->condition = expr();
+  expect(TK_RPAREN);
+  node->body = stmt();
 
   return node;
 }

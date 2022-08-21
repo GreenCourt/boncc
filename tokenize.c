@@ -46,6 +46,12 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (compare(p, "while")) {
+      cur = new_token(TK_WHILE, cur, p, 5);
+      p += 5;
+      continue;
+    }
+
     if (strncmp(p, "<=", 2) == 0) {
       cur = new_token(TK_LE, cur, p, 2);
       p += 2;

@@ -4,13 +4,11 @@ assert() {
     input="$2"
 
     ./boncc "$input" > tmp.s
-    if [ $? -ne 0 ]
-    then
-      echo RE
-      echo "input: '$input'"
-      exit 1
-    fi
+    [ $? -ne 0 ] && echo "${0}:${BASH_LINENO[0]}: boncc runtime error." && exit 1
+
     cc -o tmp tmp.s
+    [ $? -ne 0 ] && echo "${0}:${BASH_LINENO[0]}: failed to assemble." && exit 1
+
     ./tmp
     actual="$?"
 
@@ -18,6 +16,7 @@ assert() {
     then
         echo "$input => $actual"
     else
+        echo "${0}:${BASH_LINENO[0]}: failed."
         echo "$input => $expected expected, but got $actual"
         exit 1
     fi

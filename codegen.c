@@ -66,8 +66,21 @@ void gen_for(Node *node) {
   printf(".Lend%d:\n", l);
 }
 
+void gen_block(Node *node) {
+  int sz = node->blk_stmts->size;
+  for (int i = 0; i < sz; ++i) {
+    Node *d = *(Node **)vector_get(node->blk_stmts, i);
+    gen(d);
+    if (i != sz - 1)
+      printf("  pop rax\n");
+  }
+}
+
 void gen(Node *node) {
   switch (node->kind) {
+  case ND_BLOCK:
+    gen_block(node);
+    return;
   case ND_IF:
     gen_if(node);
     return;

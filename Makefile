@@ -1,19 +1,28 @@
-CFLAGS:=-std=c11 -g -static -Wall -Wextra
-SRCS=$(wildcard *.c)
-OBJS=$(SRCS:.c=.o)
+CFLAGS=-std=c11 -g -static -Wall -Wextra -MMD
+OBJ_DIR=obj
 
-boncc: $(OBJS)
+default: boncc test_runner
+
+$(OBJ_DIR)/%.o:%.c
+	@mkdir -p $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenize.o parse.o codegen.o Vector.o)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-$(OBJS): boncc.h
+test_runner: $(addprefix $(OBJ_DIR)/, test_runner.o Vector.o)
+	$(CC) -o $@ $^ $(LDFLAGS)
 
-test: boncc
+test: boncc test_runner
 	./test.sh
+	./test_runner
 
 clean:
-	rm -f boncc *.o tmp*
+	rm -rf boncc test_runner tmp* $(OBJ_DIR)
 
 fmt:
 	clang-format -i *.c *.h
 
-.PHONY: test clean fmt
+-include $(OBJ_DIR)/*.d
+
+.PHONY: default test clean fmt

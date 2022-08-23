@@ -62,6 +62,7 @@ Node *unary();
 Node *stmt_if();
 Node *stmt_while();
 Node *stmt_for();
+Node *stmt_block();
 
 void program() {
   int i = 0;
@@ -71,7 +72,9 @@ void program() {
 }
 
 Node *stmt() {
-  if (consume(TK_IF)) {
+  if (consume(TK_LBRACE)) {
+    return stmt_block();
+  } else if (consume(TK_IF)) {
     return stmt_if();
   } else if (consume(TK_WHILE)) {
     return stmt_while();
@@ -88,6 +91,19 @@ Node *stmt() {
     expect(TK_SEMICOLON);
     return node;
   }
+}
+
+Node *stmt_block() {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_BLOCK;
+  node->blk_stmts = new_vector(0, sizeof(Node *));
+
+  do {
+    Node *s = stmt();
+    vector_push(node->blk_stmts, &s);
+  } while (!consume(TK_RBRACE));
+
+  return node;
 }
 
 Node *stmt_if() {

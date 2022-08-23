@@ -1,3 +1,4 @@
+#include "Vector.h"
 #include <stdbool.h>
 
 typedef enum {
@@ -14,6 +15,8 @@ typedef enum {
   TK_ASSIGN,    // =
   TK_LPAREN,    // (
   TK_RPAREN,    // )
+  TK_LBRACE,    // {
+  TK_RBRACE,    // }
   TK_SEMICOLON, // ;
   TK_RETURN,    // return
   TK_IF,        // if
@@ -53,6 +56,7 @@ typedef enum {
   ND_IF,     // if
   ND_WHILE,  // while
   ND_FOR,    // for
+  ND_BLOCK,  // {...}
 } NodeKind;
 
 typedef struct Node Node;
@@ -72,6 +76,8 @@ struct Node {
   Node *else_;
   Node *init;
   Node *update;
+
+  Vector *blk_stmts; // statements in ND_BLOCK
 };
 
 typedef struct LVar LVar;

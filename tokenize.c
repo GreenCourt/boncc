@@ -101,6 +101,12 @@ Token *tokenize(char *p) {
     case ')':
       cur = new_token(TK_RPAREN, cur, p++, 1);
       continue;
+    case '{':
+      cur = new_token(TK_LBRACE, cur, p++, 1);
+      continue;
+    case '}':
+      cur = new_token(TK_RBRACE, cur, p++, 1);
+      continue;
     case '<':
       cur = new_token(TK_LT, cur, p++, 1);
       continue;

@@ -119,6 +119,9 @@ Token *tokenize(char *p) {
     case ';':
       cur = new_token(TK_SEMICOLON, cur, p++, 1);
       continue;
+    case ',':
+      cur = new_token(TK_COMMA, cur, p++, 1);
+      continue;
     }
 
     if (isdigit(*p)) {

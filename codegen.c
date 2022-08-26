@@ -76,8 +76,40 @@ void gen_block(Node *node) {
   }
 }
 
+void gen_call(Node *node) {
+  const char *reg[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+  int sz = node->args->size;
+  for (int i = 0; i < sz; ++i) {
+    Node *d = *(Node **)vector_get(node->args, i);
+    gen(d);
+  }
+  for (int i = sz - 1; i >= 0; --i) {
+    printf("  pop rax\n");
+    printf("  mov %s, rax\n", reg[i]);
+  }
+
+  // align RSP to 16bytes (ABI requirements)
+  int l = label++;
+  printf("  mov rax, rsp\n");
+  printf("  and rax, 15\n"); // rax % 16 == rax & 0xF
+  printf("  jnz .Lcall%d\n", l);
+  printf("  call %.*s\n", node->len, node->name);
+  printf("  jmp .Lend%d\n", l);
+  printf(".Lcall%d:\n", l);
+  printf("  sub rsp, 8\n");
+  printf("  call %.*s\n", node->len, node->name);
+  printf("  add rsp, 8\n");
+  printf(".Lend%d:\n", l);
+
+  // push return value to stack
+  printf("  push rax\n");
+}
+
 void gen(Node *node) {
   switch (node->kind) {
+  case ND_CALL:
+    gen_call(node);
+    return;
   case ND_BLOCK:
     gen_block(node);
     return;

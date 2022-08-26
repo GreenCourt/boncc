@@ -18,6 +18,7 @@ typedef enum {
   TK_LBRACE,    // {
   TK_RBRACE,    // }
   TK_SEMICOLON, // ;
+  TK_COMMA,     // ,
   TK_RETURN,    // return
   TK_IF,        // if
   TK_ELSE,      // else
@@ -57,6 +58,7 @@ typedef enum {
   ND_WHILE,  // while
   ND_FOR,    // for
   ND_BLOCK,  // {...}
+  ND_CALL,   // call function
 } NodeKind;
 
 typedef struct Node Node;
@@ -78,6 +80,10 @@ struct Node {
   Node *update;
 
   Vector *blk_stmts; // statements in ND_BLOCK
+
+  char *name;   // function name for ND_CALL
+  int len;      // length of name
+  Vector *args; // arguments for ND_CALL
 };
 
 typedef struct LVar LVar;

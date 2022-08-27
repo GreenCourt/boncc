@@ -13,23 +13,11 @@ int main(int argc, char **argv) {
   program();
 
   printf(".intel_syntax noprefix\n");
-  printf(".globl main\n");
-  printf("main:\n");
 
-  // prologue
-  printf("  push rbp\n");
-  printf("  mov rbp, rsp\n");
-  if (locals)
-    printf("  sub rsp, %d\n", locals->offset);
-
-  for (int i = 0; code[i]; i++) {
-    gen(code[i]);
-    printf("  pop rax\n");
+  for (int i = 0; i < functions->size; i++) {
+    Node *f = *(Node **)vector_get(functions, i);
+    gen(f);
   }
 
-  // epilogue
-  printf("  mov rsp, rbp\n");
-  printf("  pop rbp\n");
-  printf("  ret\n");
   return 0;
 }

@@ -1,7 +1,9 @@
 #include "boncc.h"
 #include <stdio.h>
+#include <string.h>
 
 static int label = 0;
+static const char *reg_args[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 void gen_lval(Node *node) {
   if (node->kind != ND_LVAR)
@@ -77,7 +79,6 @@ void gen_block(Node *node) {
 }
 
 void gen_call(Node *node) {
-  const char *reg[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
   int sz = node->args->size;
   for (int i = 0; i < sz; ++i) {
     Node *d = *(Node **)vector_get(node->args, i);
@@ -85,7 +86,7 @@ void gen_call(Node *node) {
   }
   for (int i = sz - 1; i >= 0; --i) {
     printf("  pop rax\n");
-    printf("  mov %s, rax\n", reg[i]);
+    printf("  mov %s, rax\n", reg_args[i]);
   }
 
   // align RSP to 16bytes (ABI requirements)
@@ -105,8 +106,40 @@ void gen_call(Node *node) {
   printf("  push rax\n");
 }
 
+void gen_func(Node *node) {
+  if (strncmp(node->name, "main", 4) == 0) {
+    printf(".globl main\n");
+  }
+  printf("%.*s:\n", node->len, node->name);
+
+  // prologue
+  printf("  push rbp\n");
+  printf("  mov rbp, rsp\n");
+
+  // push args to stack
+  for (int i = 0; i < node->nparams; ++i)
+    printf("  push %s\n", reg_args[i]);
+
+  if (node->locals->size > node->nparams) {
+    // stack memory for local variables
+    int ofs = (node->locals->size - node->nparams) * 8;
+    printf("  sub rsp, %d\n", ofs);
+  }
+
+  gen(node->body);
+  printf("  pop rax\n"); // return value
+
+  // epilogue
+  printf("  mov rsp, rbp\n");
+  printf("  pop rbp\n");
+  printf("  ret\n");
+}
+
 void gen(Node *node) {
   switch (node->kind) {
+  case ND_FUNC:
+    gen_func(node);
+    return;
   case ND_CALL:
     gen_call(node);
     return;

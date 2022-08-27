@@ -59,6 +59,7 @@ typedef enum {
   ND_FOR,    // for
   ND_BLOCK,  // {...}
   ND_CALL,   // call function
+  ND_FUNC,   // function
 } NodeKind;
 
 typedef struct Node Node;
@@ -81,14 +82,15 @@ struct Node {
 
   Vector *blk_stmts; // statements in ND_BLOCK
 
-  char *name;   // function name for ND_CALL
-  int len;      // length of name
-  Vector *args; // arguments for ND_CALL
+  char *name;     // function name for ND_CALL, ND_FUNC
+  int len;        // length of name
+  Vector *args;   // arguments for ND_CALL
+  Vector *locals; // local variables for ND_FUNC
+  int nparams;    // number of parameters for ND_FUNC
 };
 
 typedef struct LVar LVar;
 struct LVar {
-  LVar *next;
   char *name;
   int len;
   int offset;
@@ -96,8 +98,7 @@ struct LVar {
 
 extern char *user_input;
 extern Token *token;
-extern Node *code[];
-extern LVar *locals;
+extern Vector *functions;
 
 bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);

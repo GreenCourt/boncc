@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+static Vector *locals;
+
 Token *consume(TokenKind kind) {
   if (token->kind != kind)
     return NULL;
@@ -10,10 +12,12 @@ Token *consume(TokenKind kind) {
   return tok;
 }
 
-void expect(TokenKind kind) {
+Token *expect(TokenKind kind) {
   if (token->kind != kind)
     error_at(token->str, "'%s' expected but not found", token_str[kind]);
+  Token *tok = token;
   token = token->next;
+  return tok;
 }
 
 int expect_number() {
@@ -41,14 +45,27 @@ Node *new_node_num(int val) {
   return node;
 }
 
+LVar *new_lvar(Token *tok) {
+  LVar *lvar = calloc(1, sizeof(LVar));
+  lvar->name = tok->str;
+  lvar->len = tok->len;
+  vector_push(locals, &lvar);
+  lvar->offset = locals->size * 8;
+  return lvar;
+}
+
 LVar *find_lvar(Token *tok) {
-  for (LVar *var = locals; var; var = var->next)
+  int sz = locals->size;
+  for (int i = 0; i < sz; ++i) {
+    LVar *var = *(LVar **)vector_get(locals, i);
     if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
       return var;
+  }
   return NULL;
 }
 
 void program();
+Node *func();
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -65,10 +82,40 @@ Node *stmt_for();
 Node *stmt_block();
 
 void program() {
-  int i = 0;
-  while (!at_eof())
-    code[i++] = stmt();
-  code[i] = NULL;
+  functions = new_vector(0, sizeof(Node *));
+  while (!at_eof()) {
+    Node *f = func();
+    vector_push(functions, &f);
+  }
+}
+
+Node *func() {
+  Token *tok = expect(TK_IDENT);
+  expect(TK_LPAREN);
+
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_FUNC;
+  node->name = tok->str;
+  node->len = tok->len;
+  node->locals = new_vector(0, sizeof(LVar *));
+  locals = node->locals;
+
+  if (!consume(TK_RPAREN)) {
+    // read params
+    do {
+      Token *id = expect(TK_IDENT);
+      LVar *lvar = find_lvar(id);
+      if (lvar)
+        error_at(id->str, "duplicated identifier");
+      lvar = new_lvar(id);
+    } while (consume(TK_COMMA));
+    expect(TK_RPAREN);
+  }
+  node->nparams = node->locals->size;
+  expect(TK_LBRACE);
+  node->body = stmt_block();
+  locals = NULL;
+  return node;
 }
 
 Node *stmt() {
@@ -262,13 +309,8 @@ Node *primary() {
       if (lvar) {
         node->offset = lvar->offset;
       } else {
-        lvar = calloc(1, sizeof(LVar));
-        lvar->next = locals;
-        lvar->name = tok->str;
-        lvar->len = tok->len;
-        lvar->offset = locals ? locals->offset + 8 : 0;
+        lvar = new_lvar(tok);
         node->offset = lvar->offset;
-        locals = lvar;
       }
       return node;
     }

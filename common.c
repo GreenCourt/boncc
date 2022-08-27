@@ -6,8 +6,7 @@
 
 char *user_input;
 Token *token;
-Node *code[100];
-LVar *locals;
+Vector *functions;
 
 const char *token_str[] = {
     // corresponding to TokenKind

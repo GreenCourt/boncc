@@ -84,16 +84,16 @@ Token *tokenize(char *p) {
 
     switch (*p) {
     case '+':
-      cur = new_token(TK_ADD, cur, p++, 1);
+      cur = new_token(TK_PLUS, cur, p++, 1);
       continue;
     case '-':
-      cur = new_token(TK_SUB, cur, p++, 1);
+      cur = new_token(TK_MINUS, cur, p++, 1);
       continue;
     case '*':
-      cur = new_token(TK_MUL, cur, p++, 1);
+      cur = new_token(TK_STAR, cur, p++, 1);
       continue;
     case '/':
-      cur = new_token(TK_DIV, cur, p++, 1);
+      cur = new_token(TK_SLASH, cur, p++, 1);
       continue;
     case '(':
       cur = new_token(TK_LPAREN, cur, p++, 1);

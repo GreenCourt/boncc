@@ -246,9 +246,9 @@ Node *relational() {
 Node *add() {
   Node *node = mul();
   while (true) {
-    if (consume(TK_ADD))
+    if (consume(TK_PLUS))
       node = new_node(ND_ADD, node, mul());
-    else if (consume(TK_SUB))
+    else if (consume(TK_MINUS))
       node = new_node(ND_SUB, node, mul());
     else
       return node;
@@ -258,9 +258,9 @@ Node *add() {
 Node *mul() {
   Node *node = unary();
   while (true) {
-    if (consume(TK_MUL))
+    if (consume(TK_STAR))
       node = new_node(ND_MUL, node, unary());
-    else if (consume(TK_DIV))
+    else if (consume(TK_SLASH))
       node = new_node(ND_DIV, node, unary());
     else
       return node;
@@ -268,9 +268,9 @@ Node *mul() {
 }
 
 Node *unary() {
-  if (consume(TK_ADD))
+  if (consume(TK_PLUS))
     return unary();
-  if (consume(TK_SUB))
+  if (consume(TK_MINUS))
     return new_node(ND_SUB, new_node_num(0), unary());
   return primary();
 }

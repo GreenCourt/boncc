@@ -2,10 +2,10 @@
 #include <stdbool.h>
 
 typedef enum {
-  TK_ADD,       // +
-  TK_SUB,       // -
-  TK_MUL,       // *
-  TK_DIV,       // /
+  TK_PLUS,      // +
+  TK_MINUS,     // -
+  TK_STAR,      // *
+  TK_SLASH,     // /
   TK_EQ,        // ==
   TK_NE,        // !=
   TK_LT,        // <

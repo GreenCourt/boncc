@@ -6,6 +6,7 @@ typedef enum {
   TK_MINUS,     // -
   TK_STAR,      // *
   TK_SLASH,     // /
+  TK_AMP,       // &
   TK_EQ,        // ==
   TK_NE,        // !=
   TK_LT,        // <
@@ -60,6 +61,8 @@ typedef enum {
   ND_BLOCK,  // {...}
   ND_CALL,   // call function
   ND_FUNC,   // function
+  ND_ADDR,   // &val
+  ND_DEREF,  // *ptr
 } NodeKind;
 
 typedef struct Node Node;

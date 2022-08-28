@@ -95,6 +95,9 @@ Token *tokenize(char *p) {
     case '/':
       cur = new_token(TK_SLASH, cur, p++, 1);
       continue;
+    case '&':
+      cur = new_token(TK_AMP, cur, p++, 1);
+      continue;
     case '(':
       cur = new_token(TK_LPAREN, cur, p++, 1);
       continue;

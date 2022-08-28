@@ -71,5 +71,7 @@ assert 18 'add(a,b){x=12;x+a+b;} main(){add(1,5);}'
 assert 5 'fib(a){r=0; if(a==0) return 0; else if(a==1) return 1; else return fib(a-1) + fib(a-2);} main(){fib(5);}'
 assert 8 'fib(a){r=0; if(a==0) return 0; else if(a==1) return 1; else return fib(a-1) + fib(a-2);} main(){fib(6);}'
 assert 13 'fib(a){r=0; if(a==0) r = 0; else if(a==1) r = 1; else r = fib(a-1) + fib(a-2); return r;} main(){fib(7);}'
+assert 3 'main(){x=3; y=&x; return *y;}'
+assert 3 'main(){x=3; y=5; z = &y + 8; return *z;}'
 
 echo OK

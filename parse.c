@@ -272,6 +272,10 @@ Node *unary() {
     return unary();
   if (consume(TK_MINUS))
     return new_node(ND_SUB, new_node_num(0), unary());
+  if (consume(TK_AMP))
+    return new_node(ND_ADDR, unary(), NULL);
+  if (consume(TK_STAR))
+    return new_node(ND_DEREF, unary(), NULL);
   return primary();
 }
 

@@ -90,6 +90,7 @@ void program() {
 }
 
 Node *func() {
+  expect(TK_INT);
   Token *tok = expect(TK_IDENT);
   expect(TK_LPAREN);
 
@@ -103,11 +104,11 @@ Node *func() {
   if (!consume(TK_RPAREN)) {
     // read params
     do {
+      expect(TK_INT);
       Token *id = expect(TK_IDENT);
-      LVar *lvar = find_lvar(id);
-      if (lvar)
+      if (find_lvar(id))
         error_at(id->str, "duplicated identifier");
-      lvar = new_lvar(id);
+      new_lvar(id);
     } while (consume(TK_COMMA));
     expect(TK_RPAREN);
   }
@@ -133,6 +134,13 @@ Node *stmt() {
     node->lhs = expr();
     expect(TK_SEMICOLON);
     return node;
+  } else if (consume(TK_INT)) {
+    Token *id = expect(TK_IDENT);
+    if (find_lvar(id))
+      error_at(id->str, "duplicated identifier");
+    new_lvar(id);
+    expect(TK_SEMICOLON);
+    return NULL;
   } else {
     Node *node = expr();
     expect(TK_SEMICOLON);
@@ -147,7 +155,8 @@ Node *stmt_block() {
 
   do {
     Node *s = stmt();
-    vector_push(node->blk_stmts, &s);
+    if (s)
+      vector_push(node->blk_stmts, &s);
   } while (!consume(TK_RBRACE));
 
   return node;
@@ -313,8 +322,7 @@ Node *primary() {
       if (lvar) {
         node->offset = lvar->offset;
       } else {
-        lvar = new_lvar(tok);
-        node->offset = lvar->offset;
+        error_at(tok->str, "undefined identifier: '%.*s'", tok->len, tok->str);
       }
       return node;
     }

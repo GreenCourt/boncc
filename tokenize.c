@@ -58,6 +58,12 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (compare(p, "int")) {
+      cur = new_token(TK_INT, cur, p, 3);
+      p += 3;
+      continue;
+    }
+
     if (strncmp(p, "<=", 2) == 0) {
       cur = new_token(TK_LE, cur, p, 2);
       p += 2;

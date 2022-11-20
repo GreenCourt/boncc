@@ -93,11 +93,20 @@ struct Node {
   int nparams;    // number of parameters for ND_FUNC
 };
 
+typedef enum { TYPE_INT, TYPE_PTR } TypeKind;
+
+typedef struct Type Type;
+struct Type {
+  TypeKind kind;
+  struct Type *ptr_to;
+};
+
 typedef struct LVar LVar;
 struct LVar {
   char *name;
-  int len;
+  int len; // name length
   int offset;
+  Type *type;
 };
 
 extern char *user_input;

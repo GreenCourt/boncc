@@ -28,6 +28,27 @@ int expect_number() {
   return val;
 }
 
+Type *consume_type() {
+  if (!consume(TK_INT))
+    return NULL;
+  Type *ty = calloc(1, sizeof(Type));
+  ty->kind = TYPE_INT;
+  while (consume(TK_STAR)) {
+    Type *ty2 = calloc(1, sizeof(Type));
+    ty2->kind = TYPE_PTR;
+    ty2->ptr_to = ty;
+    ty2 = ty;
+  }
+  return ty;
+}
+
+Type *expect_type() {
+  Type *ty = consume_type();
+  if (!ty)
+    error_at(token->str, "type expected but not found");
+  return ty;
+}
+
 bool at_eof() { return token->kind == TK_EOF; }
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -45,10 +66,11 @@ Node *new_node_num(int val) {
   return node;
 }
 
-LVar *new_lvar(Token *tok) {
+LVar *new_lvar(Token *tok, Type *type) {
   LVar *lvar = calloc(1, sizeof(LVar));
   lvar->name = tok->str;
   lvar->len = tok->len;
+  lvar->type = type;
   vector_push(locals, &lvar);
   lvar->offset = locals->size * 8;
   return lvar;
@@ -90,7 +112,7 @@ void program() {
 }
 
 Node *func() {
-  expect(TK_INT);
+  expect_type();
   Token *tok = expect(TK_IDENT);
   expect(TK_LPAREN);
 
@@ -104,11 +126,11 @@ Node *func() {
   if (!consume(TK_RPAREN)) {
     // read params
     do {
-      expect(TK_INT);
+      Type *ty = expect_type();
       Token *id = expect(TK_IDENT);
       if (find_lvar(id))
         error_at(id->str, "duplicated identifier");
-      new_lvar(id);
+      new_lvar(id, ty);
     } while (consume(TK_COMMA));
     expect(TK_RPAREN);
   }
@@ -120,6 +142,7 @@ Node *func() {
 }
 
 Node *stmt() {
+  Type *ty;
   if (consume(TK_LBRACE)) {
     return stmt_block();
   } else if (consume(TK_IF)) {
@@ -134,11 +157,11 @@ Node *stmt() {
     node->lhs = expr();
     expect(TK_SEMICOLON);
     return node;
-  } else if (consume(TK_INT)) {
+  } else if ((ty = consume_type())) {
     Token *id = expect(TK_IDENT);
     if (find_lvar(id))
       error_at(id->str, "duplicated identifier");
-    new_lvar(id);
+    new_lvar(id, ty);
     expect(TK_SEMICOLON);
     return NULL;
   } else {

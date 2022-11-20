@@ -6,11 +6,15 @@ static int label = 0;
 static const char *reg_args[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 void gen_lval(Node *node) {
-  if (node->kind != ND_LVAR)
+  if (node->kind == ND_DEREF) {
+    gen(node->lhs);
+  } else if (node->kind == ND_LVAR) {
+    printf("  mov rax, rbp\n");
+    printf("  sub rax, %d\n", node->offset);
+    printf("  push rax\n");
+  } else {
     error("left-value must be a variable");
-  printf("  mov rax, rbp\n");
-  printf("  sub rax, %d\n", node->offset);
-  printf("  push rax\n");
+  }
 }
 
 void gen_if(Node *node) {

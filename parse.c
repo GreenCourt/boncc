@@ -33,12 +33,8 @@ Type *consume_type() {
     return NULL;
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TYPE_INT;
-  while (consume(TK_STAR)) {
-    Type *ty2 = calloc(1, sizeof(Type));
-    ty2->kind = TYPE_PTR;
-    ty2->ptr_to = ty;
-    ty2 = ty;
-  }
+  while (consume(TK_STAR))
+    ty->ptr++;
   return ty;
 }
 
@@ -343,7 +339,7 @@ Node *primary() {
 
       LVar *lvar = find_lvar(tok);
       if (lvar) {
-        node->offset = lvar->offset;
+        node->lvar = lvar;
       } else {
         error_at(tok->str, "undefined identifier: '%.*s'", tok->len, tok->str);
       }

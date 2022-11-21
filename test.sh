@@ -76,5 +76,6 @@ assert 3 'int main(){int x; x=3; int y; y=5; int z; z = &y + 8; return *z;}'
 assert 3 'int main(){int x; x=3; int y; y=&x; int z; z = &y; return **z;}'
 assert 3 'int main(){int x; int *y; y = &x; *y = 3; return x;}'
 assert 3 'int main(){int x; int *y; y = &x; int **z; z = &y; **z = 3; return x;}'
+assert 12 'int main(){int x; x=12; int *p; p = &x; int **q; q = &p; return *&*&**q; }'
 
 echo OK

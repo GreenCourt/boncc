@@ -1,6 +1,7 @@
 #include "boncc.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 static int label = 0;
 static const char *reg_args[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
@@ -139,6 +140,54 @@ void gen_func(Node *node) {
   printf("  ret\n");
 }
 
+void multiply_node(Node** pnode, int coef) {
+  Node *num = calloc(1, sizeof(Node));
+  num->kind = ND_NUM;
+  num->val = coef;
+  Node *mul = calloc(1, sizeof(Node));
+  mul->kind = ND_MUL;
+  mul->lhs = *pnode;
+  mul->rhs = num;
+  *pnode = mul;
+}
+
+void gen_add(Node* node) {
+  type_detection(node);
+  Type *lty = type_detection(node->lhs);
+  Type *rty = type_detection(node->rhs);
+
+  if(lty->ptr)
+    multiply_node(&node->rhs, pointer_destination_size(lty));
+  else if(rty->ptr)
+    multiply_node(&node->lhs, pointer_destination_size(rty));
+
+  gen(node->lhs);
+  gen(node->rhs);
+
+  printf("  pop rdi\n");
+  printf("  pop rax\n");
+  printf("  add rax, rdi\n");
+  printf("  push rax\n");
+}
+
+void gen_sub(Node* node) {
+  type_detection(node);
+  Type *lty = type_detection(node->lhs);
+  Type *rty = type_detection(node->rhs);
+
+  if(lty->ptr)
+    multiply_node(&node->rhs, pointer_destination_size(lty));
+  else if(rty->ptr)
+    multiply_node(&node->lhs, pointer_destination_size(rty));
+
+  gen(node->lhs);
+  gen(node->rhs);
+  printf("  pop rdi\n");
+  printf("  pop rax\n");
+  printf("  sub rax, rdi\n");
+  printf("  push rax\n");
+}
+
 void gen(Node *node) {
   switch (node->kind) {
   case ND_FUNC:
@@ -192,6 +241,12 @@ void gen(Node *node) {
     printf("  mov rax, [rax]\n");
     printf("  push rax\n");
     return;
+  case ND_ADD:
+    gen_add(node);
+    return;
+  case ND_SUB:
+    gen_sub(node);
+    return;
   default:
     break;
   }
@@ -203,12 +258,6 @@ void gen(Node *node) {
   printf("  pop rax\n");
 
   switch (node->kind) {
-  case ND_ADD:
-    printf("  add rax, rdi\n");
-    break;
-  case ND_SUB:
-    printf("  sub rax, rdi\n");
-    break;
   case ND_MUL:
     printf("  imul rax, rdi\n");
     break;

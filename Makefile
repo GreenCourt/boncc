@@ -7,7 +7,7 @@ $(OBJ_DIR)/%.o:%.c
 	@mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenize.o parse.o codegen.o Vector.o)
+boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenize.o parse.o codegen.o Vector.o type.o)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 test_runner: $(addprefix $(OBJ_DIR)/, test_runner.o Vector.o)

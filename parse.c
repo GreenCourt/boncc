@@ -108,17 +108,16 @@ void program() {
 }
 
 Node *func() {
-  expect_type();
-  Token *tok = expect(TK_IDENT);
-  expect(TK_LPAREN);
-
   Node *node = calloc(1, sizeof(Node));
+  node->type = expect_type();
+  Token *tok = expect(TK_IDENT);
   node->kind = ND_FUNC;
   node->name = tok->str;
   node->len = tok->len;
   node->locals = new_vector(0, sizeof(LVar *));
   locals = node->locals;
 
+  expect(TK_LPAREN);
   if (!consume(TK_RPAREN)) {
     // read params
     do {

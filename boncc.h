@@ -90,6 +90,7 @@ struct Node {
   Node *rhs;
   int val;    // only for ND_NUM
   LVar *lvar; // only for ND_LVAR
+  Type *type;
 
   // if(condition) body else else_
   // while(condition) body
@@ -121,3 +122,7 @@ void error(char *fmt, ...);
 void gen(Node *node);
 Token *tokenize(char *p);
 void program();
+
+int type_size(Type *type);
+int pointer_destination_size(Type *type);
+Type *type_detection(Node *node);

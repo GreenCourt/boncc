@@ -299,6 +299,8 @@ Node *mul() {
 }
 
 Node *unary() {
+  if (consume(TK_SIZEOF))
+    return new_node_num(size_of(get_type(unary())));
   if (consume(TK_PLUS))
     return unary();
   if (consume(TK_MINUS))

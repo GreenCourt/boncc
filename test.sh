@@ -84,5 +84,11 @@ assert 3 'int main(){int x; int *y; y = &x; int **z; z = &y; **z = 3; return x;}
 assert 12 'int main(){int x; x=12; int *p; p = &x; int **q; q = &p; return *&*&**q; }'
 assert 2 'int main(){ int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 1; return *q; }'
 assert 8 'int main(){ int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 3; return *q; }'
+assert 4 'int main(){ int x; return sizeof(x); }'
+assert 8 'int main(){ int *x; return sizeof(x); }'
+assert 8 'int main(){ int *x; return sizeof(x+3); }'
+assert 4 'int main(){ int *x; return sizeof(*x); }'
+assert 4 'int main(){ return sizeof(1); }'
+assert 4 'int main(){ return sizeof(sizeof(1)); }'
 
 echo OK

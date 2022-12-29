@@ -64,6 +64,12 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (compare(p, "sizeof")) {
+      cur = new_token(TK_SIZEOF, cur, p, 6);
+      p += 6;
+      continue;
+    }
+
     if (strncmp(p, "<=", 2) == 0) {
       cur = new_token(TK_LE, cur, p, 2);
       p += 2;

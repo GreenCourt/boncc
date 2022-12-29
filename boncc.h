@@ -26,6 +26,7 @@ typedef enum {
   TK_WHILE,     // while
   TK_FOR,       // for
   TK_INT,       // int
+  TK_SIZEOF,    // sizeof
   TK_IDENT,
   TK_NUM,
   TK_EOF,

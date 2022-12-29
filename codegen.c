@@ -169,7 +169,10 @@ void gen_func(Node *node) {
 
   if (node->locals->size) {
     LVar *last = *(LVar **)vector_last(node->locals);
-    printf("  sub rsp, %d\n", last->offset);
+    int ofs = last->offset;
+    if (ofs % 8)
+      ofs += 8 - ofs % 8; // align by 8
+    printf("  sub rsp, %d\n", ofs);
   }
 
   gen(node->body);

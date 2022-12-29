@@ -71,8 +71,10 @@ LVar *new_lvar(Token *tok, Type *type) {
   lvar->name = tok->str;
   lvar->len = tok->len;
   lvar->type = type;
+  lvar->offset = size_of(type);
+  if (locals->size)
+    lvar->offset += (*(LVar **)vector_last(locals))->offset;
   vector_push(locals, &lvar);
-  lvar->offset = locals->size * size_of(type);
   return lvar;
 }
 

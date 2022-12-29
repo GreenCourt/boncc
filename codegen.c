@@ -171,6 +171,7 @@ void gen_addsub(Node* node, const char* op) {
 }
 
 void gen(Node *node) {
+  get_type(node);
   switch (node->kind) {
   case ND_FUNC:
     gen_func(node);

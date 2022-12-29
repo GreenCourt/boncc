@@ -1,9 +1,9 @@
 #include "boncc.h"
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
-int size_of(Type *type) { return type->kind == TYPE_PTR ? 8 : 8; }
+int size_of(Type *type) { return type->kind == TYPE_PTR ? 8 : 4; }
 
 Type *get_type(Node *node) {
   if (node->type)
@@ -16,18 +16,20 @@ Type *get_type(Node *node) {
     if (left->kind == TYPE_PTR && right->kind == TYPE_PTR)
       error("invalid operands to binary operator (pointer and pointer)");
 
-    if (node->kind == ND_MUL && (left->kind == TYPE_PTR || right->kind == TYPE_PTR))
+    if (node->kind == ND_MUL &&
+        (left->kind == TYPE_PTR || right->kind == TYPE_PTR))
       error("invalid operands to binary * operator (pointer)");
 
-    if (node->kind == ND_DIV && (left->kind == TYPE_PTR || right->kind == TYPE_PTR))
+    if (node->kind == ND_DIV &&
+        (left->kind == TYPE_PTR || right->kind == TYPE_PTR))
       error("invalid operands to binary / operator (pointer)");
 
     if (node->kind == ND_SUB && right->kind == TYPE_PTR)
       error("invalid operands to binary - operator (int - pointer)");
 
-    if(left->kind == TYPE_PTR)
+    if (left->kind == TYPE_PTR)
       return node->type = left;
-    else if(right->kind == TYPE_PTR)
+    else if (right->kind == TYPE_PTR)
       return node->type = right;
     else
       return node->type = left;

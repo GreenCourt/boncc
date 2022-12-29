@@ -1,12 +1,16 @@
 #include "boncc.h"
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 static int label = 0;
-static const char *reg_args[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+static const char *reg_args1[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
+static const char *reg_args2[] = {"di", "si", "dx", "cx", "r8w", "r9w"};
+static const char *reg_args4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
+static const char *reg_args8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 void gen_lval(Node *node) {
+  // push address to stack top
   if (node->kind == ND_DEREF) {
     gen(node->lhs);
   } else if (node->kind == ND_LVAR) {
@@ -16,6 +20,35 @@ void gen_lval(Node *node) {
   } else {
     error("left-value must be a variable");
   }
+}
+
+void load(Type *type) {
+  // pop address from stack
+  // push the value of address to stack
+  printf("  pop rax\n");
+  if (size_of(type) == 1)
+    printf("  movsx rax, byte ptr [rax]\n");
+  else if (size_of(type) == 2)
+    printf("  movsx rax, word ptr [rax]\n");
+  else if (size_of(type) == 4)
+    printf("  movsxd rax, dword ptr [rax]\n");
+  else if (size_of(type) == 8)
+    printf("  mov rax, [rax]\n");
+  printf("  push rax\n");
+}
+
+void store(Type *type) {
+  // pop address from stack
+  // store rax value to the address
+  printf("  pop rdi\n");
+  if (size_of(type) == 1)
+    printf("  mov [rdi], al\n");
+  else if (size_of(type) == 2)
+    printf("  mov [rdi], ax\n");
+  else if (size_of(type) == 4)
+    printf("  mov [rdi], eax\n");
+  else
+    printf("  mov [rdi], rax\n");
 }
 
 void gen_if(Node *node) {
@@ -91,7 +124,7 @@ void gen_call(Node *node) {
   }
   for (int i = sz - 1; i >= 0; --i) {
     printf("  pop rax\n");
-    printf("  mov %s, rax\n", reg_args[i]);
+    printf("  mov %s, rax\n", reg_args8[i]);
   }
 
   // align RSP to 16bytes (ABI requirements)
@@ -122,13 +155,21 @@ void gen_func(Node *node) {
   printf("  mov rbp, rsp\n");
 
   // push args to stack
-  for (int i = 0; i < node->nparams; ++i)
-    printf("  push %s\n", reg_args[i]);
+  for (int i = 0; i < node->nparams; ++i) {
+    LVar *lv = *(LVar **)vector_get(node->locals, i);
+    if (size_of(lv->type) == 1)
+      printf("  mov [rbp-%d], %s\n", lv->offset, reg_args1[i]);
+    else if (size_of(lv->type) == 2)
+      printf("  mov [rbp-%d], %s\n", lv->offset, reg_args2[i]);
+    else if (size_of(lv->type) == 4)
+      printf("  mov [rbp-%d], %s\n", lv->offset, reg_args4[i]);
+    else
+      printf("  mov [rbp-%d], %s\n", lv->offset, reg_args8[i]);
+  }
 
-  if (node->locals->size > node->nparams) {
-    // stack memory for local variables
-    int ofs = (node->locals->size - node->nparams) * 8;
-    printf("  sub rsp, %d\n", ofs);
+  if (node->locals->size) {
+    LVar *last = *(LVar **)vector_last(node->locals);
+    printf("  sub rsp, %d\n", last->offset);
   }
 
   gen(node->body);
@@ -140,7 +181,7 @@ void gen_func(Node *node) {
   printf("  ret\n");
 }
 
-void multiply_node(Node** pnode, int coef) {
+void multiply_node(Node **pnode, int coef) {
   Node *num = calloc(1, sizeof(Node));
   num->kind = ND_NUM;
   num->val = coef;
@@ -151,14 +192,14 @@ void multiply_node(Node** pnode, int coef) {
   *pnode = mul;
 }
 
-void gen_addsub(Node* node, const char* op) {
+void gen_addsub(Node *node, const char *op) {
   get_type(node);
   Type *lty = get_type(node->lhs);
   Type *rty = get_type(node->rhs);
 
-  if(lty->kind == TYPE_PTR)
+  if (lty->kind == TYPE_PTR)
     multiply_node(&node->rhs, size_of(lty->ptr_to));
-  else if(rty->kind == TYPE_PTR)
+  else if (rty->kind == TYPE_PTR)
     multiply_node(&node->lhs, size_of(rty->ptr_to));
 
   gen(node->lhs);
@@ -203,26 +244,21 @@ void gen(Node *node) {
     return;
   case ND_LVAR:
     gen_lval(node);
-    printf("  pop rax\n");
-    printf("  mov rax, [rax]\n");
-    printf("  push rax\n");
+    load(get_type(node));
     return;
   case ND_ASSIGN:
     gen_lval(node->lhs);
     gen(node->rhs);
-    printf("  pop rdi\n");
     printf("  pop rax\n");
-    printf("  mov [rax], rdi\n");
-    printf("  push rdi\n");
+    store(get_type(node->lhs));
+    printf("  push rax\n");
     return;
   case ND_ADDR:
     gen_lval(node->lhs);
     return;
   case ND_DEREF:
     gen(node->lhs);
-    printf("  pop rax\n");
-    printf("  mov rax, [rax]\n");
-    printf("  push rax\n");
+    load(get_type(node->lhs));
     return;
   case ND_ADD:
     gen_addsub(node, "add");

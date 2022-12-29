@@ -72,7 +72,7 @@ LVar *new_lvar(Token *tok, Type *type) {
   lvar->len = tok->len;
   lvar->type = type;
   vector_push(locals, &lvar);
-  lvar->offset = locals->size * 8;
+  lvar->offset = locals->size * size_of(type);
   return lvar;
 }
 

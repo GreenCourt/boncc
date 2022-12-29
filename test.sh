@@ -3,6 +3,11 @@ cc -x c -c - -o tmpfunc.o<< 'EOF' || exit $?
 int foo() { return 12; }
 int bar(int x,int y) { return x+y; }
 int baz(int x,int y, int z) { return x+y+z; }
+#include <stdlib.h>
+void alloc4(int **pp, int a, int b, int c, int d) {
+  *pp = (int*)malloc(sizeof(int) * 4);
+  (*pp)[0] = a; (*pp)[1] = b; (*pp)[2] = c; (*pp)[3] = d;
+}
 EOF
 
 assert() {
@@ -77,5 +82,7 @@ assert 3 'int main(){int x; x=3; int* y; y=&x; int** z; z = &y; return **z;}'
 assert 3 'int main(){int x; int *y; y = &x; *y = 3; return x;}'
 assert 3 'int main(){int x; int *y; y = &x; int **z; z = &y; **z = 3; return x;}'
 assert 12 'int main(){int x; x=12; int *p; p = &x; int **q; q = &p; return *&*&**q; }'
+assert 2 'int main(){ int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 1; return *q; }'
+assert 8 'int main(){ int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 3; return *q; }'
 
 echo OK

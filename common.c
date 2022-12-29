@@ -42,5 +42,5 @@ bool is_alphabet(char c) {
 
 bool is_alphanumeric_or_underscore(char c) {
   return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || isdigit(c) ||
-    c == '_';
+         c == '_';
 }

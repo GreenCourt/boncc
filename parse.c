@@ -71,7 +71,10 @@ LVar *new_lvar(Token *tok, Type *type) {
   lvar->name = tok->str;
   lvar->len = tok->len;
   lvar->type = type;
-  lvar->offset = size_of(type);
+  if (type->kind == TYPE_ARRAY)
+    lvar->offset = size_of(type->ptr_to) * type->array_size;
+  else
+    lvar->offset = size_of(type);
   if (locals->size)
     lvar->offset += (*(LVar **)vector_last(locals))->offset;
   vector_push(locals, &lvar);
@@ -161,7 +164,16 @@ Node *stmt() {
     Token *id = expect(TK_IDENT);
     if (find_lvar(id))
       error_at(id->str, "duplicated identifier");
-    new_lvar(id, ty);
+    if (consume(TK_LBRACKET)) {
+      Type *aty = calloc(1, sizeof(Type));
+      aty->kind = TYPE_ARRAY;
+      aty->ptr_to = ty;
+      aty->array_size = (size_t)expect_number();
+      new_lvar(id, aty);
+      expect(TK_RBRACKET);
+    } else {
+      new_lvar(id, ty);
+    }
     expect(TK_SEMICOLON);
     return NULL;
   } else {
@@ -284,9 +296,9 @@ Node *add() {
       Node *right = mul();
       Type *lt = get_type(left);
       Type *rt = get_type(right);
-      if (lt->kind == TYPE_PTR)
+      if (lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY)
         right = new_node(ND_MUL, right, new_node_num(size_of(lt->ptr_to)));
-      else if (rt->kind == TYPE_PTR)
+      else if (rt->kind == TYPE_PTR || rt->kind == TYPE_ARRAY)
         left = new_node(ND_MUL, left, new_node_num(size_of(rt->ptr_to)));
       node = new_node(ND_ADD, left, right);
     } else if (consume(TK_MINUS)) {
@@ -294,9 +306,9 @@ Node *add() {
       Node *right = mul();
       Type *lt = get_type(left);
       Type *rt = get_type(right);
-      if (lt->kind == TYPE_PTR)
+      if (lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY)
         right = new_node(ND_MUL, right, new_node_num(size_of(lt->ptr_to)));
-      else if (rt->kind == TYPE_PTR)
+      else if (rt->kind == TYPE_PTR || rt->kind == TYPE_ARRAY)
         error_at(tok->str,
                  "pointer is not allowed at right-side of - operetor");
       node = new_node(ND_SUB, left, right);
@@ -357,16 +369,16 @@ Node *primary() {
 
       expect(TK_RPAREN);
       return node;
+    } else if (consume(TK_LBRACKET)) { // array
+      // TODO
     } else { // variable
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_LVAR;
 
       LVar *lvar = find_lvar(tok);
-      if (lvar) {
-        node->lvar = lvar;
-      } else {
+      if (!lvar)
         error_at(tok->str, "undefined identifier: '%.*s'", tok->len, tok->str);
-      }
+      node->lvar = lvar;
       return node;
     }
   }

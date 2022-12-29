@@ -217,7 +217,8 @@ void gen(Node *node) {
     return;
   case ND_LVAR:
     gen_lval(node);
-    load(get_type(node));
+    if (get_type(node)->kind != TYPE_ARRAY)
+      load(get_type(node));
     return;
   case ND_ASSIGN:
     gen_lval(node->lhs);

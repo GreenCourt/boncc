@@ -18,6 +18,8 @@ typedef enum {
   TK_RPAREN,    // )
   TK_LBRACE,    // {
   TK_RBRACE,    // }
+  TK_LBRACKET,  // [
+  TK_RBRACKET,  // ]
   TK_SEMICOLON, // ;
   TK_COMMA,     // ,
   TK_RETURN,    // return
@@ -44,12 +46,13 @@ struct Token {
   int len;
 };
 
-typedef enum { TYPE_PTR, TYPE_INT } TypeKind;
+typedef enum { TYPE_PTR, TYPE_INT, TYPE_ARRAY } TypeKind;
 
 typedef struct Type Type;
 struct Type {
   TypeKind kind;
   struct Type *ptr_to;
+  size_t array_size; // number of elements for TYPE_ARRAY
 };
 
 typedef struct LVar LVar;

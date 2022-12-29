@@ -3,7 +3,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-int size_of(Type *type) { return type->kind == TYPE_PTR ? 8 : 4; }
+int size_of(Type *type) {
+  if (type->kind == TYPE_PTR || type->kind == TYPE_ARRAY)
+    return 8;
+  if (type->kind == TYPE_INT)
+    return 4;
+  assert(false);
+  return -1;
+}
 
 Type *get_type(Node *node) {
   if (node->type)
@@ -74,7 +81,7 @@ Type *get_type(Node *node) {
 
   if (node->kind == ND_DEREF) {
     Type *left = get_type(node->lhs);
-    if (left->kind != TYPE_PTR)
+    if (left->kind != TYPE_PTR && left->kind != TYPE_ARRAY)
       error("invalid dereference operation (to non-pointer)");
     return node->type = left->ptr_to;
   }

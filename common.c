@@ -10,9 +10,10 @@ Vector *functions;
 
 const char *token_str[] = {
     // corresponding to TokenKind
-    "+",      "-",  "*",    "/",     "&",   "==",  "!=",         "<",      "<=",
-    ">",      ">=", "=",    "(",     ")",   "{",   "}",          ";",      ",",
-    "return", "if", "else", "while", "for", "int", "identifier", "number",
+    "+",   "-",   "*",      "/",          "&",      "==", "!=",   "<",
+    "<=",  ">",   ">=",     "=",          "(",      ")",  "{",    "}",
+    "[",   "]",   ";",      ",",          "return", "if", "else", "while",
+    "for", "int", "sizeof", "identifier", "number",
 };
 
 void error_at(char *loc, char *fmt, ...) {

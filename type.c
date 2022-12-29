@@ -12,6 +12,7 @@ int size_of(Type *type) {
   return -1;
 }
 
+// TODO move type checking to parser.c
 Type *get_type(Node *node) {
   if (node->type)
     return node->type;
@@ -34,9 +35,9 @@ Type *get_type(Node *node) {
     if (node->kind == ND_SUB && right->kind == TYPE_PTR)
       error("invalid operands to binary - operator (int - pointer)");
 
-    if (left->kind == TYPE_PTR)
+    if (left->kind == TYPE_PTR || left->kind == TYPE_ARRAY)
       return node->type = left;
-    else if (right->kind == TYPE_PTR)
+    else if (right->kind == TYPE_PTR || right->kind == TYPE_ARRAY)
       return node->type = right;
     else
       return node->type = left;

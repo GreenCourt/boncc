@@ -66,6 +66,16 @@ Node *new_node_num(int val) {
   return node;
 }
 
+Node *new_node_add(Node* left, Node* right) {
+  Type *lt = get_type(left);
+  Type *rt = get_type(right);
+  if (lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY)
+    right = new_node(ND_MUL, right, new_node_num(size_of(lt->ptr_to)));
+  else if (rt->kind == TYPE_PTR || rt->kind == TYPE_ARRAY)
+    left = new_node(ND_MUL, left, new_node_num(size_of(rt->ptr_to)));
+  return new_node(ND_ADD, left, right);
+}
+
 LVar *new_lvar(Token *tok, Type *type) {
   LVar *lvar = calloc(1, sizeof(LVar));
   lvar->name = tok->str;
@@ -102,6 +112,7 @@ Node *add();
 Node *mul();
 Node *primary();
 Node *unary();
+Node *postfix();
 
 Node *stmt_if();
 Node *stmt_while();
@@ -292,15 +303,7 @@ Node *add() {
   while (true) {
     Token *tok = token; // for error message
     if (consume(TK_PLUS)) {
-      Node *left = node;
-      Node *right = mul();
-      Type *lt = get_type(left);
-      Type *rt = get_type(right);
-      if (lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY)
-        right = new_node(ND_MUL, right, new_node_num(size_of(lt->ptr_to)));
-      else if (rt->kind == TYPE_PTR || rt->kind == TYPE_ARRAY)
-        left = new_node(ND_MUL, left, new_node_num(size_of(rt->ptr_to)));
-      node = new_node(ND_ADD, left, right);
+      node = new_node_add(node, mul());
     } else if (consume(TK_MINUS)) {
       Node *left = node;
       Node *right = mul();
@@ -340,7 +343,7 @@ Node *unary() {
     return new_node(ND_ADDR, unary(), NULL);
   if (consume(TK_STAR))
     return new_node(ND_DEREF, unary(), NULL);
-  return primary();
+  return postfix();
 }
 
 Node *primary() {
@@ -369,8 +372,6 @@ Node *primary() {
 
       expect(TK_RPAREN);
       return node;
-    } else if (consume(TK_LBRACKET)) { // array
-      // TODO
     } else { // variable
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_LVAR;
@@ -384,4 +385,15 @@ Node *primary() {
   }
 
   return new_node_num(expect_number());
+}
+
+Node *postfix() {
+  Node *node = primary();
+  while (consume(TK_LBRACKET)) {
+    // x[y] --> *(x+y)
+    Node *y = expr();
+    expect(TK_RBRACKET);
+    node = new_node(ND_DEREF, new_node_add(node, y), NULL);
+  }
+  return node;
 }

@@ -31,11 +31,15 @@ int expect_number() {
 Type *consume_type() {
   if (!consume(TK_INT))
     return NULL;
-  Type *ty = calloc(1, sizeof(Type));
+  Type *type = calloc(1, sizeof(Type));
+  Type *ty = type;
+  while (consume(TK_STAR)) {
+    ty->kind = TYPE_PTR;
+    ty->ptr_to = calloc(1, sizeof(Type));
+    ty = ty->ptr_to;
+  }
   ty->kind = TYPE_INT;
-  while (consume(TK_STAR))
-    ty->ptr++;
-  return ty;
+  return type;
 }
 
 Type *expect_type() {

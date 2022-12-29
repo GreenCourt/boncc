@@ -151,40 +151,22 @@ void multiply_node(Node** pnode, int coef) {
   *pnode = mul;
 }
 
-void gen_add(Node* node) {
-  type_detection(node);
-  Type *lty = type_detection(node->lhs);
-  Type *rty = type_detection(node->rhs);
+void gen_addsub(Node* node, const char* op) {
+  get_type(node);
+  Type *lty = get_type(node->lhs);
+  Type *rty = get_type(node->rhs);
 
-  if(lty->ptr)
-    multiply_node(&node->rhs, pointer_destination_size(lty));
-  else if(rty->ptr)
-    multiply_node(&node->lhs, pointer_destination_size(rty));
+  if(lty->kind == TYPE_PTR)
+    multiply_node(&node->rhs, size_of(lty->ptr_to));
+  else if(rty->kind == TYPE_PTR)
+    multiply_node(&node->lhs, size_of(rty->ptr_to));
 
   gen(node->lhs);
   gen(node->rhs);
 
   printf("  pop rdi\n");
   printf("  pop rax\n");
-  printf("  add rax, rdi\n");
-  printf("  push rax\n");
-}
-
-void gen_sub(Node* node) {
-  type_detection(node);
-  Type *lty = type_detection(node->lhs);
-  Type *rty = type_detection(node->rhs);
-
-  if(lty->ptr)
-    multiply_node(&node->rhs, pointer_destination_size(lty));
-  else if(rty->ptr)
-    multiply_node(&node->lhs, pointer_destination_size(rty));
-
-  gen(node->lhs);
-  gen(node->rhs);
-  printf("  pop rdi\n");
-  printf("  pop rax\n");
-  printf("  sub rax, rdi\n");
+  printf("  %s rax, rdi\n", op);
   printf("  push rax\n");
 }
 
@@ -242,10 +224,10 @@ void gen(Node *node) {
     printf("  push rax\n");
     return;
   case ND_ADD:
-    gen_add(node);
+    gen_addsub(node, "add");
     return;
   case ND_SUB:
-    gen_sub(node);
+    gen_addsub(node, "sub");
     return;
   default:
     break;

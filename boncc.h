@@ -43,12 +43,12 @@ struct Token {
   int len;
 };
 
-typedef enum { TYPE_INT } TypeKind;
+typedef enum { TYPE_PTR, TYPE_INT } TypeKind;
 
 typedef struct Type Type;
 struct Type {
   TypeKind kind;
-  int ptr; // number of stars. ex) int** -> 2, int -> 0
+  struct Type *ptr_to;
 };
 
 typedef struct LVar LVar;
@@ -123,6 +123,5 @@ void gen(Node *node);
 Token *tokenize(char *p);
 void program();
 
-int type_size(Type *type);
-int pointer_destination_size(Type *type);
-Type *type_detection(Node *node);
+int size_of(Type *type);
+Type *get_type(Node *node);

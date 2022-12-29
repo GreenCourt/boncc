@@ -28,11 +28,19 @@ void error_at(char *loc, char *fmt, ...) {
   exit(1);
 }
 
+void error(char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+  exit(1);
+}
+
 bool is_alphabet(char c) {
   return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
 }
 
 bool is_alphanumeric_or_underscore(char c) {
   return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || isdigit(c) ||
-         c == '_';
+    c == '_';
 }

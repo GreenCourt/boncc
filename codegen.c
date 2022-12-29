@@ -184,36 +184,6 @@ void gen_func(Node *node) {
   printf("  ret\n");
 }
 
-void multiply_node(Node **pnode, int coef) {
-  Node *num = calloc(1, sizeof(Node));
-  num->kind = ND_NUM;
-  num->val = coef;
-  Node *mul = calloc(1, sizeof(Node));
-  mul->kind = ND_MUL;
-  mul->lhs = *pnode;
-  mul->rhs = num;
-  *pnode = mul;
-}
-
-void gen_addsub(Node *node, const char *op) {
-  get_type(node);
-  Type *lty = get_type(node->lhs);
-  Type *rty = get_type(node->rhs);
-
-  if (lty->kind == TYPE_PTR)
-    multiply_node(&node->rhs, size_of(lty->ptr_to));
-  else if (rty->kind == TYPE_PTR)
-    multiply_node(&node->lhs, size_of(rty->ptr_to));
-
-  gen(node->lhs);
-  gen(node->rhs);
-
-  printf("  pop rdi\n");
-  printf("  pop rax\n");
-  printf("  %s rax, rdi\n", op);
-  printf("  push rax\n");
-}
-
 void gen(Node *node) {
   get_type(node);
   switch (node->kind) {
@@ -263,12 +233,6 @@ void gen(Node *node) {
     gen(node->lhs);
     load(get_type(node->lhs));
     return;
-  case ND_ADD:
-    gen_addsub(node, "add");
-    return;
-  case ND_SUB:
-    gen_addsub(node, "sub");
-    return;
   default:
     break;
   }
@@ -280,6 +244,12 @@ void gen(Node *node) {
   printf("  pop rax\n");
 
   switch (node->kind) {
+  case ND_ADD:
+    printf("  add rax, rdi\n");
+    break;
+  case ND_SUB:
+    printf("  sub rax, rdi\n");
+    break;
   case ND_MUL:
     printf("  imul rax, rdi\n");
     break;

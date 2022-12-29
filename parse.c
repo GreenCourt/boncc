@@ -105,14 +105,13 @@ Node *stmt_block();
 
 void program() {
   functions = new_vector(0, sizeof(Node *));
-  while (!at_eof()) {
-    Node *f = func();
-    vector_push(functions, &f);
-  }
+  while (!at_eof())
+    func();
 }
 
 Node *func() {
   Node *node = calloc(1, sizeof(Node));
+  vector_push(functions, &node);
   node->type = expect_type();
   Token *tok = expect(TK_IDENT);
   node->kind = ND_FUNC;
@@ -277,11 +276,29 @@ Node *relational() {
 Node *add() {
   Node *node = mul();
   while (true) {
-    if (consume(TK_PLUS))
-      node = new_node(ND_ADD, node, mul());
-    else if (consume(TK_MINUS))
-      node = new_node(ND_SUB, node, mul());
-    else
+    Token *tok = token; // for error message
+    if (consume(TK_PLUS)) {
+      Node *left = node;
+      Node *right = mul();
+      Type *lt = get_type(left);
+      Type *rt = get_type(right);
+      if (lt->kind == TYPE_PTR)
+        right = new_node(ND_MUL, right, new_node_num(size_of(lt->ptr_to)));
+      else if (rt->kind == TYPE_PTR)
+        left = new_node(ND_MUL, left, new_node_num(size_of(rt->ptr_to)));
+      node = new_node(ND_ADD, left, right);
+    } else if (consume(TK_MINUS)) {
+      Node *left = node;
+      Node *right = mul();
+      Type *lt = get_type(left);
+      Type *rt = get_type(right);
+      if (lt->kind == TYPE_PTR)
+        right = new_node(ND_MUL, right, new_node_num(size_of(lt->ptr_to)));
+      else if (rt->kind == TYPE_PTR)
+        error_at(tok->str,
+                 "pointer is not allowed at right-side of - operetor");
+      node = new_node(ND_SUB, left, right);
+    } else
       return node;
   }
 }

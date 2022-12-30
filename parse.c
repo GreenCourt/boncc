@@ -66,7 +66,7 @@ Node *new_node_num(int val) {
   return node;
 }
 
-Node *new_node_add(Node* left, Node* right) {
+Node *new_node_add(Node *left, Node *right) {
   Type *lt = get_type(left);
   Type *rt = get_type(right);
   if (lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY)
@@ -76,7 +76,20 @@ Node *new_node_add(Node* left, Node* right) {
   return new_node(ND_ADD, left, right);
 }
 
+LVar *find_lvar(Token *tok) {
+  int sz = locals->size;
+  for (int i = 0; i < sz; ++i) {
+    LVar *var = *(LVar **)vector_get(locals, i);
+    if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
+      return var;
+  }
+  return NULL;
+}
+
 LVar *new_lvar(Token *tok, Type *type) {
+  if (find_lvar(tok))
+    error_at(tok->str, "duplicated identifier");
+
   LVar *lvar = calloc(1, sizeof(LVar));
   lvar->name = tok->str;
   lvar->len = tok->len;
@@ -89,16 +102,6 @@ LVar *new_lvar(Token *tok, Type *type) {
     lvar->offset += (*(LVar **)vector_last(locals))->offset;
   vector_push(locals, &lvar);
   return lvar;
-}
-
-LVar *find_lvar(Token *tok) {
-  int sz = locals->size;
-  for (int i = 0; i < sz; ++i) {
-    LVar *var = *(LVar **)vector_get(locals, i);
-    if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
-      return var;
-  }
-  return NULL;
 }
 
 void program();
@@ -142,8 +145,16 @@ Node *func() {
     do {
       Type *ty = expect_type();
       Token *id = expect(TK_IDENT);
-      if (find_lvar(id))
-        error_at(id->str, "duplicated identifier");
+      if (consume(TK_LBRACKET)) {
+        Type *aty = calloc(1, sizeof(Type));
+        aty->kind = TYPE_PTR; // array as a pointer
+        Token *num = consume(TK_NUM);
+        if (num)
+          aty->array_size = (size_t)num->val;
+        aty->ptr_to = ty;
+        ty = aty;
+        expect(TK_RBRACKET);
+      }
       new_lvar(id, ty);
     } while (consume(TK_COMMA));
     expect(TK_RPAREN);
@@ -173,18 +184,15 @@ Node *stmt() {
     return node;
   } else if ((ty = consume_type())) {
     Token *id = expect(TK_IDENT);
-    if (find_lvar(id))
-      error_at(id->str, "duplicated identifier");
     if (consume(TK_LBRACKET)) {
       Type *aty = calloc(1, sizeof(Type));
       aty->kind = TYPE_ARRAY;
-      aty->ptr_to = ty;
       aty->array_size = (size_t)expect_number();
-      new_lvar(id, aty);
+      aty->ptr_to = ty;
+      ty = aty;
       expect(TK_RBRACKET);
-    } else {
-      new_lvar(id, ty);
     }
+    new_lvar(id, ty);
     expect(TK_SEMICOLON);
     return NULL;
   } else {

@@ -105,5 +105,7 @@ assert 4 'int main() { int x[3]; *x=3; x[1]=4; x[2]=5; return *(x+1); }'
 assert 5 'int main() { int x[3]; *x=3; x[1]=4; x[2]=5; return *(x+2); }'
 assert 5 'int main() { int x[3]; *x=3; x[1]=4; x[2]=5; return *(x+2); }'
 assert 5 'int main() { int x[3]; *x=3; x[1]=4; 2[x]=5; return *(x+2); }'
+assert 12 'int f(int a[]){a[1]=12;return 0;} int main() { int a[2]; a[0] = 1; a[1] = 2; f(a); return a[1]; }'
+assert 12 'int f(int a[1]){a[0]=12;return 0;} int main() { int a[2]; a[0] = 1; a[1] = 2; f(a); return a[0]; }'
 
 echo OK

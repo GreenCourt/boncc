@@ -14,10 +14,15 @@ void gen_left_value(Node *node) {
   // push address to stack top
   if (node->kind == ND_DEREF) {
     gen(node->lhs);
-  } else if (node->kind == ND_LVAR) {
-    printf("  mov rax, rbp\n");
-    printf("  sub rax, %d\n", node->variable->offset);
-    printf("  push rax\n");
+  } else if (node->kind == ND_VAR) {
+    if (node->variable->kind == VK_LOCAL) {
+      printf("  lea rax, [rbp-%d]\n", node->variable->offset);
+      printf("  push rax\n");
+    } else {
+      printf("  lea rax, %.*s[rip]\n", node->variable->len,
+             node->variable->name);
+      printf("  push rax\n");
+    }
   } else {
     error("left-value must be a variable");
   }
@@ -222,7 +227,7 @@ void gen(Node *node) {
   case ND_NUM:
     printf("  push %d\n", node->val);
     return;
-  case ND_LVAR:
+  case ND_VAR:
     gen_left_value(node);
     load(get_type(node));
     return;

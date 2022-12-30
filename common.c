@@ -7,6 +7,7 @@
 char *user_input;
 Token *token;
 Vector *functions;
+Vector *globals;
 
 const char *token_str[] = {
     // corresponding to TokenKind

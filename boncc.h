@@ -56,11 +56,13 @@ struct Type {
   int size;          // sizeof
 };
 
+typedef enum { VK_GLOBAL, VK_LOCAL } VariableKind;
 typedef struct Variable Variable;
 struct Variable {
   char *name;
-  int len;    // name length
-  int offset; // only for local variables
+  int len; // name length
+  VariableKind kind;
+  int offset; // only for VK_LOCAL
   Type *type;
 };
 
@@ -74,7 +76,7 @@ typedef enum {
   ND_LT,     // <
   ND_LE,     // <=
   ND_ASSIGN, // =
-  ND_LVAR,   // local variable
+  ND_VAR,    // variable
   ND_NUM,    // integer
   ND_RETURN, // return
   ND_IF,     // if
@@ -118,6 +120,7 @@ struct Node {
 extern char *user_input;
 extern Token *token;
 extern Vector *functions;
+extern Vector *globals;
 
 bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);

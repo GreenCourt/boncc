@@ -45,7 +45,7 @@ Type *get_type(Node *node) {
   if (node->kind == ND_ASSIGN)
     return node->type = get_type(node->lhs);
 
-  if (node->kind == ND_LVAR)
+  if (node->kind == ND_VAR)
     return node->type = node->variable->type;
 
   if (node->kind == ND_NUM)

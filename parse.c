@@ -89,14 +89,31 @@ Variable *find_local(Token *tok) {
   return NULL;
 }
 
+Variable *find_global(Token *tok) {
+  int sz = globals->size;
+  for (int i = 0; i < sz; ++i) {
+    Variable *var = *(Variable **)vector_get(globals, i);
+    if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
+      return var;
+  }
+  return NULL;
+}
+
+Variable *find_variable(Token *tok) {
+  Variable *var = find_local(tok);
+  if (var)
+    return var;
+  return find_global(tok);
+}
+
 Variable *new_local(Token *tok, Type *type) {
   if (find_local(tok))
     error_at(tok->str, "duplicated identifier");
-
   Variable *var = calloc(1, sizeof(Variable));
   var->name = tok->str;
   var->len = tok->len;
   var->type = type;
+  var->kind = VK_LOCAL;
   var->offset = type->size;
   if (locals->size)
     var->offset += (*(Variable **)vector_last(locals))->offset;
@@ -104,8 +121,21 @@ Variable *new_local(Token *tok, Type *type) {
   return var;
 }
 
+Variable *new_global(Token *tok, Type *type) {
+  if (find_global(tok))
+    error_at(tok->str, "duplicated identifier");
+  Variable *var = calloc(1, sizeof(Variable));
+  var->name = tok->str;
+  var->len = tok->len;
+  var->type = type;
+  var->kind = VK_GLOBAL;
+  vector_push(globals, &var);
+  return var;
+}
+
 void program();
-Node *func();
+void toplevel();
+void func(Type *type, Token *name);
 void funcparam();
 Node *stmt();
 Node *expr();
@@ -125,18 +155,30 @@ Node *stmt_block();
 
 void program() {
   functions = new_vector(0, sizeof(Node *));
+  globals = new_vector(0, sizeof(Variable *));
   while (!at_eof())
-    func();
+    toplevel();
 }
 
-Node *func() {
+void toplevel() {
+  Type *type = expect_type();
+  Token *name = expect(TK_IDENT);
+  if (token->kind == TK_LPAREN) {
+    func(type, name);
+  } else {
+    type = consume_array_brackets(type);
+    new_global(name, type);
+    expect(TK_SEMICOLON);
+  }
+}
+
+void func(Type *type, Token *name) {
   Node *node = calloc(1, sizeof(Node));
   vector_push(functions, &node);
-  node->type = expect_type();
-  Token *tok = expect(TK_IDENT);
+  node->type = type;
   node->kind = ND_FUNC;
-  node->name = tok->str;
-  node->len = tok->len;
+  node->name = name->str;
+  node->len = name->len;
   node->locals = new_vector(0, sizeof(Variable *));
   locals = node->locals;
 
@@ -149,7 +191,6 @@ Node *func() {
   expect(TK_LBRACE);
   node->body = stmt_block();
   locals = NULL;
-  return node;
 }
 
 void funcparam() {
@@ -374,12 +415,10 @@ Node *primary() {
       return node;
     } else { // variable
       Node *node = calloc(1, sizeof(Node));
-      node->kind = ND_LVAR;
-
-      Variable *var = find_local(tok);
-      if (!var)
+      node->kind = ND_VAR;
+      node->variable = find_variable(tok);
+      if (!node->variable)
         error_at(tok->str, "undefined identifier: '%.*s'", tok->len, tok->str);
-      node->variable = var;
       return node;
     }
   }

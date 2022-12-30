@@ -106,6 +106,7 @@ LVar *new_lvar(Token *tok, Type *type) {
 
 void program();
 Node *func();
+void funcparam();
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -141,17 +142,7 @@ Node *func() {
 
   expect(TK_LPAREN);
   if (!consume(TK_RPAREN)) {
-    // read params
-    do {
-      Type *ty = expect_type();
-      Token *id = expect(TK_IDENT);
-      while (consume(TK_LBRACKET)) {
-        consume(TK_NUM);       // currently not used
-        ty = pointer_type(ty); // array as a pointer
-        expect(TK_RBRACKET);
-      }
-      new_lvar(id, ty);
-    } while (consume(TK_COMMA));
+    funcparam();
     expect(TK_RPAREN);
   }
   node->nparams = node->locals->size;
@@ -159,6 +150,19 @@ Node *func() {
   node->body = stmt_block();
   locals = NULL;
   return node;
+}
+
+void funcparam() {
+  do {
+    Type *ty = expect_type();
+    Token *id = expect(TK_IDENT);
+    while (consume(TK_LBRACKET)) {
+      consume(TK_NUM);       // currently not used
+      ty = pointer_type(ty); // array as a pointer
+      expect(TK_RBRACKET);
+    }
+    new_lvar(id, ty);
+  } while (consume(TK_COMMA));
 }
 
 Node *stmt() {

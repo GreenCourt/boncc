@@ -79,29 +79,29 @@ Node *new_node_add(Node *left, Node *right) {
   return new_node(ND_ADD, left, right);
 }
 
-LVar *find_lvar(Token *tok) {
+Variable *find_local(Token *tok) {
   int sz = locals->size;
   for (int i = 0; i < sz; ++i) {
-    LVar *var = *(LVar **)vector_get(locals, i);
+    Variable *var = *(Variable **)vector_get(locals, i);
     if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
       return var;
   }
   return NULL;
 }
 
-LVar *new_lvar(Token *tok, Type *type) {
-  if (find_lvar(tok))
+Variable *new_local(Token *tok, Type *type) {
+  if (find_local(tok))
     error_at(tok->str, "duplicated identifier");
 
-  LVar *lvar = calloc(1, sizeof(LVar));
-  lvar->name = tok->str;
-  lvar->len = tok->len;
-  lvar->type = type;
-  lvar->offset = type->size;
+  Variable *var = calloc(1, sizeof(Variable));
+  var->name = tok->str;
+  var->len = tok->len;
+  var->type = type;
+  var->offset = type->size;
   if (locals->size)
-    lvar->offset += (*(LVar **)vector_last(locals))->offset;
-  vector_push(locals, &lvar);
-  return lvar;
+    var->offset += (*(Variable **)vector_last(locals))->offset;
+  vector_push(locals, &var);
+  return var;
 }
 
 void program();
@@ -137,7 +137,7 @@ Node *func() {
   node->kind = ND_FUNC;
   node->name = tok->str;
   node->len = tok->len;
-  node->locals = new_vector(0, sizeof(LVar *));
+  node->locals = new_vector(0, sizeof(Variable *));
   locals = node->locals;
 
   expect(TK_LPAREN);
@@ -161,7 +161,7 @@ void funcparam() {
       ty = pointer_type(ty); // array as a pointer
       expect(TK_RBRACKET);
     }
-    new_lvar(id, ty);
+    new_local(id, ty);
   } while (consume(TK_COMMA));
 }
 
@@ -184,7 +184,7 @@ Node *stmt() {
   } else if ((ty = consume_type())) {
     Token *id = expect(TK_IDENT);
     ty = consume_array_brackets(ty);
-    new_lvar(id, ty);
+    new_local(id, ty);
     expect(TK_SEMICOLON);
     return NULL;
   } else {
@@ -376,10 +376,10 @@ Node *primary() {
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_LVAR;
 
-      LVar *lvar = find_lvar(tok);
-      if (!lvar)
+      Variable *var = find_local(tok);
+      if (!var)
         error_at(tok->str, "undefined identifier: '%.*s'", tok->len, tok->str);
-      node->lvar = lvar;
+      node->variable = var;
       return node;
     }
   }

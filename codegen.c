@@ -10,13 +10,13 @@ static const char *reg_args2[] = {"di", "si", "dx", "cx", "r8w", "r9w"};
 static const char *reg_args4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 static const char *reg_args8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
-void gen_lval(Node *node) {
+void gen_left_value(Node *node) {
   // push address to stack top
   if (node->kind == ND_DEREF) {
     gen(node->lhs);
   } else if (node->kind == ND_LVAR) {
     printf("  mov rax, rbp\n");
-    printf("  sub rax, %d\n", node->lvar->offset);
+    printf("  sub rax, %d\n", node->variable->offset);
     printf("  push rax\n");
   } else {
     error("left-value must be a variable");
@@ -163,19 +163,19 @@ void gen_func(Node *node) {
 
   // push args to stack
   for (int i = 0; i < node->nparams; ++i) {
-    LVar *lv = *(LVar **)vector_get(node->locals, i);
-    if (lv->type->size == 1)
-      printf("  mov [rbp-%d], %s\n", lv->offset, reg_args1[i]);
-    else if (lv->type->size == 2)
-      printf("  mov [rbp-%d], %s\n", lv->offset, reg_args2[i]);
-    else if (lv->type->size == 4)
-      printf("  mov [rbp-%d], %s\n", lv->offset, reg_args4[i]);
+    Variable *v = *(Variable **)vector_get(node->locals, i);
+    if (v->type->size == 1)
+      printf("  mov [rbp-%d], %s\n", v->offset, reg_args1[i]);
+    else if (v->type->size == 2)
+      printf("  mov [rbp-%d], %s\n", v->offset, reg_args2[i]);
+    else if (v->type->size == 4)
+      printf("  mov [rbp-%d], %s\n", v->offset, reg_args4[i]);
     else
-      printf("  mov [rbp-%d], %s\n", lv->offset, reg_args8[i]);
+      printf("  mov [rbp-%d], %s\n", v->offset, reg_args8[i]);
   }
 
   if (node->locals->size) {
-    LVar *last = *(LVar **)vector_last(node->locals);
+    Variable *last = *(Variable **)vector_last(node->locals);
     int ofs = last->offset;
     if (ofs % 8)
       ofs += 8 - ofs % 8; // align by 8
@@ -223,18 +223,18 @@ void gen(Node *node) {
     printf("  push %d\n", node->val);
     return;
   case ND_LVAR:
-    gen_lval(node);
+    gen_left_value(node);
     load(get_type(node));
     return;
   case ND_ASSIGN:
-    gen_lval(node->lhs);
+    gen_left_value(node->lhs);
     gen(node->rhs);
     printf("  pop rax\n");
     store(get_type(node->lhs));
     printf("  push rax\n");
     return;
   case ND_ADDR:
-    gen_lval(node->lhs);
+    gen_left_value(node->lhs);
     return;
   case ND_DEREF:
     gen(node->lhs);

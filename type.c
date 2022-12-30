@@ -46,7 +46,7 @@ Type *get_type(Node *node) {
     return node->type = get_type(node->lhs);
 
   if (node->kind == ND_LVAR)
-    return node->type = node->lvar->type;
+    return node->type = node->variable->type;
 
   if (node->kind == ND_NUM)
     return node->type = base_type(TYPE_INT);

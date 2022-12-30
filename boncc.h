@@ -56,11 +56,11 @@ struct Type {
   int size;          // sizeof
 };
 
-typedef struct LVar LVar;
-struct LVar {
+typedef struct Variable Variable;
+struct Variable {
   char *name;
-  int len; // name length
-  int offset;
+  int len;    // name length
+  int offset; // only for local variables
   Type *type;
 };
 
@@ -93,8 +93,8 @@ struct Node {
   NodeKind kind;
   Node *lhs;
   Node *rhs;
-  int val;    // only for ND_NUM
-  LVar *lvar; // only for ND_LVAR
+  int val;            // only for ND_NUM
+  Variable *variable; // only for ND_LVAR
   Type *type;
 
   // if(condition) body else else_

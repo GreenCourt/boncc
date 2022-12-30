@@ -29,9 +29,14 @@ int expect_number() {
 }
 
 Type *consume_type() {
-  if (!consume(TK_INT))
+  TypeKind kind;
+  if (consume(TK_INT))
+    kind = TYPE_INT;
+  else if(consume(TK_CHAR))
+    kind = TYPE_CHAR;
+  else
     return NULL;
-  Type *type = base_type(TYPE_INT);
+  Type *type = base_type(kind);
   while (consume(TK_STAR))
     type = pointer_type(type);
   return type;

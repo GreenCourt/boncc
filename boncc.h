@@ -28,6 +28,7 @@ typedef enum {
   TK_WHILE,     // while
   TK_FOR,       // for
   TK_INT,       // int
+  TK_CHAR,      // char
   TK_SIZEOF,    // sizeof
   TK_IDENT,
   TK_NUM,
@@ -46,7 +47,7 @@ struct Token {
   int len;
 };
 
-typedef enum { TYPE_PTR, TYPE_INT, TYPE_ARRAY } TypeKind;
+typedef enum { TYPE_PTR, TYPE_ARRAY, TYPE_INT, TYPE_CHAR } TypeKind;
 
 typedef struct Type Type;
 struct Type {

@@ -79,6 +79,8 @@ Type *base_type(TypeKind kind) {
   t->kind = kind;
   if (kind == TYPE_INT)
     t->size = 4;
+  else if (kind == TYPE_CHAR)
+    t->size = 1;
   else
     assert(false);
   return t;

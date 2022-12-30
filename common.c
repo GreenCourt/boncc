@@ -11,10 +11,10 @@ Vector *globals;
 
 const char *token_str[] = {
     // corresponding to TokenKind
-    "+",   "-",   "*",      "/",          "&",      "==", "!=",   "<",
-    "<=",  ">",   ">=",     "=",          "(",      ")",  "{",    "}",
-    "[",   "]",   ";",      ",",          "return", "if", "else", "while",
-    "for", "int", "sizeof", "identifier", "number",
+    "+",   "-",   "*",    "/",      "&",          "==",     "!=",   "<",
+    "<=",  ">",   ">=",   "=",      "(",          ")",      "{",    "}",
+    "[",   "]",   ";",    ",",      "return",     "if",     "else", "while",
+    "for", "int", "char", "sizeof", "identifier", "number",
 };
 
 void error_at(char *loc, char *fmt, ...) {

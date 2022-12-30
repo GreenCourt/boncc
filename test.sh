@@ -124,5 +124,9 @@ assert 12 'int x; int main() { x=12; return x; }'
 assert 12 'int x; int y[20]; int main() { y[5]=12; return y[5]; }'
 assert 12 'int x; int *y; int main() { x=12; y=&x; return *y; }'
 assert 12 'int x; int main() { int y; x=12; y=x; return y; }'
+assert 20 'int main() {char x; x = 20; return x;}'
+assert 3 'int main() {char x[3]; x[0] = -1; x[1] = 2; int y; y = 4; return x[0] + y;}'
+assert 6 'int main() {char x[3]; x[0] = -1; x[1] = 2; int y; y = 4; return x[1] + y;}'
+assert 1 'int main() {char x[3]; x[0] = -1; x[1] = 2; return x[0] + x[1];}'
 
 echo OK

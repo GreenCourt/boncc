@@ -37,6 +37,14 @@ Type *consume_type() {
   return type;
 }
 
+Type *consume_array_brackets(Type *type) {
+  if (!consume(TK_LBRACKET))
+    return type;
+  int size = expect_number();
+  expect(TK_RBRACKET);
+  return array_type(consume_array_brackets(type), size);
+}
+
 Type *expect_type() {
   Type *ty = consume_type();
   if (!ty)
@@ -171,11 +179,7 @@ Node *stmt() {
     return node;
   } else if ((ty = consume_type())) {
     Token *id = expect(TK_IDENT);
-    if (consume(TK_LBRACKET)) {
-      int size = expect_number();
-      ty = array_type(ty, size);
-      expect(TK_RBRACKET);
-    }
+    ty = consume_array_brackets(ty);
     new_lvar(id, ty);
     expect(TK_SEMICOLON);
     return NULL;

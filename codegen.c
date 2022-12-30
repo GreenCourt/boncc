@@ -26,6 +26,8 @@ void gen_lval(Node *node) {
 void load(Type *type) {
   // pop address from stack
   // push the value of address to stack
+  if (type->kind == TYPE_ARRAY)
+    return; // nothing todo
   printf("  pop rax\n");
   if (type->size == 1)
     printf("  movsx rax, byte ptr [rax]\n");
@@ -222,8 +224,7 @@ void gen(Node *node) {
     return;
   case ND_LVAR:
     gen_lval(node);
-    if (get_type(node)->kind != TYPE_ARRAY)
-      load(get_type(node));
+    load(get_type(node));
     return;
   case ND_ASSIGN:
     gen_lval(node->lhs);

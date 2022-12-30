@@ -51,8 +51,9 @@ typedef enum { TYPE_PTR, TYPE_INT, TYPE_ARRAY } TypeKind;
 typedef struct Type Type;
 struct Type {
   TypeKind kind;
-  struct Type *ptr_to;
+  struct Type *base; // only for TYPE_PTR and TYPE_ARRAY
   size_t array_size; // number of elements for TYPE_ARRAY
+  int size;          // sizeof
 };
 
 typedef struct LVar LVar;
@@ -127,5 +128,7 @@ void gen(Node *node);
 Token *tokenize(char *p);
 void program();
 
-int size_of(Type *type);
 Type *get_type(Node *node);
+Type *base_type(TypeKind kind);
+Type *pointer_type(Type *base);
+Type *array_type(Type *base, int len);

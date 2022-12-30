@@ -1,4 +1,5 @@
 #include "boncc.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,14 +27,16 @@ void load(Type *type) {
   // pop address from stack
   // push the value of address to stack
   printf("  pop rax\n");
-  if (size_of(type) == 1)
+  if (type->size == 1)
     printf("  movsx rax, byte ptr [rax]\n");
-  else if (size_of(type) == 2)
+  else if (type->size == 2)
     printf("  movsx rax, word ptr [rax]\n");
-  else if (size_of(type) == 4)
+  else if (type->size == 4)
     printf("  movsxd rax, dword ptr [rax]\n");
-  else if (size_of(type) == 8)
+  else if (type->size == 8)
     printf("  mov rax, [rax]\n");
+  else
+    assert(false);
   printf("  push rax\n");
 }
 
@@ -41,14 +44,16 @@ void store(Type *type) {
   // pop address from stack
   // store rax value to the address
   printf("  pop rdi\n");
-  if (size_of(type) == 1)
+  if (type->size == 1)
     printf("  mov [rdi], al\n");
-  else if (size_of(type) == 2)
+  else if (type->size == 2)
     printf("  mov [rdi], ax\n");
-  else if (size_of(type) == 4)
+  else if (type->size == 4)
     printf("  mov [rdi], eax\n");
-  else
+  else if (type->size == 8)
     printf("  mov [rdi], rax\n");
+  else
+    assert(false);
 }
 
 void gen_if(Node *node) {
@@ -157,11 +162,11 @@ void gen_func(Node *node) {
   // push args to stack
   for (int i = 0; i < node->nparams; ++i) {
     LVar *lv = *(LVar **)vector_get(node->locals, i);
-    if (size_of(lv->type) == 1)
+    if (lv->type->size == 1)
       printf("  mov [rbp-%d], %s\n", lv->offset, reg_args1[i]);
-    else if (size_of(lv->type) == 2)
+    else if (lv->type->size == 2)
       printf("  mov [rbp-%d], %s\n", lv->offset, reg_args2[i]);
-    else if (size_of(lv->type) == 4)
+    else if (lv->type->size == 4)
       printf("  mov [rbp-%d], %s\n", lv->offset, reg_args4[i]);
     else
       printf("  mov [rbp-%d], %s\n", lv->offset, reg_args8[i]);
@@ -232,7 +237,7 @@ void gen(Node *node) {
     return;
   case ND_DEREF:
     gen(node->lhs);
-    load(get_type(node->lhs));
+    load(get_type(node));
     return;
   default:
     break;

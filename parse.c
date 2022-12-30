@@ -31,14 +31,9 @@ int expect_number() {
 Type *consume_type() {
   if (!consume(TK_INT))
     return NULL;
-  Type *type = calloc(1, sizeof(Type));
-  Type *ty = type;
-  while (consume(TK_STAR)) {
-    ty->kind = TYPE_PTR;
-    ty->ptr_to = calloc(1, sizeof(Type));
-    ty = ty->ptr_to;
-  }
-  ty->kind = TYPE_INT;
+  Type *type = base_type(TYPE_INT);
+  while (consume(TK_STAR))
+    type = pointer_type(type);
   return type;
 }
 
@@ -70,9 +65,9 @@ Node *new_node_add(Node *left, Node *right) {
   Type *lt = get_type(left);
   Type *rt = get_type(right);
   if (lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY)
-    right = new_node(ND_MUL, right, new_node_num(size_of(lt->ptr_to)));
+    right = new_node(ND_MUL, right, new_node_num(lt->base->size));
   else if (rt->kind == TYPE_PTR || rt->kind == TYPE_ARRAY)
-    left = new_node(ND_MUL, left, new_node_num(size_of(rt->ptr_to)));
+    left = new_node(ND_MUL, left, new_node_num(rt->base->size));
   return new_node(ND_ADD, left, right);
 }
 
@@ -94,10 +89,7 @@ LVar *new_lvar(Token *tok, Type *type) {
   lvar->name = tok->str;
   lvar->len = tok->len;
   lvar->type = type;
-  if (type->kind == TYPE_ARRAY)
-    lvar->offset = size_of(type->ptr_to) * type->array_size;
-  else
-    lvar->offset = size_of(type);
+  lvar->offset = type->size;
   if (locals->size)
     lvar->offset += (*(LVar **)vector_last(locals))->offset;
   vector_push(locals, &lvar);
@@ -145,14 +137,9 @@ Node *func() {
     do {
       Type *ty = expect_type();
       Token *id = expect(TK_IDENT);
-      if (consume(TK_LBRACKET)) {
-        Type *aty = calloc(1, sizeof(Type));
-        aty->kind = TYPE_PTR; // array as a pointer
-        Token *num = consume(TK_NUM);
-        if (num)
-          aty->array_size = (size_t)num->val;
-        aty->ptr_to = ty;
-        ty = aty;
+      while (consume(TK_LBRACKET)) {
+        consume(TK_NUM);       // currently not used
+        ty = pointer_type(ty); // array as a pointer
         expect(TK_RBRACKET);
       }
       new_lvar(id, ty);
@@ -185,11 +172,8 @@ Node *stmt() {
   } else if ((ty = consume_type())) {
     Token *id = expect(TK_IDENT);
     if (consume(TK_LBRACKET)) {
-      Type *aty = calloc(1, sizeof(Type));
-      aty->kind = TYPE_ARRAY;
-      aty->array_size = (size_t)expect_number();
-      aty->ptr_to = ty;
-      ty = aty;
+      int size = expect_number();
+      ty = array_type(ty, size);
       expect(TK_RBRACKET);
     }
     new_lvar(id, ty);
@@ -318,7 +302,7 @@ Node *add() {
       Type *lt = get_type(left);
       Type *rt = get_type(right);
       if (lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY)
-        right = new_node(ND_MUL, right, new_node_num(size_of(lt->ptr_to)));
+        right = new_node(ND_MUL, right, new_node_num(lt->base->size));
       else if (rt->kind == TYPE_PTR || rt->kind == TYPE_ARRAY)
         error_at(tok->str,
                  "pointer is not allowed at right-side of - operetor");
@@ -342,7 +326,7 @@ Node *mul() {
 
 Node *unary() {
   if (consume(TK_SIZEOF))
-    return new_node_num(size_of(get_type(unary())));
+    return new_node_num(get_type(unary())->size);
   if (consume(TK_PLUS))
     return unary();
   if (consume(TK_MINUS))

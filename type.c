@@ -54,7 +54,7 @@ Type *get_type(Node *node) {
   if (node->kind == ND_CALL) {
     for (int i = 0; i < functions->size; i++) {
       Node *f = *(Node **)vector_get(functions, i);
-      if (strncmp(node->name, f->name, node->len) == 0) {
+      if (strncmp(node->name, f->name, node->name_length) == 0) {
         return node->type = f->type;
       }
     }

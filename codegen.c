@@ -18,11 +18,13 @@ void gen_left_value(Node *node) {
     if (node->variable->kind == VK_LOCAL) {
       printf("  lea rax, [rbp-%d]\n", node->variable->offset);
       printf("  push rax\n");
-    } else {
-      printf("  lea rax, %.*s[rip]\n", node->variable->len,
+    } else if (node->variable->kind == VK_GLOBAL ||
+               node->variable->kind == VK_STRLIT) {
+      printf("  lea rax, %.*s[rip]\n", node->variable->name_length,
              node->variable->name);
       printf("  push rax\n");
-    }
+    } else
+      assert(false);
   } else {
     error("left-value must be a variable");
   }
@@ -144,11 +146,13 @@ void gen_call(Node *node) {
   printf("  mov rax, rsp\n");
   printf("  and rax, 15\n"); // rax % 16 == rax & 0xF
   printf("  jnz .Lcall%d\n", l);
-  printf("  call %.*s\n", node->len, node->name);
+  printf("  mov al, 0\n");
+  printf("  call %.*s\n", node->name_length, node->name);
   printf("  jmp .Lend%d\n", l);
   printf(".Lcall%d:\n", l);
   printf("  sub rsp, 8\n");
-  printf("  call %.*s\n", node->len, node->name);
+  printf("  mov al, 0\n");
+  printf("  call %.*s\n", node->name_length, node->name);
   printf("  add rsp, 8\n");
   printf(".Lend%d:\n", l);
 
@@ -160,7 +164,7 @@ void gen_func(Node *node) {
   if (strncmp(node->name, "main", 4) == 0) {
     printf(".globl main\n");
   }
-  printf("%.*s:\n", node->len, node->name);
+  printf("%.*s:\n", node->name_length, node->name);
 
   // prologue
   printf("  push rbp\n");

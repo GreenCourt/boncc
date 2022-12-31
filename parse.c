@@ -1,4 +1,5 @@
 #include "boncc.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -14,7 +15,7 @@ Token *consume(TokenKind kind) {
 
 Token *expect(TokenKind kind) {
   if (token->kind != kind)
-    error_at(token->str, "'%s' expected but not found", token_str[kind]);
+    error_at(token->pos, "'%s' expected but not found", token_str[kind]);
   Token *tok = token;
   token = token->next;
   return tok;
@@ -22,7 +23,7 @@ Token *expect(TokenKind kind) {
 
 int expect_number() {
   if (token->kind != TK_NUM)
-    error_at(token->str, "number expected but not found");
+    error_at(token->pos, "number expected but not found");
   int val = token->val;
   token = token->next;
   return val;
@@ -32,7 +33,7 @@ Type *consume_type() {
   TypeKind kind;
   if (consume(TK_INT))
     kind = TYPE_INT;
-  else if(consume(TK_CHAR))
+  else if (consume(TK_CHAR))
     kind = TYPE_CHAR;
   else
     return NULL;
@@ -53,7 +54,7 @@ Type *consume_array_brackets(Type *type) {
 Type *expect_type() {
   Type *ty = consume_type();
   if (!ty)
-    error_at(token->str, "type expected but not found");
+    error_at(token->pos, "type expected but not found");
   return ty;
 }
 
@@ -88,7 +89,8 @@ Variable *find_local(Token *tok) {
   int sz = locals->size;
   for (int i = 0; i < sz; ++i) {
     Variable *var = *(Variable **)vector_get(locals, i);
-    if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
+    if (var->name_length == tok->token_length &&
+        !memcmp(tok->pos, var->name, var->name_length))
       return var;
   }
   return NULL;
@@ -98,7 +100,8 @@ Variable *find_global(Token *tok) {
   int sz = globals->size;
   for (int i = 0; i < sz; ++i) {
     Variable *var = *(Variable **)vector_get(globals, i);
-    if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
+    if (var->name_length == tok->token_length &&
+        !memcmp(tok->pos, var->name, var->name_length))
       return var;
   }
   return NULL;
@@ -113,10 +116,10 @@ Variable *find_variable(Token *tok) {
 
 Variable *new_local(Token *tok, Type *type) {
   if (find_local(tok))
-    error_at(tok->str, "duplicated identifier");
+    error_at(tok->pos, "duplicated identifier");
   Variable *var = calloc(1, sizeof(Variable));
-  var->name = tok->str;
-  var->len = tok->len;
+  var->name = tok->pos;
+  var->name_length = tok->token_length;
   var->type = type;
   var->kind = VK_LOCAL;
   var->offset = type->size;
@@ -128,13 +131,26 @@ Variable *new_local(Token *tok, Type *type) {
 
 Variable *new_global(Token *tok, Type *type) {
   if (find_global(tok))
-    error_at(tok->str, "duplicated identifier");
+    error_at(tok->pos, "duplicated identifier");
   Variable *var = calloc(1, sizeof(Variable));
-  var->name = tok->str;
-  var->len = tok->len;
+  var->name = tok->pos;
+  var->name_length = tok->token_length;
   var->type = type;
   var->kind = VK_GLOBAL;
   vector_push(globals, &var);
+  return var;
+}
+
+Variable *new_string_literal(char *literal) {
+  static int idx = 0;
+  Variable *var = calloc(1, sizeof(Variable));
+  var->name = calloc(15, sizeof(char));
+  sprintf(var->name, ".LC%d", idx++);
+  var->name_length = strlen(var->name);
+  var->type = array_type(base_type(TYPE_CHAR), strlen(literal) + 1);
+  var->kind = VK_STRLIT;
+  var->string_literal = literal;
+  vector_push(strings, &var);
   return var;
 }
 
@@ -161,6 +177,7 @@ Node *stmt_block();
 void program() {
   functions = new_vector(0, sizeof(Node *));
   globals = new_vector(0, sizeof(Variable *));
+  strings = new_vector(0, sizeof(Variable *));
   while (!at_eof())
     toplevel();
 }
@@ -182,8 +199,8 @@ void func(Type *type, Token *name) {
   vector_push(functions, &node);
   node->type = type;
   node->kind = ND_FUNC;
-  node->name = name->str;
-  node->len = name->len;
+  node->name = name->pos;
+  node->name_length = name->token_length;
   node->locals = new_vector(0, sizeof(Variable *));
   locals = node->locals;
 
@@ -358,7 +375,7 @@ Node *add() {
       if (lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY)
         right = new_node(ND_MUL, right, new_node_num(lt->base->size));
       else if (rt->kind == TYPE_PTR || rt->kind == TYPE_ARRAY)
-        error_at(tok->str,
+        error_at(tok->pos,
                  "pointer is not allowed at right-side of - operetor");
       node = new_node(ND_SUB, left, right);
     } else
@@ -399,13 +416,13 @@ Node *primary() {
     return node;
   }
 
-  Token *tok = consume(TK_IDENT);
-  if (tok) {
+  Token *tok;
+  if ((tok = consume(TK_IDENT))) {
     if (consume(TK_LPAREN)) { // function call
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_CALL;
-      node->name = tok->str;
-      node->len = tok->len;
+      node->name = tok->pos;
+      node->name_length = tok->token_length;
       node->args = new_vector(0, sizeof(Node *));
 
       if (consume(TK_RPAREN))
@@ -423,12 +440,25 @@ Node *primary() {
       node->kind = ND_VAR;
       node->variable = find_variable(tok);
       if (!node->variable)
-        error_at(tok->str, "undefined identifier: '%.*s'", tok->len, tok->str);
+        error_at(tok->pos, "undefined identifier: '%.*s'", tok->token_length,
+                 tok->pos);
       return node;
     }
   }
 
-  return new_node_num(expect_number());
+  if ((tok = consume(TK_STR))) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_VAR;
+    node->variable = new_string_literal(tok->string_literal);
+    return node;
+  }
+
+  if ((tok = consume(TK_NUM)))
+    return new_node_num(tok->val);
+
+  error_at(tok->pos, "primary expected but not found", tok->token_length,
+           tok->pos);
+  return NULL;
 }
 
 Node *postfix() {

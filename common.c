@@ -8,13 +8,14 @@ char *user_input;
 Token *token;
 Vector *functions;
 Vector *globals;
+Vector *strings;
 
 const char *token_str[] = {
     // corresponding to TokenKind
-    "+",   "-",   "*",    "/",      "&",          "==",     "!=",   "<",
-    "<=",  ">",   ">=",   "=",      "(",          ")",      "{",    "}",
-    "[",   "]",   ";",    ",",      "return",     "if",     "else", "while",
-    "for", "int", "char", "sizeof", "identifier", "number",
+    "+",   "-",   "*",    "/",      "&",      "==",         "!=",     "<",
+    "<=",  ">",   ">=",   "=",      "(",      ")",          "{",      "}",
+    "[",   "]",   ";",    ",",      "return", "if",         "else",   "while",
+    "for", "int", "char", "sizeof", "str",    "identifier", "number",
 };
 
 void error_at(char *loc, char *fmt, ...) {

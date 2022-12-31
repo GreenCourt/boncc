@@ -3,11 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
+Token *new_token(TokenKind kind, Token *cur, char *pos, int len) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
-  tok->str = str;
-  tok->len = len;
+  tok->pos = pos;
+  tok->token_length = len;
   cur->next = tok;
   return tok;
 }
@@ -73,6 +73,22 @@ Token *tokenize(char *p) {
     if (compare(p, "sizeof")) {
       cur = new_token(TK_SIZEOF, cur, p, 6);
       p += 6;
+      continue;
+    }
+
+    if (*p == '"') { // string literal
+      p++;
+      char *q = p;
+      while (*q != '"') {
+        q++;
+        if (!*q)
+          error("missing terminating \" character");
+      }
+      int len = q - p;
+      cur = new_token(TK_STR, cur, p, len);
+      cur->string_literal = calloc(len + 1, sizeof(char));
+      strncpy(cur->string_literal, p, len);
+      p = q + 1;
       continue;
     }
 

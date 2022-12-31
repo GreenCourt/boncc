@@ -30,6 +30,7 @@ typedef enum {
   TK_INT,       // int
   TK_CHAR,      // char
   TK_SIZEOF,    // sizeof
+  TK_STR,       // string literal
   TK_IDENT,
   TK_NUM,
   TK_EOF,
@@ -42,9 +43,10 @@ typedef struct Token Token;
 struct Token {
   TokenKind kind;
   Token *next;
-  int val;
-  char *str;
-  int len;
+  char *pos;
+  int token_length;
+  int val;              // only for TK_NUM
+  char *string_literal; // null terminated, only for TK_STR
 };
 
 typedef enum { TYPE_PTR, TYPE_ARRAY, TYPE_INT, TYPE_CHAR } TypeKind;
@@ -52,19 +54,20 @@ typedef enum { TYPE_PTR, TYPE_ARRAY, TYPE_INT, TYPE_CHAR } TypeKind;
 typedef struct Type Type;
 struct Type {
   TypeKind kind;
+  int size;          // sizeof
   struct Type *base; // only for TYPE_PTR and TYPE_ARRAY
   size_t array_size; // number of elements for TYPE_ARRAY
-  int size;          // sizeof
 };
 
-typedef enum { VK_GLOBAL, VK_LOCAL } VariableKind;
+typedef enum { VK_GLOBAL, VK_LOCAL, VK_STRLIT } VariableKind;
 typedef struct Variable Variable;
 struct Variable {
   char *name;
-  int len; // name length
+  int name_length;
   VariableKind kind;
-  int offset; // only for VK_LOCAL
   Type *type;
+  int offset;           // only for VK_LOCAL
+  char *string_literal; // null terminated, only for VK_STRLIT
 };
 
 typedef enum {
@@ -111,8 +114,8 @@ struct Node {
 
   Vector *blk_stmts; // statements in ND_BLOCK
 
-  char *name;     // function name for ND_CALL, ND_FUNC
-  int len;        // length of name
+  char *name; // function name for ND_CALL, ND_FUNC
+  int name_length;
   Vector *args;   // arguments for ND_CALL
   Vector *locals; // local variables for ND_FUNC
   int nparams;    // number of parameters for ND_FUNC
@@ -122,6 +125,7 @@ extern char *user_input;
 extern Token *token;
 extern Vector *functions;
 extern Vector *globals;
+extern Vector *strings;
 
 bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);

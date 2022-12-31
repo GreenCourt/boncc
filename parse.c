@@ -461,8 +461,8 @@ Node *primary() {
   if ((tok = consume(TK_NUM)))
     return new_node_num(tok->val);
 
-  error_at(tok->pos, "primary expected but not found", tok->token_length,
-           tok->pos);
+  error_at(token->pos, "primary expected but not found", token->token_length,
+           token->pos);
   return NULL;
 }
 

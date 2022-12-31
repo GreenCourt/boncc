@@ -12,18 +12,20 @@ Type *get_type(Node *node) {
       node->kind == ND_DIV) {
     Type *left = get_type(node->lhs);
     Type *right = get_type(node->rhs);
-    if (left->kind == TYPE_PTR && right->kind == TYPE_PTR)
+
+    bool left_is_ptr = left->kind == TYPE_PTR || left->kind == TYPE_ARRAY;
+    bool right_is_ptr = right->kind == TYPE_PTR || right->kind == TYPE_ARRAY;
+
+    if (node->kind != ND_SUB && left_is_ptr && right_is_ptr)
       error("invalid operands to binary operator (pointer and pointer)");
 
-    if (node->kind == ND_MUL &&
-        (left->kind == TYPE_PTR || right->kind == TYPE_PTR))
+    if (node->kind == ND_MUL && (left_is_ptr || right_is_ptr))
       error("invalid operands to binary * operator (pointer)");
 
-    if (node->kind == ND_DIV &&
-        (left->kind == TYPE_PTR || right->kind == TYPE_PTR))
+    if (node->kind == ND_DIV && (left_is_ptr || right_is_ptr))
       error("invalid operands to binary / operator (pointer)");
 
-    if (node->kind == ND_SUB && right->kind == TYPE_PTR)
+    if (node->kind == ND_SUB && !left_is_ptr && right_is_ptr)
       error("invalid operands to binary - operator (int - pointer)");
 
     if (left->kind == TYPE_PTR)

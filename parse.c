@@ -78,9 +78,12 @@ Node *new_node_num(int val) {
 Node *new_node_add(Node *left, Node *right) {
   Type *lt = get_type(left);
   Type *rt = get_type(right);
-  if (lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY)
+  bool left_is_ptr = lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY;
+  bool right_is_ptr = rt->kind == TYPE_PTR || rt->kind == TYPE_ARRAY;
+
+  if (left_is_ptr)
     right = new_node(ND_MUL, right, new_node_num(lt->base->size));
-  else if (rt->kind == TYPE_PTR || rt->kind == TYPE_ARRAY)
+  else if (right_is_ptr)
     left = new_node(ND_MUL, left, new_node_num(rt->base->size));
   return new_node(ND_ADD, left, right);
 }
@@ -372,11 +375,13 @@ Node *add() {
       Node *right = mul();
       Type *lt = get_type(left);
       Type *rt = get_type(right);
-      if (lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY)
+
+      bool left_is_ptr = lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY;
+      bool right_is_ptr = rt->kind == TYPE_PTR || rt->kind == TYPE_ARRAY;
+      if (left_is_ptr && !right_is_ptr)
         right = new_node(ND_MUL, right, new_node_num(lt->base->size));
-      else if (rt->kind == TYPE_PTR || rt->kind == TYPE_ARRAY)
-        error_at(tok->pos,
-                 "pointer is not allowed at right-side of - operetor");
+      else if (!left_is_ptr && right_is_ptr)
+        error_at(tok->pos, "pointer is not allowed here");
       node = new_node(ND_SUB, left, right);
     } else
       return node;

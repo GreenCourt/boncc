@@ -8,36 +8,47 @@ Type *get_type(Node *node) {
   if (node->type)
     return node->type;
 
-  if (node->kind == ND_ADD || node->kind == ND_SUB || node->kind == ND_MUL ||
-      node->kind == ND_DIV) {
+  if (node->kind == ND_MUL || node->kind == ND_DIV)
+    return node->type = base_type(TYPE_INT);
+
+  if (node->kind == ND_ADD) {
     Type *left = get_type(node->lhs);
     Type *right = get_type(node->rhs);
-
     bool left_is_ptr = left->kind == TYPE_PTR || left->kind == TYPE_ARRAY;
     bool right_is_ptr = right->kind == TYPE_PTR || right->kind == TYPE_ARRAY;
 
-    if (node->kind != ND_SUB && left_is_ptr && right_is_ptr)
-      error("invalid operands to binary operator (pointer and pointer)");
-
-    if (node->kind == ND_MUL && (left_is_ptr || right_is_ptr))
-      error("invalid operands to binary * operator (pointer)");
-
-    if (node->kind == ND_DIV && (left_is_ptr || right_is_ptr))
-      error("invalid operands to binary / operator (pointer)");
-
-    if (node->kind == ND_SUB && !left_is_ptr && right_is_ptr)
-      error("invalid operands to binary - operator (int - pointer)");
+    assert(!left_is_ptr || !right_is_ptr);
 
     if (left->kind == TYPE_PTR)
       return node->type = left;
-    else if (right->kind == TYPE_PTR)
+    if (right->kind == TYPE_PTR)
       return node->type = right;
     if (left->kind == TYPE_ARRAY)
       return node->type = pointer_type(left->base); // implicitly cast
-    else if (right->kind == TYPE_ARRAY)
+    if (right->kind == TYPE_ARRAY)
       return node->type = pointer_type(right->base); // implicitly cast
-    else
+    return node->type = left;
+  }
+
+  if (node->kind == ND_SUB) {
+    Type *left = get_type(node->lhs);
+    Type *right = get_type(node->rhs);
+    bool left_is_ptr = left->kind == TYPE_PTR || left->kind == TYPE_ARRAY;
+    bool right_is_ptr = right->kind == TYPE_PTR || right->kind == TYPE_ARRAY;
+
+    assert(!(!left_is_ptr && right_is_ptr));
+
+    if (left_is_ptr && right_is_ptr)
+      return node->type = base_type(TYPE_INT);
+    if (left->kind == TYPE_PTR)
       return node->type = left;
+    if (right->kind == TYPE_PTR)
+      return node->type = right;
+    if (left->kind == TYPE_ARRAY)
+      return node->type = pointer_type(left->base); // implicitly cast
+    if (right->kind == TYPE_ARRAY)
+      return node->type = pointer_type(right->base); // implicitly cast
+    return node->type = left;
   }
 
   if (node->kind == ND_EQ || node->kind == ND_NE || node->kind == ND_LT ||
@@ -67,10 +78,8 @@ Type *get_type(Node *node) {
 
   if (node->kind == ND_DEREF) {
     Type *left = get_type(node->lhs);
-    if (left->kind == TYPE_PTR || left->kind == TYPE_ARRAY)
-      return node->type = left->base;
-    else
-      error("invalid dereference operation (to non-pointer)");
+    assert(left->kind == TYPE_PTR || left->kind == TYPE_ARRAY);
+    return node->type = left->base;
   }
 
   return NULL;

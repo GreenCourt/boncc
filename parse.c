@@ -81,6 +81,8 @@ Node *new_node_add(Node *left, Node *right) {
   bool left_is_ptr = lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY;
   bool right_is_ptr = rt->kind == TYPE_PTR || rt->kind == TYPE_ARRAY;
 
+  if (left_is_ptr && right_is_ptr)
+    error("invalid operands to binary + operator (pointer and pointer)");
   if (left_is_ptr)
     right = new_node(ND_MUL, right, new_node_num(lt->base->size));
   else if (right_is_ptr)
@@ -383,6 +385,8 @@ Node *add() {
       else if (!left_is_ptr && right_is_ptr)
         error_at(tok->pos, "pointer is not allowed here");
       node = new_node(ND_SUB, left, right);
+      if (left_is_ptr && right_is_ptr)
+        node = new_node(ND_DIV, node, new_node_num(lt->base->size));
     } else
       return node;
   }

@@ -23,12 +23,9 @@ assert() {
     ./tmp
     actual="$?"
 
-    if [ "$actual" = "$expected" ]
+    if [ "$actual" != "$expected" ]
     then
-        echo "$input => $actual"
-    else
-        echo "${0}:${BASH_LINENO[0]}: failed."
-        echo "$input => $expected expected, but got $actual"
+        echo "${0}:${BASH_LINENO[0]}: failed. $expected expected, but got $actual"
         exit 1
     fi
 }
@@ -140,5 +137,3 @@ assert 99 'int main() { return "abc"[2]; }'
 assert 0 'int main() { return "abc"[3]; }'
 assert 4 'int main() { return sizeof("abc"); }'
 assert 4 '/* **/int main() { return /* aaa */ sizeof(/**/"abc"); } // gttttee'
-
-echo OK

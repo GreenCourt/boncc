@@ -1,28 +1,48 @@
 CFLAGS=-std=c11 -g -static -Wall -Wextra -MMD
 OBJ_DIR=obj
+TEST_OBJ_DIR=test/obj
+TEST_EXE_DIR=test/exe
 
-default: boncc test_runner
+default: boncc
+
+boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenize.o parse.o codegen.o Vector.o type.o)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+TEST_FILES=$(addprefix $(TEST_EXE_DIR)/,$(basename $(filter-out common.c,$(notdir $(wildcard test/*.c)))))
+test: $(TEST_FILES)
+	for i in $^; do echo $$i; $$i; done
+	./test.sh
+
+clean:
+	rm -rf boncc $(OBJ_DIR) $(TEST_OBJ_DIR) $(TEST_EXE_DIR)
+
+fmt:
+	clang-format -i *.c *.h test/*.c
 
 $(OBJ_DIR)/%.o:%.c
 	@mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenize.o parse.o codegen.o Vector.o type.o)
+$(TEST_EXE_DIR)/%: $(addprefix $(TEST_OBJ_DIR)/,common.o %.o)
+	@mkdir -p $(TEST_EXE_DIR)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-test_runner: $(addprefix $(OBJ_DIR)/, test_runner.o Vector.o)
+$(TEST_OBJ_DIR)/%.o: test/%.c boncc
+	@mkdir -p $(TEST_OBJ_DIR)
+	$(CC) -P -E -C -o - $< | ./boncc - > $(basename $@).s
+	$(CC) $(CFLAGS) -c -o $@ $(basename $@).s
+
+$(TEST_OBJ_DIR)/common.o: test/common.c
+	@mkdir -p $(TEST_OBJ_DIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(TEST_EXE_DIR)/Vector: $(TEST_OBJ_DIR)/Vector.o $(OBJ_DIR)/Vector.o
+	@mkdir -p $(TEST_EXE_DIR)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-test: boncc test_runner
-	./test.sh
-	./test_runner
-
-clean:
-	rm -rf boncc test_runner tmp* $(OBJ_DIR)
-
-fmt:
-	clang-format -i *.c *.h
+$(TEST_OBJ_DIR)/Vector.o: test/Vector.c
+	@mkdir -p $(TEST_OBJ_DIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 -include $(OBJ_DIR)/*.d
-
 .PHONY: default test clean fmt

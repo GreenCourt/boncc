@@ -1,4 +1,4 @@
-#include "Vector.h"
+#include "../Vector.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -125,5 +125,4 @@ int main() {
   vec_test_push_pop();
   vec_test_seti_geti();
   vec_test_pushi_pop();
-  printf("OK\n");
 }

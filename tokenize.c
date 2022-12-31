@@ -28,6 +28,21 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (strncmp(p, "//", 2) == 0) { // line comments
+      p += 2;
+      while (*p != '\n')
+        p++;
+      continue;
+    }
+
+    if (strncmp(p, "/*", 2) == 0) { // block comments
+      char *q = strstr(p + 2, "*/");
+      if (!q)
+        error_at(p, "unclosed block comment");
+      p = q + 2;
+      continue;
+    }
+
     if (compare(p, "return")) {
       cur = new_token(TK_RETURN, cur, p, 6);
       p += 6;

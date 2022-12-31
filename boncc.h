@@ -121,7 +121,8 @@ struct Node {
   int nparams;    // number of parameters for ND_FUNC
 };
 
-extern char *user_input;
+extern char *source_file_name;
+extern char *source_code;
 extern Token *token;
 extern Vector *functions;
 extern Vector *globals;
@@ -131,6 +132,7 @@ bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);
 void error_at(char *loc, char *fmt, ...);
 void error(char *fmt, ...);
+char *read_file(char *path);
 
 void gen(Node *node);
 Token *tokenize(char *p);

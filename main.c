@@ -7,9 +7,10 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  user_input = argv[1];
+  source_file_name = argv[1];
+  source_code = read_file(source_file_name);
 
-  token = tokenize(user_input);
+  token = tokenize(source_code);
   program();
 
   printf(".intel_syntax noprefix\n");

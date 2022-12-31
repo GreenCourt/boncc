@@ -14,7 +14,7 @@ assert() {
     expected="$1"
     input="$2"
 
-    ./boncc "$input" > tmp.s
+    echo "$input" | ./boncc - > tmp.s
     [ $? -ne 0 ] && echo "${0}:${BASH_LINENO[0]}: boncc runtime error." && exit 1
 
     cc -o tmp tmp.s tmpfunc.o

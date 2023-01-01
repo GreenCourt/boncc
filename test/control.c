@@ -1,50 +1,63 @@
 int main() {
-  // verify(5, ({
-  //         int a;
-  //         a = 3;
-  //         if (a == 3)
-  //           a + 2;
-  //         else
-  //           a;
-  //       }),
-  //       __FILE__, __LINE__);
-  // verify(3, ({
-  //         int a;
-  //         a = 3;
-  //         if (a < 3)
-  //           a + 2;
-  //         else
-  //           a;
-  //       }),
-  //       __FILE__, __LINE__);
-  // verify(18, ({
-  //         int b;
-  //         b = 0;
-  //         int a;
-  //         for (a = 0; a < 10; a = a + 1)
-  //           b = a * 2;
-  //         b;
-  //       }),
-  //       __FILE__, __LINE__);
-  // verify(10, ({
-  //         int a;
-  //         a = 0;
-  //         for (; a < 10;)
-  //           a = a + 1;
-  //         a;
-  //       }),
-  //       __FILE__, __LINE__);
-  // verify(20, ({
-  //         int a;
-  //         a = 0;
-  //         int b;
-  //         b = 0;
-  //         for (; a < 10;) {
-  //           a = a + 1;
-  //           b = b + 2;
-  //         }
-  //         b;
-  //       }),
-  //       __FILE__, __LINE__);
+  {
+    int a;
+    a = 3;
+    int r;
+    if (a == 3)
+      r = a + 2;
+    else
+      r = a;
+    verify(5, r, __FILE__, __LINE__);
+  }
+  {
+    int a;
+    a = 3;
+    int r;
+    if (a < 3)
+      r = a + 2;
+    else
+      r = a;
+    verify(3, r, __FILE__, __LINE__);
+  }
+  {
+    int b;
+    b = 0;
+    int a;
+    for (a = 0; a < 10; a = a + 1)
+      b = a * 2;
+    verify(18, b, __FILE__, __LINE__);
+  }
+  {
+    int a;
+    a = 0;
+    for (; a < 10;)
+      a = a + 1;
+    a;
+    verify(10, a, __FILE__, __LINE__);
+  }
+  {
+    int a;
+    a = 0;
+    int b;
+    b = 0;
+    for (; a < 10;) {
+      a = a + 1;
+      b = b + 2;
+    }
+    b;
+    verify(20, b, __FILE__, __LINE__);
+  }
+  {
+    int a;
+    a = 0;
+    int b;
+    b = 0;
+    while (a < 10) {
+      a = a + 1;
+      b = b + 2;
+    }
+    b;
+    verify(20, b, __FILE__, __LINE__);
+  }
   return 0;
 }

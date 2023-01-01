@@ -24,43 +24,37 @@ int main() {
     }
     verify(7, a, __FILE__, __LINE__);
   }
-  // verify(14, ({
-  //         int aaa;
-  //         aaa = 3;
-  //         int bb;
-  //         bb = 5 * 6 - 8;
-  //         aaa + bb / 2;
-  //       }),
-  //       __FILE__, __LINE__);
-  // verify(5, ({
-  //         int aaa;
-  //         aaa = 3;
-  //         int bb;
-  //         bb = 5 * 6 - 8;
-  //         aaa + bb / 2;
-  //         aaa + 2;
-  //       }),
-  //       __FILE__, __LINE__);
-  // verify(4, ({
-  //         int x;
-  //         sizeof(x);
-  //       }),
-  //       __FILE__, __LINE__);
-  // verify(8, ({
-  //         int *x;
-  //         sizeof(x);
-  //       }),
-  //       __FILE__, __LINE__);
-  // verify(8, ({
-  //         int *x;
-  //         sizeof(x + 3);
-  //       }),
-  //       __FILE__, __LINE__);
-  // verify(4, ({
-  //         int *x;
-  //         sizeof(*x);
-  //       }),
-  //       __FILE__, __LINE__);
+  {
+    int aaa;
+    aaa = 3;
+    int bb;
+    bb = 5 * 6 - 8;
+    verify(14, aaa + bb / 2, __FILE__, __LINE__);
+  }
+  {
+    int aaa;
+    aaa = 3;
+    int bb;
+    bb = 5 * 6 - 8;
+    aaa + bb / 2;
+    verify(5, aaa + 2, __FILE__, __LINE__);
+  }
+  {
+    int x;
+    verify(4, sizeof(x), __FILE__, __LINE__);
+  }
+  {
+    int *x;
+    verify(8, sizeof(x), __FILE__, __LINE__);
+  }
+  {
+    int *x;
+    verify(8, sizeof(x + 3), __FILE__, __LINE__);
+  }
+  {
+    int *x;
+    verify(4, sizeof(*x), __FILE__, __LINE__);
+  }
   verify(4, sizeof(sizeof(1)), __FILE__, __LINE__);
   verify(4, sizeof(1), __FILE__, __LINE__);
   verify(0, global_int1, __FILE__, __LINE__);
@@ -80,43 +74,38 @@ int main() {
   global_int_pointer = &global_int1;
   verify(12, *global_int_pointer, __FILE__, __LINE__);
 
-  // verify(12, ({
-  //         int y;
-  //         global_int1 = 12;
-  //         y = global_int1;
-  //         y;
-  //       }),
-  //       __FILE__, __LINE__);
-  // verify(20, ({
-  //         char x;
-  //         x = 20;
-  //         x;
-  //       }),
-  //       __FILE__, __LINE__);
-  // verify(3, ({
-  //         char x[3];
-  //         x[0] = -1;
-  //         x[1] = 2;
-  //         int y;
-  //         y = 4;
-  //         x[0] + y;
-  //       }),
-  //       __FILE__, __LINE__);
-  // verify(6, ({
-  //         char x[3];
-  //         x[0] = -1;
-  //         x[1] = 2;
-  //         int y;
-  //         y = 4;
-  //         x[1] + y;
-  //       }),
-  //       __FILE__, __LINE__);
-  // verify(1, ({
-  //         char x[3];
-  //         x[0] = -1;
-  //         x[1] = 2;
-  //         x[0] + x[1];
-  //       }),
-  //       __FILE__, __LINE__);
+  {
+    int y;
+    global_int1 = 12;
+    y = global_int1;
+    verify(12, y, __FILE__, __LINE__);
+  }
+  {
+    char x;
+    x = 20;
+    verify(20, x, __FILE__, __LINE__);
+  }
+  {
+    char x[3];
+    x[0] = -1;
+    x[1] = 2;
+    int y;
+    y = 4;
+    verify(3, x[0] + y, __FILE__, __LINE__);
+  }
+  {
+    char x[3];
+    x[0] = -1;
+    x[1] = 2;
+    int y;
+    y = 4;
+    verify(6, x[1] + y, __FILE__, __LINE__);
+  }
+  {
+    char x[3];
+    x[0] = -1;
+    x[1] = 2;
+    verify(1, x[0] + x[1], __FILE__, __LINE__);
+  }
   return 0;
 }

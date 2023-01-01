@@ -8,10 +8,9 @@ default: boncc
 boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenize.o parse.o codegen.o Vector.o type.o)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-TEST_FILES=$(addprefix $(TEST_EXE_DIR)/,$(basename $(filter-out common.c,$(notdir $(wildcard test/*.c)))))
-test: $(TEST_FILES)
+
+test: $(addprefix $(TEST_EXE_DIR)/,$(basename $(filter-out common.c,$(notdir $(wildcard test/*.c)))))
 	for i in $^; do echo $$i; $$i; done
-	./test.sh
 
 clean:
 	rm -rf boncc $(OBJ_DIR) $(TEST_OBJ_DIR) $(TEST_EXE_DIR)

@@ -1,9 +1,28 @@
 #include "boncc.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static Vector *locals;
+typedef struct Scope Scope;
+struct Scope {
+  Scope *prev;
+  Vector *local_variables;
+};
+static Scope *current_scope;
+static int offset; // for local variables
+
+void new_scope() {
+  Scope *s = calloc(1, sizeof(Scope));
+  s->prev = current_scope;
+  s->local_variables = new_vector(0, sizeof(Variable *));
+  current_scope = s;
+}
+
+void restore_scope() {
+  assert(current_scope);
+  current_scope = current_scope->prev;
+}
 
 Token *consume(TokenKind kind) {
   if (token->kind != kind)
@@ -90,13 +109,25 @@ Node *new_node_add(Node *left, Node *right) {
   return new_node(ND_ADD, left, right);
 }
 
-Variable *find_local(Token *tok) {
+Variable *find_local_in_scope(Token *tok, Scope *scope) {
+  Vector *locals = scope->local_variables;
   int sz = locals->size;
   for (int i = 0; i < sz; ++i) {
     Variable *var = *(Variable **)vector_get(locals, i);
     if (var->name_length == tok->token_length &&
         !memcmp(tok->pos, var->name, var->name_length))
       return var;
+  }
+  return NULL;
+}
+
+Variable *find_local(Token *tok) {
+  Scope *scope = current_scope;
+  while (scope) {
+    Variable *var = find_local_in_scope(tok, scope);
+    if (var)
+      return var;
+    scope = scope->prev;
   }
   return NULL;
 }
@@ -119,29 +150,29 @@ Variable *find_variable(Token *tok) {
   return find_global(tok);
 }
 
-Variable *new_local(Token *tok, Type *type) {
-  if (find_local(tok))
-    error_at(tok->pos, "duplicated identifier");
+Variable *new_variable(Token *tok, Type *type, VariableKind kind) {
   Variable *var = calloc(1, sizeof(Variable));
   var->name = tok->pos;
   var->name_length = tok->token_length;
   var->type = type;
-  var->kind = VK_LOCAL;
-  var->offset = type->size;
-  if (locals->size)
-    var->offset += (*(Variable **)vector_last(locals))->offset;
-  vector_push(locals, &var);
+  var->kind = kind;
+  return var;
+}
+
+Variable *new_local(Token *tok, Type *type) {
+  if (find_local_in_scope(tok, current_scope))
+    error_at(tok->pos, "duplicated identifier");
+  Variable *var = new_variable(tok, type, VK_LOCAL);
+  var->offset = offset + type->size;
+  offset = var->offset;
+  vector_push(current_scope->local_variables, &var);
   return var;
 }
 
 Variable *new_global(Token *tok, Type *type) {
   if (find_global(tok))
     error_at(tok->pos, "duplicated identifier");
-  Variable *var = calloc(1, sizeof(Variable));
-  var->name = tok->pos;
-  var->name_length = tok->token_length;
-  var->type = type;
-  var->kind = VK_GLOBAL;
+  Variable *var = new_variable(tok, type, VK_GLOBAL);
   vector_push(globals, &var);
   return var;
 }
@@ -162,7 +193,7 @@ Variable *new_string_literal(char *literal) {
 void program();
 void toplevel();
 void func(Type *type, Token *name);
-void funcparam();
+void funcparam(Vector *params);
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -206,21 +237,23 @@ void func(Type *type, Token *name) {
   node->kind = ND_FUNC;
   node->name = name->pos;
   node->name_length = name->token_length;
-  node->locals = new_vector(0, sizeof(Variable *));
-  locals = node->locals;
-
+  node->params = new_vector(0, sizeof(Variable *));
+  assert(offset == 0);
+  assert(current_scope == NULL);
+  new_scope();
   expect(TK_LPAREN);
   if (!consume(TK_RPAREN)) {
-    funcparam();
+    funcparam(node->params);
     expect(TK_RPAREN);
   }
-  node->nparams = node->locals->size;
   expect(TK_LBRACE);
   node->body = stmt_block();
-  locals = NULL;
+  node->offset = offset;
+  restore_scope();
+  offset = 0;
 }
 
-void funcparam() {
+void funcparam(Vector *params) {
   do {
     Type *ty = expect_type();
     Token *id = expect(TK_IDENT);
@@ -229,14 +262,18 @@ void funcparam() {
       ty = pointer_type(ty); // array as a pointer
       expect(TK_RBRACKET);
     }
-    new_local(id, ty);
+    Variable *var = new_local(id, ty);
+    vector_push(params, &var);
   } while (consume(TK_COMMA));
 }
 
 Node *stmt() {
   Type *ty;
   if (consume(TK_LBRACE)) {
-    return stmt_block();
+    new_scope();
+    Node *node = stmt_block();
+    restore_scope();
+    return node;
   } else if (consume(TK_IF)) {
     return stmt_if();
   } else if (consume(TK_WHILE)) {
@@ -283,7 +320,9 @@ Node *stmt_if() {
   expect(TK_LPAREN);
   node->condition = expr();
   expect(TK_RPAREN);
+  new_scope();
   node->body = stmt();
+  restore_scope();
 
   if (consume(TK_ELSE))
     node->else_ = stmt();
@@ -298,7 +337,9 @@ Node *stmt_while() {
   expect(TK_LPAREN);
   node->condition = expr();
   expect(TK_RPAREN);
+  new_scope();
   node->body = stmt();
+  restore_scope();
 
   return node;
 }
@@ -309,6 +350,7 @@ Node *stmt_for() {
 
   expect(TK_LPAREN);
 
+  new_scope();
   if (!consume(TK_SEMICOLON)) {
     node->init = expr();
     expect(TK_SEMICOLON);
@@ -325,6 +367,7 @@ Node *stmt_for() {
   }
 
   node->body = stmt();
+  restore_scope();
 
   return node;
 }

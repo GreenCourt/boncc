@@ -5,14 +5,25 @@ int global_array20[20];
 int *global_int_pointer;
 
 int main() {
-  // verify(14, ({
-  //         int a;
-  //         a = 3;
-  //         int b;
-  //         b = 5 * 6 - 8;
-  //         a + b / 2;
-  //       }),
-  //       __FILE__, __LINE__);
+  {
+    int a;
+    a = 3;
+    int b;
+    b = 5 * 6 - 8;
+    verify(14, a + b / 2, __FILE__, __LINE__);
+  }
+  { // block scope
+    int a;
+    a = 7;
+    {
+      int a;
+      a = 3;
+      int b;
+      b = 5 * 6 - 8;
+      verify(14, a + b / 2, __FILE__, __LINE__);
+    }
+    verify(7, a, __FILE__, __LINE__);
+  }
   // verify(14, ({
   //         int aaa;
   //         aaa = 3;

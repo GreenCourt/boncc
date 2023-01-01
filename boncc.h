@@ -117,8 +117,8 @@ struct Node {
   char *name; // function name for ND_CALL, ND_FUNC
   int name_length;
   Vector *args;   // arguments for ND_CALL
-  Vector *locals; // local variables for ND_FUNC
-  int nparams;    // number of parameters for ND_FUNC
+  Vector *params; // parameters for ND_FUNC
+  int offset;     // total offset ND_FUNC
 };
 
 extern char *source_file_name;

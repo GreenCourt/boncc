@@ -170,9 +170,9 @@ void gen_func(Node *node) {
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
 
-  // push args to stack
-  for (int i = 0; i < node->nparams; ++i) {
-    Variable *v = *(Variable **)vector_get(node->locals, i);
+  // move args to stack
+  for (int i = 0; i < node->params->size; ++i) {
+    Variable *v = *(Variable **)vector_get(node->params, i);
     if (v->type->size == 1)
       printf("  mov [rbp-%d], %s\n", v->offset, reg_args1[i]);
     else if (v->type->size == 2)
@@ -183,9 +183,8 @@ void gen_func(Node *node) {
       printf("  mov [rbp-%d], %s\n", v->offset, reg_args8[i]);
   }
 
-  if (node->locals->size) {
-    Variable *last = *(Variable **)vector_last(node->locals);
-    int ofs = last->offset;
+  if (node->offset) {
+    int ofs = node->offset;
     if (ofs % 8)
       ofs += 8 - ofs % 8; // align by 8
     printf("  sub rsp, %d\n", ofs);

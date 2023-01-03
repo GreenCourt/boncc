@@ -106,6 +106,7 @@ typedef struct Node Node;
 
 struct Node {
   NodeKind kind;
+  Token *token; // for error messages
   Node *lhs;
   Node *rhs;
   int val;            // only for ND_NUM
@@ -144,7 +145,6 @@ void gen(Node *node);
 Token *tokenize(char *p);
 void program();
 
-Type *get_type(Node *node);
 Type *base_type(TypeKind kind);
 Type *pointer_type(Type *base);
 Type *array_type(Type *base, int len);

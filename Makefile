@@ -5,7 +5,7 @@ TEST_EXE_DIR=test/exe
 
 default: boncc
 
-boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenize.o parse.o codegen.o Vector.o type.o)
+boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenize.o parse.o codegen.o Vector.o type.o node.o)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 

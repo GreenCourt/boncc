@@ -96,8 +96,8 @@ Token *tokenize(char *p) {
       char *q = p;
       while (*q != '"') {
         q++;
-        if (!*q)
-          error("missing terminating \" character");
+        if (*q == '\0' || *q == '\n')
+          error_at(p - 1, "missing terminating \" character");
       }
       int len = q - p;
       cur = new_token(TK_STR, cur, p, len);

@@ -26,7 +26,7 @@ void gen_left_value(Node *node) {
     } else
       assert(false);
   } else {
-    error("left-value must be a variable");
+    error_at(node->token->pos, "left-value must be a variable");
   }
 }
 
@@ -200,7 +200,6 @@ void gen_func(Node *node) {
 }
 
 void gen(Node *node) {
-  get_type(node);
   switch (node->kind) {
   case ND_FUNC:
     gen_func(node);
@@ -232,13 +231,13 @@ void gen(Node *node) {
     return;
   case ND_VAR:
     gen_left_value(node);
-    load(get_type(node));
+    load(node->type);
     return;
   case ND_ASSIGN:
     gen_left_value(node->lhs);
     gen(node->rhs);
     printf("  pop rax\n");
-    store(get_type(node->lhs));
+    store(node->lhs->type);
     printf("  push rax\n");
     return;
   case ND_ADDR:
@@ -246,7 +245,7 @@ void gen(Node *node) {
     return;
   case ND_DEREF:
     gen(node->lhs);
-    load(get_type(node));
+    load(node->type);
     return;
   default:
     break;

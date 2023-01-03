@@ -113,36 +113,6 @@ Type *expect_type() {
 
 bool at_eof() { return token->kind == TK_EOF; }
 
-Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
-  Node *node = calloc(1, sizeof(Node));
-  node->kind = kind;
-  node->lhs = lhs;
-  node->rhs = rhs;
-  return node;
-}
-
-Node *new_node_num(int val) {
-  Node *node = calloc(1, sizeof(Node));
-  node->kind = ND_NUM;
-  node->val = val;
-  return node;
-}
-
-Node *new_node_add(Node *left, Node *right) {
-  Type *lt = get_type(left);
-  Type *rt = get_type(right);
-  bool left_is_ptr = lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY;
-  bool right_is_ptr = rt->kind == TYPE_PTR || rt->kind == TYPE_ARRAY;
-
-  if (left_is_ptr && right_is_ptr)
-    error("invalid operands to binary + operator (pointer and pointer)");
-  if (left_is_ptr)
-    right = new_node(ND_MUL, right, new_node_num(lt->base->size));
-  else if (right_is_ptr)
-    left = new_node(ND_MUL, left, new_node_num(rt->base->size));
-  return new_node(ND_ADD, left, right);
-}
-
 Variable *find_local_in_scope(Token *tok, Scope *scope) {
   Vector *locals = scope->local_variables;
   int sz = locals->size;
@@ -233,6 +203,20 @@ Function *find_function(Token *tok) {
   return NULL;
 }
 
+Node *new_node_num(Token *tok, int val);
+Node *new_node_mul(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_div(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_add(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_sub(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_eq(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_ne(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_lt(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_le(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_addr(Token *tok, Node *operand);
+Node *new_node_deref(Token *tok, Node *operand);
+Node *new_node_assign(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_var(Token *tok, Variable *var);
+
 void program();
 void toplevel();
 void func(Type *type, Token *name);
@@ -276,6 +260,7 @@ void toplevel() {
 void func(Type *type, Token *name) {
   Node *node = calloc(1, sizeof(Node));
   vector_push(functions, &node);
+  node->token = name;
   node->type = type;
   node->kind = ND_FUNC;
   node->func = calloc(1, sizeof(Function));
@@ -421,18 +406,20 @@ Node *expr() { return assign(); }
 
 Node *assign() {
   Node *node = equality();
-  if (consume(TK_ASSIGN))
-    node = new_node(ND_ASSIGN, node, assign());
+  Token *tok = consume(TK_ASSIGN);
+  if (tok)
+    node = new_node_assign(tok, node, assign());
   return node;
 }
 
 Node *equality() {
   Node *node = relational();
   while (true) {
-    if (consume(TK_EQ))
-      node = new_node(ND_EQ, node, relational());
-    else if (consume(TK_NE))
-      node = new_node(ND_NE, node, relational());
+    Token *tok;
+    if ((tok = consume(TK_EQ)))
+      node = new_node_eq(tok, node, relational());
+    else if ((tok = consume(TK_NE)))
+      node = new_node_ne(tok, node, relational());
     else
       return node;
   }
@@ -441,14 +428,15 @@ Node *equality() {
 Node *relational() {
   Node *node = add();
   while (true) {
-    if (consume(TK_LT))
-      node = new_node(ND_LT, node, add());
-    else if (consume(TK_LE))
-      node = new_node(ND_LE, node, add());
-    if (consume(TK_GT))
-      node = new_node(ND_LT, add(), node);
-    else if (consume(TK_GE))
-      node = new_node(ND_LE, add(), node);
+    Token *tok;
+    if ((tok = consume(TK_LT)))
+      node = new_node_lt(tok, node, add());
+    else if ((tok = consume(TK_LE)))
+      node = new_node_le(tok, node, add());
+    if ((tok = consume(TK_GT)))
+      node = new_node_lt(tok, add(), node);
+    else if ((tok = consume(TK_GE)))
+      node = new_node_le(tok, add(), node);
     else
       return node;
   }
@@ -459,22 +447,9 @@ Node *add() {
   while (true) {
     Token *tok = token; // for error message
     if (consume(TK_PLUS)) {
-      node = new_node_add(node, mul());
+      node = new_node_add(tok, node, mul());
     } else if (consume(TK_MINUS)) {
-      Node *left = node;
-      Node *right = mul();
-      Type *lt = get_type(left);
-      Type *rt = get_type(right);
-
-      bool left_is_ptr = lt->kind == TYPE_PTR || lt->kind == TYPE_ARRAY;
-      bool right_is_ptr = rt->kind == TYPE_PTR || rt->kind == TYPE_ARRAY;
-      if (left_is_ptr && !right_is_ptr)
-        right = new_node(ND_MUL, right, new_node_num(lt->base->size));
-      else if (!left_is_ptr && right_is_ptr)
-        error_at(tok->pos, "pointer is not allowed here");
-      node = new_node(ND_SUB, left, right);
-      if (left_is_ptr && right_is_ptr)
-        node = new_node(ND_DIV, node, new_node_num(lt->base->size));
+      node = new_node_sub(tok, node, mul());
     } else
       return node;
   }
@@ -483,26 +458,28 @@ Node *add() {
 Node *mul() {
   Node *node = unary();
   while (true) {
-    if (consume(TK_STAR))
-      node = new_node(ND_MUL, node, unary());
-    else if (consume(TK_SLASH))
-      node = new_node(ND_DIV, node, unary());
+    Token *tok;
+    if ((tok = consume(TK_STAR)))
+      node = new_node_mul(tok, node, unary());
+    else if ((tok = consume(TK_SLASH)))
+      node = new_node_div(tok, node, unary());
     else
       return node;
   }
 }
 
 Node *unary() {
-  if (consume(TK_SIZEOF))
-    return new_node_num(get_type(unary())->size);
-  if (consume(TK_PLUS))
+  Token *tok;
+  if ((tok = consume(TK_SIZEOF)))
+    return new_node_num(tok, unary()->type->size);
+  if ((tok = consume(TK_PLUS)))
     return unary();
-  if (consume(TK_MINUS))
-    return new_node(ND_SUB, new_node_num(0), unary());
-  if (consume(TK_AMP))
-    return new_node(ND_ADDR, unary(), NULL);
-  if (consume(TK_STAR))
-    return new_node(ND_DEREF, unary(), NULL);
+  if ((tok = consume(TK_MINUS)))
+    return new_node_sub(tok, new_node_num(NULL, 0), unary());
+  if ((tok = consume(TK_AMP)))
+    return new_node_addr(tok, unary());
+  if ((tok = consume(TK_STAR)))
+    return new_node_deref(tok, unary());
   return postfix();
 }
 
@@ -518,6 +495,7 @@ Node *primary() {
     if (consume(TK_LPAREN)) { // function call
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_CALL;
+      node->token = tok;
 
       node->func = find_function(tok);
       if (node->func == NULL) {
@@ -542,25 +520,21 @@ Node *primary() {
       expect(TK_RPAREN);
       return node;
     } else { // variable
-      Node *node = calloc(1, sizeof(Node));
-      node->kind = ND_VAR;
-      node->variable = find_variable(tok);
-      if (!node->variable)
+      Variable *var = find_variable(tok);
+      if (!var)
         error_at(tok->pos, "undefined identifier: '%.*s'", tok->token_length,
                  tok->pos);
-      return node;
+      return new_node_var(tok, var);
     }
   }
 
   if ((tok = consume(TK_STR))) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_VAR;
-    node->variable = new_string_literal(tok->string_literal);
-    return node;
+    Variable *var = new_string_literal(tok->string_literal);
+    return new_node_var(tok, var);
   }
 
   if ((tok = consume(TK_NUM)))
-    return new_node_num(tok->val);
+    return new_node_num(tok, tok->val);
 
   error_at(token->pos, "primary expected but not found", token->token_length,
            token->pos);
@@ -572,8 +546,8 @@ Node *postfix() {
   while (consume(TK_LBRACKET)) {
     // x[y] --> *(x+y)
     Node *y = expr();
-    expect(TK_RBRACKET);
-    node = new_node(ND_DEREF, new_node_add(node, y), NULL);
+    Token *tok = expect(TK_RBRACKET);
+    node = new_node_deref(tok, new_node_add(tok, node, y));
   }
   return node;
 }

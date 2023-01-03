@@ -147,12 +147,12 @@ void gen_call(Node *node) {
   printf("  and rax, 15\n"); // rax % 16 == rax & 0xF
   printf("  jnz .Lcall%d\n", l);
   printf("  mov al, 0\n");
-  printf("  call %.*s\n", node->name_length, node->name);
+  printf("  call %.*s\n", node->func->name_length, node->func->name);
   printf("  jmp .Lend%d\n", l);
   printf(".Lcall%d:\n", l);
   printf("  sub rsp, 8\n");
   printf("  mov al, 0\n");
-  printf("  call %.*s\n", node->name_length, node->name);
+  printf("  call %.*s\n", node->func->name_length, node->func->name);
   printf("  add rsp, 8\n");
   printf(".Lend%d:\n", l);
 
@@ -161,18 +161,18 @@ void gen_call(Node *node) {
 }
 
 void gen_func(Node *node) {
-  if (strncmp(node->name, "main", 4) == 0) {
+  if (strncmp(node->func->name, "main", 4) == 0) {
     printf(".globl main\n");
   }
-  printf("%.*s:\n", node->name_length, node->name);
+  printf("%.*s:\n", node->func->name_length, node->func->name);
 
   // prologue
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
 
   // move args to stack
-  for (int i = 0; i < node->params->size; ++i) {
-    Variable *v = *(Variable **)vector_get(node->params, i);
+  for (int i = 0; i < node->func->params->size; ++i) {
+    Variable *v = *(Variable **)vector_get(node->func->params, i);
     if (v->type->size == 1)
       printf("  mov [rbp-%d], %s\n", v->offset, reg_args1[i]);
     else if (v->type->size == 2)
@@ -183,8 +183,8 @@ void gen_func(Node *node) {
       printf("  mov [rbp-%d], %s\n", v->offset, reg_args8[i]);
   }
 
-  if (node->offset) {
-    int ofs = node->offset;
+  if (node->func->offset) {
+    int ofs = node->func->offset;
     if (ofs % 8)
       ofs += 8 - ofs % 8; // align by 8
     printf("  sub rsp, %d\n", ofs);

@@ -9,7 +9,6 @@ program    = toplevel*
 toplevel   = func | global
 type       = "int" "*"*
 global     = type ident ("[" num "]")* ";"
-global_init =
 func       = type ident "(" funcparam? ")" "{" stmt* "}"
 funcparam  = type ident ("[" num? "]")* ("," type ident ("[" num? "]")* )*
 stmt       = expr ";"
@@ -225,6 +224,15 @@ Variable *new_string_literal(char *literal) {
   return var;
 }
 
+Function *find_function(Token *tok) {
+  for (int i = 0; i < functions->size; i++) {
+    Function *f = (*(Node **)vector_get(functions, i))->func;
+    if (strncmp(tok->pos, f->name, f->name_length) == 0)
+      return f;
+  }
+  return NULL;
+}
+
 void program();
 void toplevel();
 void func(Type *type, Token *name);
@@ -270,20 +278,22 @@ void func(Type *type, Token *name) {
   vector_push(functions, &node);
   node->type = type;
   node->kind = ND_FUNC;
-  node->name = name->pos;
-  node->name_length = name->token_length;
-  node->params = new_vector(0, sizeof(Variable *));
+  node->func = calloc(1, sizeof(Function));
+  node->func->name = name->pos;
+  node->func->name_length = name->token_length;
+  node->func->params = new_vector(0, sizeof(Variable *));
+  node->func->type = type;
   assert(offset == 0);
   assert(current_scope == NULL);
   new_scope();
   expect(TK_LPAREN);
   if (!consume(TK_RPAREN)) {
-    funcparam(node->params);
+    funcparam(node->func->params);
     expect(TK_RPAREN);
   }
   expect(TK_LBRACE);
   node->body = stmt_block();
-  node->offset = offset;
+  node->func->offset = offset;
   restore_scope();
   offset = 0;
 }
@@ -508,8 +518,17 @@ Node *primary() {
     if (consume(TK_LPAREN)) { // function call
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_CALL;
-      node->name = tok->pos;
-      node->name_length = tok->token_length;
+
+      node->func = find_function(tok);
+      if (node->func == NULL) {
+        // TODO
+        // error_at(tok->pos, "undefined function: '%.*s'", tok->token_length,
+        //     tok->pos);
+        node->func = calloc(1, sizeof(Function));
+        node->func->name = tok->pos;
+        node->func->name_length = tok->token_length;
+      }
+      node->type = node->func->type;
       node->args = new_vector(0, sizeof(Node *));
 
       if (consume(TK_RPAREN))

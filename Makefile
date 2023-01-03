@@ -28,7 +28,8 @@ $(TEST_EXE_DIR)/%: $(addprefix $(TEST_OBJ_DIR)/,common.o %.o)
 
 $(TEST_OBJ_DIR)/%.o: test/%.c boncc
 	@mkdir -p $(TEST_OBJ_DIR)
-	$(CC) -P -E -C -o - $< | ./boncc - > $(basename $@).s
+	$(CC) -P -E -C -o $(basename $@).c $<
+	./boncc $(basename $@).c > $(basename $@).s
 	$(CC) $(CFLAGS) -c -o $@ $(basename $@).s
 
 $(TEST_OBJ_DIR)/common.o: test/common.c

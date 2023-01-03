@@ -64,15 +64,6 @@ Type *get_type(Node *node) {
   if (node->kind == ND_NUM)
     return node->type = base_type(TYPE_INT);
 
-  if (node->kind == ND_CALL) {
-    for (int i = 0; i < functions->size; i++) {
-      Node *f = *(Node **)vector_get(functions, i);
-      if (strncmp(node->name, f->name, node->name_length) == 0) {
-        return node->type = f->type;
-      }
-    }
-  }
-
   if (node->kind == ND_ADDR)
     return node->type = pointer_type(get_type(node->lhs));
 

@@ -70,6 +70,15 @@ struct Variable {
   char *string_literal; // null terminated, only for VK_STRLIT
 };
 
+typedef struct Function Function;
+struct Function {
+  char *name;
+  int name_length;
+  Type *type;
+  Vector *params;
+  int offset; // total offset
+};
+
 typedef enum {
   ND_ADD,    // +
   ND_SUB,    // -
@@ -100,7 +109,7 @@ struct Node {
   Node *lhs;
   Node *rhs;
   int val;            // only for ND_NUM
-  Variable *variable; // only for ND_LVAR
+  Variable *variable; // only for ND_VAR
   Type *type;
 
   // if(condition) body else else_
@@ -114,11 +123,8 @@ struct Node {
 
   Vector *blk_stmts; // statements in ND_BLOCK
 
-  char *name; // function name for ND_CALL, ND_FUNC
-  int name_length;
+  Function *func; // for ND_FUNC or ND_CALL
   Vector *args;   // arguments for ND_CALL
-  Vector *params; // parameters for ND_FUNC
-  int offset;     // total offset ND_FUNC
 };
 
 extern char *source_file_name;

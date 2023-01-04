@@ -325,6 +325,60 @@ VariableInit *varinit() {
   return init;
 }
 
+Node *init_local_variable(Variable *var) {
+  if (var->init == NULL)
+    return NULL;
+
+  if (var->type->kind == TYPE_ARRAY) {
+    if (var->type->base->kind == TYPE_ARRAY)
+      error("initilizing an multi-dimensional array is not implemented.");
+    if (var->init->expr) {
+      assert(false);
+    } else if (var->init->vec) {
+      assert(var->init->vec->size > 0);
+
+      Node *node = calloc(1, sizeof(Node));
+      node->kind = ND_BLOCK;
+      node->blk_stmts = new_vector(0, sizeof(Node *));
+
+      for (int i = 0; i < (int)var->type->array_size; i++) {
+        if (i < var->init->vec->size) {
+          VariableInit *init = *(VariableInit **)vector_get(var->init->vec, i);
+          if (init->vec)
+            error("invalid array initializer (multi-dimension is not "
+                  "implemented)");
+          Node *s = new_node_assign(
+              NULL,
+              new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var),
+                                                new_node_num(NULL, i))),
+              init->expr);
+          vector_push(node->blk_stmts, &s);
+        } else {
+          Node *s = new_node_assign(
+              NULL,
+              new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var),
+                                                new_node_num(NULL, i))),
+              new_node_num(NULL, 0));
+          vector_push(node->blk_stmts, &s);
+        }
+      }
+      return node;
+    }
+  } else if (var->type->kind == TYPE_PTR || var->type->kind == TYPE_INT ||
+             var->type->kind == TYPE_CHAR) {
+    VariableInit *init = var->init;
+    while (init->vec) {
+      assert(init->vec->size > 0);
+      init = *(VariableInit **)vector_get(init->vec, 0);
+    }
+    assert(init->expr);
+    if (init->expr)
+      return new_node_assign(NULL, new_node_var(NULL, var), init->expr);
+  } else
+    assert(false);
+  return NULL;
+}
+
 Node *stmt() {
   Type *ty;
   if (consume(TK_LBRACE)) {
@@ -353,8 +407,8 @@ Node *stmt() {
     if (init && ty->kind == TYPE_ARRAY && init->vec == NULL)
       error_at(id->pos, "invalid initializer for an array");
     expect(TK_SEMICOLON);
-    new_local(id, ty, init);
-    return NULL;
+    Variable *var = new_local(id, ty, init);
+    return init_local_variable(var);
   } else {
     Node *node = expr();
     expect(TK_SEMICOLON);

@@ -1,5 +1,6 @@
 int global_int1;
 int global_int2 = 4;
+int global_int3 = {3};
 int global_array3[3] = {2, 3, 4};
 int global_array20[20];
 int global_2darray[2][2] = {{1, 2}, {(27 / 3 == 9) * 3}};
@@ -15,6 +16,7 @@ int main() {
   verify(0, global_array20[19], __FILE__, __LINE__);
 
   verify(4, global_int2, __FILE__, __LINE__);
+  verify(3, global_int3, __FILE__, __LINE__);
   verify(2, global_array3[0], __FILE__, __LINE__);
   verify(3, global_array3[1], __FILE__, __LINE__);
   verify(4, global_array3[2], __FILE__, __LINE__);
@@ -142,5 +144,37 @@ int main() {
     x[1] = 2;
     verify(1, x[0] + x[1], __FILE__, __LINE__);
   }
+  {
+    int a = 3 * 2 + 1;
+    verify(7, a, __FILE__, __LINE__);
+  }
+  {
+    char a = 3 * 2 + 1;
+    verify(7, a, __FILE__, __LINE__);
+  }
+  {
+    char x[3];
+    x[0] = -1;
+    x[1] = 2;
+    char *p = &x[0];
+    verify(2, *(p + 1), __FILE__, __LINE__);
+  }
+  {
+    int x[3] = {1, 2};
+    verify(1, x[0], __FILE__, __LINE__);
+    verify(2, x[1], __FILE__, __LINE__);
+    verify(0, x[2], __FILE__, __LINE__);
+  }
+  {
+    char x[3] = {1, 2};
+    verify(1, x[0], __FILE__, __LINE__);
+    verify(2, x[1], __FILE__, __LINE__);
+    verify(0, x[2], __FILE__, __LINE__);
+  }
+  {
+    int x = {1};
+    verify(1, x, __FILE__, __LINE__);
+  }
+
   return 0;
 }

@@ -1,3 +1,5 @@
+char global_str[4] = "abc";
+
 int main() {
   {
     char *x;
@@ -18,5 +20,17 @@ int main() {
   verify(0, "abc"[3], __FILE__, __LINE__);
   verify(4, sizeof("abc"), __FILE__, __LINE__);
   verify(4, sizeof("abc"), __FILE__, __LINE__);
+  verify(97, global_str[0], __FILE__, __LINE__);
+  verify(98, global_str[1], __FILE__, __LINE__);
+  verify(99, global_str[2], __FILE__, __LINE__);
+  verify(0, global_str[3], __FILE__, __LINE__);
+
+  {
+    char x[4] = "abc";
+    verify(97, x[0], __FILE__, __LINE__);
+    verify(98, x[1], __FILE__, __LINE__);
+    verify(99, x[2], __FILE__, __LINE__);
+    verify(0, x[3], __FILE__, __LINE__);
+  }
   return 0;
 }

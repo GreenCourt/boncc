@@ -260,7 +260,8 @@ void toplevel() {
     VariableInit *init = NULL;
     if (consume(TK_ASSIGN))
       init = varinit();
-    if (init && type->kind == TYPE_ARRAY && init->vec == NULL)
+    if (init && type->kind == TYPE_ARRAY && init->vec == NULL &&
+        type->base->kind != TYPE_CHAR)
       error_at(name->pos, "invalid initializer for an array");
     expect(TK_SEMICOLON);
     new_global(name, type, init);
@@ -325,14 +326,37 @@ VariableInit *varinit() {
   return init;
 }
 
-Node *init_local_variable(Variable *var) {
+Node *init_local_variable(Variable *var, Token *var_tok) {
   if (var->init == NULL)
     return NULL;
 
   if (var->type->kind == TYPE_ARRAY) {
     if (var->type->base->kind == TYPE_ARRAY)
-      error("initilizing an multi-dimensional array is not implemented.");
+      error_at(var_tok->pos,
+               "initilizing an multi-dimensional array is not implemented.");
     if (var->init->expr) {
+      if (var->type->base->kind == TYPE_CHAR &&
+          var->init->expr->kind == ND_VAR &&
+          var->init->expr->variable->kind == VK_STRLIT) {
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_BLOCK;
+        node->blk_stmts = new_vector(0, sizeof(Node *));
+
+        char *lit = var->init->expr->variable->string_literal;
+        if (var->type->array_size != strlen(lit) + 1)
+          error_at(var_tok->pos,
+                   "miss-match between array-size and string-length");
+
+        for (int i = 0; i < (int)var->type->array_size; ++i) {
+          Node *s = new_node_assign(
+              NULL,
+              new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var),
+                                                new_node_num(NULL, i))),
+              new_node_num(NULL, (int)lit[i]));
+          vector_push(node->blk_stmts, &s);
+        }
+        return node;
+      }
       assert(false);
     } else if (var->init->vec) {
       assert(var->init->vec->size > 0);
@@ -345,13 +369,14 @@ Node *init_local_variable(Variable *var) {
         if (i < var->init->vec->size) {
           VariableInit *init = *(VariableInit **)vector_get(var->init->vec, i);
           if (init->vec)
-            error("invalid array initializer (multi-dimension is not "
-                  "implemented)");
+            error_at(var_tok->pos,
+                     "invalid array initializer (multi-dimension is not "
+                     "implemented)");
           Node *s = new_node_assign(
               NULL,
               new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var),
                                                 new_node_num(NULL, i))),
-              init->expr);
+              init->expr); // TODO type checking
           vector_push(node->blk_stmts, &s);
         } else {
           Node *s = new_node_assign(
@@ -373,7 +398,8 @@ Node *init_local_variable(Variable *var) {
     }
     assert(init->expr);
     if (init->expr)
-      return new_node_assign(NULL, new_node_var(NULL, var), init->expr);
+      return new_node_assign(NULL, new_node_var(NULL, var),
+                             init->expr); // TODO type checking
   } else
     assert(false);
   return NULL;
@@ -404,11 +430,12 @@ Node *stmt() {
     VariableInit *init = NULL;
     if (consume(TK_ASSIGN))
       init = varinit();
-    if (init && ty->kind == TYPE_ARRAY && init->vec == NULL)
+    if (init && ty->kind == TYPE_ARRAY && init->vec == NULL &&
+        ty->base->kind != TYPE_CHAR)
       error_at(id->pos, "invalid initializer for an array");
     expect(TK_SEMICOLON);
     Variable *var = new_local(id, ty, init);
-    return init_local_variable(var);
+    return init_local_variable(var, id);
   } else {
     Node *node = expr();
     expect(TK_SEMICOLON);

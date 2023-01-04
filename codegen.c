@@ -194,6 +194,16 @@ void gen_global_init(VariableInit *init, Type *type) {
 
   if (type->kind == TYPE_ARRAY) {
     if (init->expr) {
+      if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR &&
+          init->expr->variable->kind == VK_STRLIT) {
+        char *lit = init->expr->variable->string_literal;
+        if (type->array_size != strlen(lit) + 1)
+          error_at(init->expr->token->pos,
+                   "miss-match between array-size and string-length");
+        printf("  .ascii \"%s\\0\"\n", lit);
+        return;
+      }
+
       Type *ty = type;
       while (ty->kind == TYPE_ARRAY)
         ty = ty->base;

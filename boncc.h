@@ -59,6 +59,13 @@ struct Type {
   size_t array_size; // number of elements for TYPE_ARRAY
 };
 
+typedef struct Node Node;
+typedef struct VariableInit VariableInit;
+struct VariableInit {
+  Vector *vec;
+  Node *expr;
+};
+
 typedef enum { VK_GLOBAL, VK_LOCAL, VK_STRLIT } VariableKind;
 typedef struct Variable Variable;
 struct Variable {
@@ -68,6 +75,7 @@ struct Variable {
   Type *type;
   int offset;           // only for VK_LOCAL
   char *string_literal; // null terminated, only for VK_STRLIT
+  VariableInit *init;   // VK_GLOBAL, VK_LOCAL
 };
 
 typedef struct Function Function;
@@ -142,6 +150,7 @@ void error(char *fmt, ...);
 char *read_file(char *path);
 
 void gen(Node *node);
+void gen_global_variables();
 Token *tokenize(char *p);
 void program();
 

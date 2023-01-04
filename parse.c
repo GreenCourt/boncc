@@ -8,11 +8,13 @@
 program    = toplevel*
 toplevel   = func | global
 type       = "int" "*"*
-global     = type ident ("[" num "]")* ";"
+global     = type ident ("[" num "]")* ("=" varinit)? ";"
+varinit    = expr
+             | "{" varinit ("," varinit)* "}"
 func       = type ident "(" funcparam? ")" "{" stmt* "}"
 funcparam  = type ident ("[" num? "]")* ("," type ident ("[" num? "]")* )*
 stmt       = expr ";"
-             | type ident ("[" num "]")* ";"
+             | type ident ("[" num "]")* ("=" varinit)? ";"
              | "{" stmt* "}"
              | "if" "(" expr ")" stmt ("else" stmt)?
              | "while" "(" expr ")" stmt
@@ -154,29 +156,31 @@ Variable *find_variable(Token *tok) {
   return find_global(tok);
 }
 
-Variable *new_variable(Token *tok, Type *type, VariableKind kind) {
+Variable *new_variable(Token *tok, Type *type, VariableKind kind,
+                       VariableInit *init) {
   Variable *var = calloc(1, sizeof(Variable));
   var->name = tok->pos;
   var->name_length = tok->token_length;
   var->type = type;
   var->kind = kind;
+  var->init = init;
   return var;
 }
 
-Variable *new_local(Token *tok, Type *type) {
+Variable *new_local(Token *tok, Type *type, VariableInit *init) {
   if (find_local_in_scope(tok, current_scope))
     error_at(tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, VK_LOCAL);
+  Variable *var = new_variable(tok, type, VK_LOCAL, init);
   var->offset = offset + type->size;
   offset = var->offset;
   vector_push(current_scope->local_variables, &var);
   return var;
 }
 
-Variable *new_global(Token *tok, Type *type) {
+Variable *new_global(Token *tok, Type *type, VariableInit *init) {
   if (find_global(tok))
     error_at(tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, VK_GLOBAL);
+  Variable *var = new_variable(tok, type, VK_GLOBAL, init);
   vector_push(globals, &var);
   return var;
 }
@@ -221,6 +225,7 @@ void program();
 void toplevel();
 void func(Type *type, Token *name);
 void funcparam(Vector *params);
+VariableInit *varinit();
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -252,8 +257,13 @@ void toplevel() {
     func(type, name);
   } else {
     type = consume_array_brackets(type);
-    new_global(name, type);
+    VariableInit *init = NULL;
+    if (consume(TK_ASSIGN))
+      init = varinit();
+    if (init && type->kind == TYPE_ARRAY && init->vec == NULL)
+      error_at(name->pos, "invalid initializer for an array");
     expect(TK_SEMICOLON);
+    new_global(name, type, init);
   }
 }
 
@@ -292,9 +302,27 @@ void funcparam(Vector *params) {
       ty = pointer_type(ty); // array as a pointer
       expect(TK_RBRACKET);
     }
-    Variable *var = new_local(id, ty);
+    Variable *var = new_local(id, ty, NULL);
     vector_push(params, &var);
   } while (consume(TK_COMMA));
+}
+
+VariableInit *varinit() {
+  VariableInit *init = calloc(1, sizeof(VariableInit));
+  if (consume(TK_LBRACE)) {
+    Token *tok = consume(TK_RBRACE);
+    if (tok)
+      error_at(tok->pos, "empty brace initializer is not allowed");
+    init->vec = new_vector(0, sizeof(VariableInit *));
+    do {
+      VariableInit *i = varinit();
+      vector_push(init->vec, &i);
+    } while (consume(TK_COMMA));
+    expect(TK_RBRACE);
+  } else {
+    init->expr = expr();
+  }
+  return init;
 }
 
 Node *stmt() {
@@ -319,8 +347,13 @@ Node *stmt() {
   } else if ((ty = consume_type())) {
     Token *id = expect(TK_IDENT);
     ty = consume_array_brackets(ty);
-    new_local(id, ty);
+    VariableInit *init = NULL;
+    if (consume(TK_ASSIGN))
+      init = varinit();
+    if (init && ty->kind == TYPE_ARRAY && init->vec == NULL)
+      error_at(id->pos, "invalid initializer for an array");
     expect(TK_SEMICOLON);
+    new_local(id, ty, init);
     return NULL;
   } else {
     Node *node = expr();

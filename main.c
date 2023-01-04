@@ -21,13 +21,7 @@ int main(int argc, char **argv) {
     printf("  .string \"%s\"\n", v->string_literal);
   }
 
-  for (int i = 0; i < globals->size; i++) {
-    Variable *v = *(Variable **)vector_get(globals, i);
-    printf(".data\n");
-    printf(".globl %.*s\n", v->name_length, v->name);
-    printf("%.*s:\n", v->name_length, v->name);
-    printf("  .zero %d\n", v->type->size);
-  }
+  gen_global_variables();
 
   for (int i = 0; i < functions->size; i++) {
     Node *f = *(Node **)vector_get(functions, i);

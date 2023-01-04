@@ -1,10 +1,46 @@
 int global_int1;
-int global_int2;
-int global_array3[3];
+int global_int2 = 4;
+int global_array3[3] = {2, 3, 4};
 int global_array20[20];
+int global_2darray[2][2] = {{1, 2}, {(27 / 3 == 9) * 3}};
+int global_2darray_zero[2][2] = {(3 > 1) + (2 <= 2) - (5 != 4) - (3 >= 2)};
+int global_3darray[2][2][3] = {{{1, 2}, {4, 5, 6}}};
 int *global_int_pointer;
 
 int main() {
+  // global varinit
+  verify(0, global_int1, __FILE__, __LINE__);
+  verify(0, global_array20[0], __FILE__, __LINE__);
+  verify(0, global_array20[15], __FILE__, __LINE__);
+  verify(0, global_array20[19], __FILE__, __LINE__);
+
+  verify(4, global_int2, __FILE__, __LINE__);
+  verify(2, global_array3[0], __FILE__, __LINE__);
+  verify(3, global_array3[1], __FILE__, __LINE__);
+  verify(4, global_array3[2], __FILE__, __LINE__);
+
+  verify(1, global_2darray[0][0], __FILE__, __LINE__);
+  verify(2, global_2darray[0][1], __FILE__, __LINE__);
+  verify(3, global_2darray[1][0], __FILE__, __LINE__);
+  verify(0, global_2darray[1][1], __FILE__, __LINE__);
+  verify(0, global_2darray_zero[0][0], __FILE__, __LINE__);
+  verify(0, global_2darray_zero[0][1], __FILE__, __LINE__);
+  verify(0, global_2darray_zero[1][0], __FILE__, __LINE__);
+  verify(0, global_2darray_zero[1][1], __FILE__, __LINE__);
+
+  verify(1, global_3darray[0][0][0], __FILE__, __LINE__);
+  verify(2, global_3darray[0][0][1], __FILE__, __LINE__);
+  verify(0, global_3darray[0][0][2], __FILE__, __LINE__);
+  verify(4, global_3darray[0][1][0], __FILE__, __LINE__);
+  verify(5, global_3darray[0][1][1], __FILE__, __LINE__);
+  verify(6, global_3darray[0][1][2], __FILE__, __LINE__);
+  verify(0, global_3darray[1][0][0], __FILE__, __LINE__);
+  verify(0, global_3darray[1][0][1], __FILE__, __LINE__);
+  verify(0, global_3darray[1][0][2], __FILE__, __LINE__);
+  verify(0, global_3darray[1][1][0], __FILE__, __LINE__);
+  verify(0, global_3darray[1][1][1], __FILE__, __LINE__);
+  verify(0, global_3darray[1][1][2], __FILE__, __LINE__);
+
   {
     int a;
     a = 3;
@@ -57,8 +93,7 @@ int main() {
   }
   verify(4, sizeof(sizeof(1)), __FILE__, __LINE__);
   verify(4, sizeof(1), __FILE__, __LINE__);
-  verify(0, global_int1, __FILE__, __LINE__);
-  verify(2, global_int1 + 2, __FILE__, __LINE__);
+
   global_int1 = 4;
   global_int2 = 3;
   verify(4, global_int1, __FILE__, __LINE__);

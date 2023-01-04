@@ -160,6 +160,88 @@ void gen_call(Node *node) {
   printf("  push rax\n");
 }
 
+int eval(Node *node) {
+  switch (node->kind) {
+  case ND_ADD:
+    return eval(node->lhs) + eval(node->rhs);
+  case ND_SUB:
+    return eval(node->lhs) - eval(node->rhs);
+  case ND_MUL:
+    return eval(node->lhs) * eval(node->rhs);
+  case ND_DIV:
+    return eval(node->lhs) / eval(node->rhs);
+  case ND_EQ:
+    return eval(node->lhs) == eval(node->rhs);
+  case ND_NE:
+    return eval(node->lhs) != eval(node->rhs);
+  case ND_LT:
+    return eval(node->lhs) < eval(node->rhs);
+  case ND_LE:
+    return eval(node->lhs) <= eval(node->rhs);
+  case ND_NUM:
+    return node->val;
+  default:
+    error_at(node->token->pos, "not a constant expr");
+    return 0;
+  }
+}
+
+void gen_global_init(VariableInit *init, Type *type) {
+  if (init == NULL) {
+    printf("  .zero %d\n", type->size);
+    return;
+  }
+
+  if (type->kind == TYPE_ARRAY) {
+    if (init->expr) {
+      Type *ty = type;
+      while (ty->kind == TYPE_ARRAY)
+        ty = ty->base;
+      gen_global_init(init, ty);
+      printf("  .zero %d\n", type->size - ty->size);
+    } else if (init->vec) {
+      assert(init->vec->size > 0);
+      int zero_size = type->size;
+      for (int i = 0; i < (int)type->array_size; i++) {
+        if (i >= init->vec->size) {
+          printf("  .zero %d\n", zero_size);
+          break;
+        }
+        zero_size -= type->base->size;
+        gen_global_init(*(VariableInit **)vector_get(init->vec, i), type->base);
+      }
+    } else
+      assert(false);
+  } else if (type->kind == TYPE_PTR) {
+    // TODO
+    error("initilizing a global pointer is not implemented.");
+  } else if (type->kind == TYPE_INT || type->kind == TYPE_CHAR) {
+    while (init->vec) {
+      assert(init->vec->size > 0);
+      init = *(VariableInit **)vector_get(init->vec, 0);
+    }
+    assert(init->expr);
+    int val = eval(init->expr);
+    if (type->kind == TYPE_INT) {
+      printf("  .long %d\n", val);
+    } else if (type->kind == TYPE_INT) {
+      printf("  .byte %d\n", val);
+    } else
+      assert(false);
+  } else
+    assert(false);
+}
+
+void gen_global_variables() {
+  for (int i = 0; i < globals->size; i++) {
+    Variable *v = *(Variable **)vector_get(globals, i);
+    printf(".data\n");
+    printf(".globl %.*s\n", v->name_length, v->name);
+    printf("%.*s:\n", v->name_length, v->name);
+    gen_global_init(v->init, v->type);
+  }
+}
+
 void gen_func(Node *node) {
   if (strncmp(node->func->name, "main", 4) == 0) {
     printf(".globl main\n");

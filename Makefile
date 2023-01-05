@@ -1,4 +1,4 @@
-CFLAGS=-std=c11 -g -static -Wall -Wextra -MMD
+CFLAGS=-std=c11 -g -static -Wall -Wextra -Werror -MMD
 OBJ_DIR=obj
 TEST_OBJ_DIR=test/obj
 TEST_EXE_DIR=test/exe

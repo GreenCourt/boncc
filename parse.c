@@ -120,8 +120,7 @@ Variable *find_local_in_scope(Token *tok, Scope *scope) {
   int sz = locals->size;
   for (int i = 0; i < sz; ++i) {
     Variable *var = *(Variable **)vector_get(locals, i);
-    if (var->name_length == tok->token_length &&
-        !memcmp(tok->pos, var->name, var->name_length))
+    if (var->name_length == tok->token_length && !memcmp(tok->pos, var->name, var->name_length))
       return var;
   }
   return NULL;
@@ -142,8 +141,7 @@ Variable *find_global(Token *tok) {
   int sz = globals->size;
   for (int i = 0; i < sz; ++i) {
     Variable *var = *(Variable **)vector_get(globals, i);
-    if (var->name_length == tok->token_length &&
-        !memcmp(tok->pos, var->name, var->name_length))
+    if (var->name_length == tok->token_length && !memcmp(tok->pos, var->name, var->name_length))
       return var;
   }
   return NULL;
@@ -258,8 +256,7 @@ void toplevel() {
     Variable *var = new_global(name, type);
     if (consume(TK_ASSIGN))
       var->init = varinit();
-    if (var->init && type->kind == TYPE_ARRAY && var->init->vec == NULL &&
-        type->base->kind != TYPE_CHAR)
+    if (var->init && type->kind == TYPE_ARRAY && var->init->vec == NULL && type->base->kind != TYPE_CHAR)
       error_at(name->pos, "invalid initializer for an array");
     expect(TK_SEMICOLON);
   }
@@ -329,27 +326,19 @@ Node *init_local_variable(Variable *var, Token *var_tok) {
 
   if (var->type->kind == TYPE_ARRAY) {
     if (var->type->base->kind == TYPE_ARRAY)
-      error_at(var_tok->pos,
-               "initilizing an multi-dimensional array is not implemented.");
+      error_at(var_tok->pos, "initilizing an multi-dimensional array is not implemented.");
     if (var->init->expr) {
-      if (var->type->base->kind == TYPE_CHAR &&
-          var->init->expr->kind == ND_VAR &&
-          var->init->expr->variable->kind == VK_STRLIT) {
+      if (var->type->base->kind == TYPE_CHAR && var->init->expr->kind == ND_VAR && var->init->expr->variable->kind == VK_STRLIT) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_BLOCK;
         node->blk_stmts = new_vector(0, sizeof(Node *));
 
         char *lit = var->init->expr->variable->string_literal;
         if (var->type->array_size != strlen(lit) + 1)
-          error_at(var_tok->pos,
-                   "miss-match between array-size and string-length");
+          error_at(var_tok->pos, "miss-match between array-size and string-length");
 
         for (int i = 0; i < (int)var->type->array_size; ++i) {
-          Node *s = new_node_assign(
-              NULL,
-              new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var),
-                                                new_node_num(NULL, i))),
-              new_node_num(NULL, (int)lit[i]));
+          Node *s = new_node_assign(NULL, new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var), new_node_num(NULL, i))), new_node_num(NULL, (int)lit[i]));
           vector_push(node->blk_stmts, &s);
         }
         return node;
@@ -366,37 +355,26 @@ Node *init_local_variable(Variable *var, Token *var_tok) {
         if (i < var->init->vec->size) {
           VariableInit *init = *(VariableInit **)vector_get(var->init->vec, i);
           if (init->vec)
-            error_at(var_tok->pos,
-                     "invalid array initializer (multi-dimension is not "
-                     "implemented)");
-          Node *s = new_node_assign(
-              NULL,
-              new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var),
-                                                new_node_num(NULL, i))),
-              init->expr); // TODO type checking
+            error_at(var_tok->pos, "invalid array initializer (multi-dimension is not implemented)");
+          // TODO type checking
+          Node *s = new_node_assign(NULL, new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var), new_node_num(NULL, i))), init->expr);
           vector_push(node->blk_stmts, &s);
         } else {
-          Node *s = new_node_assign(
-              NULL,
-              new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var),
-                                                new_node_num(NULL, i))),
-              new_node_num(NULL, 0));
+          Node *s = new_node_assign(NULL, new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var), new_node_num(NULL, i))), new_node_num(NULL, 0));
           vector_push(node->blk_stmts, &s);
         }
       }
       return node;
     }
-  } else if (var->type->kind == TYPE_PTR || var->type->kind == TYPE_INT ||
-             var->type->kind == TYPE_CHAR) {
+  } else if (var->type->kind == TYPE_PTR || var->type->kind == TYPE_INT || var->type->kind == TYPE_CHAR) {
     VariableInit *init = var->init;
     while (init->vec) {
       assert(init->vec->size > 0);
       init = *(VariableInit **)vector_get(init->vec, 0);
     }
     assert(init->expr);
-    if (init->expr)
-      return new_node_assign(NULL, new_node_var(NULL, var),
-                             init->expr); // TODO type checking
+    if (init->expr) // TODO type checking
+      return new_node_assign(NULL, new_node_var(NULL, var), init->expr);
   } else
     assert(false);
   return NULL;
@@ -427,8 +405,7 @@ Node *stmt() {
     Variable *var = new_local(id, ty);
     if (consume(TK_ASSIGN))
       var->init = varinit();
-    if (var->init && ty->kind == TYPE_ARRAY && var->init->vec == NULL &&
-        ty->base->kind != TYPE_CHAR)
+    if (var->init && ty->kind == TYPE_ARRAY && var->init->vec == NULL && ty->base->kind != TYPE_CHAR)
       error_at(id->pos, "invalid initializer for an array");
     expect(TK_SEMICOLON);
     return init_local_variable(var, id);
@@ -610,8 +587,7 @@ Node *primary() {
       node->func = find_function(tok);
       if (node->func == NULL) {
         // TODO
-        // error_at(tok->pos, "undefined function: '%.*s'", tok->token_length,
-        //     tok->pos);
+        // error_at(tok->pos, "undefined function: '%.*s'", tok->token_length, tok->pos);
         node->func = calloc(1, sizeof(Function));
         node->func->name = tok->pos;
         node->func->name_length = tok->token_length;
@@ -632,8 +608,7 @@ Node *primary() {
     } else { // variable
       Variable *var = find_variable(tok);
       if (!var)
-        error_at(tok->pos, "undefined identifier: '%.*s'", tok->token_length,
-                 tok->pos);
+        error_at(tok->pos, "undefined identifier: '%.*s'", tok->token_length, tok->pos);
       return new_node_var(tok, var);
     }
   }
@@ -646,8 +621,7 @@ Node *primary() {
   if ((tok = consume(TK_NUM)))
     return new_node_num(tok, tok->val);
 
-  error_at(token->pos, "primary expected but not found", token->token_length,
-           token->pos);
+  error_at(token->pos, "primary expected but not found", token->token_length, token->pos);
   return NULL;
 }
 

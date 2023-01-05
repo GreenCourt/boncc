@@ -17,10 +17,37 @@ Vector *strings;
 
 const char *token_str[] = {
     // corresponding to TokenKind
-    "+",   "-",   "*",    "/",      "&",      "==",         "!=",     "<",
-    "<=",  ">",   ">=",   "=",      "(",      ")",          "{",      "}",
-    "[",   "]",   ";",    ",",      "return", "if",         "else",   "while",
-    "for", "int", "char", "sizeof", "str",    "identifier", "number",
+    "+",
+    "-",
+    "*",
+    "/",
+    "&",
+    "==",
+    "!=",
+    "<",
+    "<=",
+    ">",
+    ">=",
+    "=",
+    "(",
+    ")",
+    "{",
+    "}",
+    "[",
+    "]",
+    ";",
+    ",",
+    "return",
+    "if",
+    "else",
+    "while",
+    "for",
+    "int",
+    "char",
+    "sizeof",
+    "str",
+    "identifier",
+    "number",
 };
 
 void error_at(char *loc, char *fmt, ...) {
@@ -41,8 +68,7 @@ void error_at(char *loc, char *fmt, ...) {
 
   int column = loc - line_start + 1;
 
-  int indent =
-      fprintf(stderr, "%s:%d:%d: ", source_file_name, line_number, column);
+  int indent = fprintf(stderr, "%s:%d:%d: ", source_file_name, line_number, column);
   fprintf(stderr, "%.*s\n", (int)(line_end - line_start), line_start);
 
   int pos = loc - line_start + indent;
@@ -62,14 +88,9 @@ void error(char *fmt, ...) {
   exit(1);
 }
 
-bool is_alphabet(char c) {
-  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
-}
+bool is_alphabet(char c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
 
-bool is_alphanumeric_or_underscore(char c) {
-  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || isdigit(c) ||
-         c == '_';
-}
+bool is_alphanumeric_or_underscore(char c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || isdigit(c) || c == '_'; }
 
 char *read_file(char *path) {
   FILE *fp;

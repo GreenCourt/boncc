@@ -20,10 +20,8 @@ static Node *new_node(NodeKind kind, Node *lhs, Node *rhs, Type *type) {
 }
 
 Node *new_node_mul(Token *tok, Node *lhs, Node *rhs) {
-  bool left_is_ptr =
-      lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
-  bool right_is_ptr =
-      rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+  bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
+  bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   if (left_is_ptr || right_is_ptr)
     error_at(tok->pos, "invalid operands to binary * operator");
   Node *node = new_node(ND_MUL, lhs, rhs, base_type(TYPE_INT));
@@ -32,10 +30,8 @@ Node *new_node_mul(Token *tok, Node *lhs, Node *rhs) {
 }
 
 Node *new_node_div(Token *tok, Node *lhs, Node *rhs) {
-  bool left_is_ptr =
-      lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
-  bool right_is_ptr =
-      rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+  bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
+  bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   if (left_is_ptr || right_is_ptr)
     error_at(tok->pos, "invalid operands to binary / operator");
   Node *node = new_node(ND_DIV, lhs, rhs, base_type(TYPE_INT));
@@ -44,13 +40,10 @@ Node *new_node_div(Token *tok, Node *lhs, Node *rhs) {
 }
 
 Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
-  bool left_is_ptr =
-      lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
-  bool right_is_ptr =
-      rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+  bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
+  bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   if (left_is_ptr && right_is_ptr)
-    error_at(tok->pos,
-             "invalid operands to binary + operator (pointer and pointer)");
+    error_at(tok->pos, "invalid operands to binary + operator (pointer and pointer)");
 
   Type *type;
   if (lhs->type->kind == TYPE_PTR)
@@ -65,11 +58,9 @@ Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
     type = lhs->type;
 
   if (left_is_ptr)
-    rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size),
-                   base_type(TYPE_INT));
+    rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size), base_type(TYPE_INT));
   else if (right_is_ptr)
-    lhs = new_node(ND_MUL, lhs, new_node_num(NULL, rhs->type->base->size),
-                   base_type(TYPE_INT));
+    lhs = new_node(ND_MUL, lhs, new_node_num(NULL, rhs->type->base->size), base_type(TYPE_INT));
 
   Node *node = new_node(ND_ADD, lhs, rhs, type);
   node->token = tok;
@@ -77,10 +68,8 @@ Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
 }
 
 Node *new_node_sub(Token *tok, Node *lhs, Node *rhs) {
-  bool left_is_ptr =
-      lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
-  bool right_is_ptr =
-      rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+  bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
+  bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
 
   if (!left_is_ptr && right_is_ptr)
     error_at(tok->pos, "pointer is not allowed here");
@@ -96,13 +85,11 @@ Node *new_node_sub(Token *tok, Node *lhs, Node *rhs) {
     type = lhs->type;
 
   if (left_is_ptr && !right_is_ptr)
-    rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size),
-                   base_type(TYPE_INT));
+    rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size), base_type(TYPE_INT));
 
   Node *node = new_node(ND_SUB, lhs, rhs, type);
   if (left_is_ptr && right_is_ptr)
-    node =
-        new_node(ND_DIV, node, new_node_num(NULL, lhs->type->base->size), type);
+    node = new_node(ND_DIV, node, new_node_num(NULL, lhs->type->base->size), type);
   node->token = tok;
   return node;
 }

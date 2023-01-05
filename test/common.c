@@ -4,8 +4,7 @@
 void verify(int expected, int actual, char *file_name, int line_number) {
   if (expected == actual)
     return;
-  printf("%s:%d: %d exected but got %d\n", file_name, line_number, expected,
-         actual);
+  printf("%s:%d: %d exected but got %d\n", file_name, line_number, expected, actual);
   return;
 }
 

@@ -49,7 +49,10 @@ struct Token {
   char *string_literal; // null terminated, only for TK_STR
 };
 
-typedef enum { TYPE_PTR, TYPE_ARRAY, TYPE_INT, TYPE_CHAR } TypeKind;
+typedef enum { TYPE_PTR,
+               TYPE_ARRAY,
+               TYPE_INT,
+               TYPE_CHAR } TypeKind;
 
 typedef struct Type Type;
 struct Type {
@@ -66,7 +69,9 @@ struct VariableInit {
   Node *expr;
 };
 
-typedef enum { VK_GLOBAL, VK_LOCAL, VK_STRLIT } VariableKind;
+typedef enum { VK_GLOBAL,
+               VK_LOCAL,
+               VK_STRLIT } VariableKind;
 typedef struct Variable Variable;
 struct Variable {
   char *name;

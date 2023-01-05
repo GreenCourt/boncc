@@ -18,10 +18,8 @@ void gen_left_value(Node *node) {
     if (node->variable->kind == VK_LOCAL) {
       printf("  lea rax, [rbp-%d]\n", node->variable->offset);
       printf("  push rax\n");
-    } else if (node->variable->kind == VK_GLOBAL ||
-               node->variable->kind == VK_STRLIT) {
-      printf("  lea rax, %.*s[rip]\n", node->variable->name_length,
-             node->variable->name);
+    } else if (node->variable->kind == VK_GLOBAL || node->variable->kind == VK_STRLIT) {
+      printf("  lea rax, %.*s[rip]\n", node->variable->name_length, node->variable->name);
       printf("  push rax\n");
     } else
       assert(false);
@@ -194,12 +192,10 @@ void gen_global_init(VariableInit *init, Type *type) {
 
   if (type->kind == TYPE_ARRAY) {
     if (init->expr) {
-      if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR &&
-          init->expr->variable->kind == VK_STRLIT) {
+      if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == VK_STRLIT) {
         char *lit = init->expr->variable->string_literal;
         if (type->array_size != strlen(lit) + 1)
-          error_at(init->expr->token->pos,
-                   "miss-match between array-size and string-length");
+          error_at(init->expr->token->pos, "miss-match between array-size and string-length");
         printf("  .ascii \"%s\\0\"\n", lit);
         return;
       }
@@ -223,10 +219,8 @@ void gen_global_init(VariableInit *init, Type *type) {
     } else
       assert(false);
   } else if (type->kind == TYPE_PTR) {
-    if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR &&
-        init->expr->variable->kind == VK_STRLIT) {
-      printf("  .quad %.*s\n", init->expr->variable->name_length,
-             init->expr->variable->name);
+    if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == VK_STRLIT) {
+      printf("  .quad %.*s\n", init->expr->variable->name_length, init->expr->variable->name);
       return;
     }
     error("initilizing a global pointer is not implemented."); // TODO

@@ -14,8 +14,7 @@ Token *new_token(TokenKind kind, Token *cur, char *pos, int len) {
 
 bool compare(char *p, const char *keyword) {
   int len = strlen(keyword);
-  return strncmp(p, keyword, len) == 0 &&
-         !is_alphanumeric_or_underscore(p[len]);
+  return strncmp(p, keyword, len) == 0 && !is_alphanumeric_or_underscore(p[len]);
 }
 
 Token *tokenize(char *p) {

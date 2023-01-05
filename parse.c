@@ -6,15 +6,15 @@
 
 /* BNF
 program    = toplevel*
-toplevel   = func | global
+toplevel   = func | vardec
 type       = "int" "*"*
-global     = type ident ("[" num "]")* ("=" varinit)? ";"
+vardec     = type ident ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" num "]")* ("=" varinit)?)* ";"
 varinit    = expr
              | "{" varinit ("," varinit)* "}"
 func       = type ident "(" funcparam? ")" "{" stmt* "}"
 funcparam  = type ident ("[" num? "]")* ("," type ident ("[" num? "]")* )*
 stmt       = expr ";"
-             | type ident ("[" num "]")* ("=" varinit)? ";"
+             | vardec
              | "{" stmt* "}"
              | "if" "(" expr ")" stmt ("else" stmt)?
              | "while" "(" expr ")" stmt
@@ -160,6 +160,7 @@ Variable *new_variable(Token *tok, Type *type, VariableKind kind) {
   var->name_length = tok->token_length;
   var->type = type;
   var->kind = kind;
+  var->token = tok;
   return var;
 }
 
@@ -181,15 +182,17 @@ Variable *new_global(Token *tok, Type *type) {
   return var;
 }
 
-Variable *new_string_literal(char *literal) {
+Variable *new_string_literal(Token *tok) {
   static int idx = 0;
+  assert(tok->kind == TK_STR);
   Variable *var = calloc(1, sizeof(Variable));
   var->name = calloc(15, sizeof(char));
   sprintf(var->name, ".LC%d", idx++);
   var->name_length = strlen(var->name);
-  var->type = array_type(base_type(TYPE_CHAR), strlen(literal) + 1);
+  var->type = array_type(base_type(TYPE_CHAR), strlen(tok->string_literal) + 1);
   var->kind = VK_STRLIT;
-  var->string_literal = literal;
+  var->string_literal = tok->string_literal;
+  var->token = tok;
   vector_push(strings, &var);
   return var;
 }
@@ -246,20 +249,44 @@ void program() {
     toplevel();
 }
 
-void toplevel() {
-  Type *type = expect_type();
-  Token *name = expect(TK_IDENT);
-  if (token->kind == TK_LPAREN) {
-    func(type, name);
-  } else {
+Vector *vardec(Type *type, Token *name, VariableKind kind) {
+  Type *base = type;
+  while (base->kind == TYPE_ARRAY || base->kind == TYPE_PTR)
+    base = base->base;
+
+  Vector *variables = new_vector(0, sizeof(Variable *));
+  while (true) {
     type = consume_array_brackets(type);
-    Variable *var = new_global(name, type);
+    Variable *var = NULL;
+    if (kind == VK_GLOBAL)
+      var = new_global(name, type);
+    else if (kind == VK_LOCAL)
+      var = new_local(name, type);
+    else
+      assert(false);
     if (consume(TK_ASSIGN))
       var->init = varinit();
     if (var->init && type->kind == TYPE_ARRAY && var->init->vec == NULL && type->base->kind != TYPE_CHAR)
       error_at(name->pos, "invalid initializer for an array");
-    expect(TK_SEMICOLON);
+    vector_push(variables, &var);
+    if (!consume(TK_COMMA))
+      break;
+    type = base;
+    while (consume(TK_STAR))
+      type = pointer_type(type);
+    name = consume(TK_IDENT);
   }
+  expect(TK_SEMICOLON);
+  return variables;
+}
+
+void toplevel() {
+  Type *type = expect_type();
+  Token *name = expect(TK_IDENT);
+  if (token->kind == TK_LPAREN)
+    func(type, name);
+  else
+    vardec(type, name, VK_GLOBAL);
 }
 
 void func(Type *type, Token *name) {
@@ -320,13 +347,13 @@ VariableInit *varinit() {
   return init;
 }
 
-Node *init_local_variable(Variable *var, Token *var_tok) {
+Node *init_local_variable(Variable *var) {
   if (var->init == NULL)
     return NULL;
 
   if (var->type->kind == TYPE_ARRAY) {
     if (var->type->base->kind == TYPE_ARRAY)
-      error_at(var_tok->pos, "initilizing an multi-dimensional array is not implemented.");
+      error_at(var->token->pos, "initilizing an multi-dimensional array is not implemented.");
     if (var->init->expr) {
       if (var->type->base->kind == TYPE_CHAR && var->init->expr->kind == ND_VAR && var->init->expr->variable->kind == VK_STRLIT) {
         Node *node = calloc(1, sizeof(Node));
@@ -335,7 +362,7 @@ Node *init_local_variable(Variable *var, Token *var_tok) {
 
         char *lit = var->init->expr->variable->string_literal;
         if (var->type->array_size != strlen(lit) + 1)
-          error_at(var_tok->pos, "miss-match between array-size and string-length");
+          error_at(var->token->pos, "miss-match between array-size and string-length");
 
         for (int i = 0; i < (int)var->type->array_size; ++i) {
           Node *s = new_node_assign(NULL, new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var), new_node_num(NULL, i))), new_node_num(NULL, (int)lit[i]));
@@ -355,7 +382,7 @@ Node *init_local_variable(Variable *var, Token *var_tok) {
         if (i < var->init->vec->size) {
           VariableInit *init = *(VariableInit **)vector_get(var->init->vec, i);
           if (init->vec)
-            error_at(var_tok->pos, "invalid array initializer (multi-dimension is not implemented)");
+            error_at(var->token->pos, "invalid array initializer (multi-dimension is not implemented)");
           // TODO type checking
           Node *s = new_node_assign(NULL, new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var), new_node_num(NULL, i))), init->expr);
           vector_push(node->blk_stmts, &s);
@@ -401,14 +428,23 @@ Node *stmt() {
     return node;
   } else if ((ty = consume_type())) {
     Token *id = expect(TK_IDENT);
-    ty = consume_array_brackets(ty);
-    Variable *var = new_local(id, ty);
-    if (consume(TK_ASSIGN))
-      var->init = varinit();
-    if (var->init && ty->kind == TYPE_ARRAY && var->init->vec == NULL && ty->base->kind != TYPE_CHAR)
-      error_at(id->pos, "invalid initializer for an array");
-    expect(TK_SEMICOLON);
-    return init_local_variable(var, id);
+    Vector *vars = vardec(ty, id, VK_LOCAL);
+    assert(vars->size > 0);
+    if (vars->size == 1) {
+      Variable *var = *(Variable **)vector_get(vars, 0);
+      return init_local_variable(var);
+    } else {
+      Node *node = calloc(1, sizeof(Node));
+      node->kind = ND_BLOCK;
+      node->blk_stmts = new_vector(0, sizeof(Node *));
+      for (int i = 0; i < vars->size; ++i) {
+        Variable *var = *(Variable **)vector_get(vars, i);
+        Node *s = init_local_variable(var);
+        if (s)
+          vector_push(node->blk_stmts, &s);
+      }
+      return node;
+    }
   } else {
     Node *node = expr();
     expect(TK_SEMICOLON);
@@ -614,7 +650,7 @@ Node *primary() {
   }
 
   if ((tok = consume(TK_STR))) {
-    Variable *var = new_string_literal(tok->string_literal);
+    Variable *var = new_string_literal(tok);
     return new_node_var(tok, var);
   }
 

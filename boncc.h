@@ -78,6 +78,7 @@ struct Variable {
   int name_length;
   VariableKind kind;
   Type *type;
+  Token *token;         // for error messages
   int offset;           // only for VK_LOCAL
   char *string_literal; // null terminated, only for VK_STRLIT
   VariableInit *init;   // VK_GLOBAL, VK_LOCAL

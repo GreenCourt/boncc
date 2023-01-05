@@ -191,5 +191,19 @@ int main() {
     verify(1, x[1], __FILE__, __LINE__);
     verify(2, x[2], __FILE__, __LINE__);
   }
+  {
+    int x[3] = {1, 2, 3}, *p[4], a = 2, *t;
+    int **d, b;
+    verify(12, sizeof(x), __FILE__, __LINE__);
+    verify(32, sizeof(p), __FILE__, __LINE__);
+    verify(4, sizeof(a), __FILE__, __LINE__);
+    verify(8, sizeof(t), __FILE__, __LINE__);
+    verify(8, sizeof(d), __FILE__, __LINE__);
+    verify(4, sizeof(b), __FILE__, __LINE__);
+    verify(1, x[0], __FILE__, __LINE__);
+    verify(2, x[1], __FILE__, __LINE__);
+    verify(3, x[2], __FILE__, __LINE__);
+    verify(2, a, __FILE__, __LINE__);
+  }
   return 0;
 }

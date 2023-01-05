@@ -223,8 +223,13 @@ void gen_global_init(VariableInit *init, Type *type) {
     } else
       assert(false);
   } else if (type->kind == TYPE_PTR) {
-    // TODO
-    error("initilizing a global pointer is not implemented.");
+    if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR &&
+        init->expr->variable->kind == VK_STRLIT) {
+      printf("  .quad %.*s\n", init->expr->variable->name_length,
+             init->expr->variable->name);
+      return;
+    }
+    error("initilizing a global pointer is not implemented."); // TODO
   } else if (type->kind == TYPE_INT || type->kind == TYPE_CHAR) {
     while (init->vec) {
       assert(init->vec->size > 0);

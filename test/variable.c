@@ -185,5 +185,11 @@ int main() {
     verify(8, x[1], __FILE__, __LINE__);
     verify(0, x[2], __FILE__, __LINE__);
   }
+  {
+    int x[3] = {1, x[0], 2};
+    verify(1, x[0], __FILE__, __LINE__);
+    verify(1, x[1], __FILE__, __LINE__);
+    verify(2, x[2], __FILE__, __LINE__);
+  }
   return 0;
 }

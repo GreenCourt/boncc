@@ -156,31 +156,29 @@ Variable *find_variable(Token *tok) {
   return find_global(tok);
 }
 
-Variable *new_variable(Token *tok, Type *type, VariableKind kind,
-                       VariableInit *init) {
+Variable *new_variable(Token *tok, Type *type, VariableKind kind) {
   Variable *var = calloc(1, sizeof(Variable));
   var->name = tok->pos;
   var->name_length = tok->token_length;
   var->type = type;
   var->kind = kind;
-  var->init = init;
   return var;
 }
 
-Variable *new_local(Token *tok, Type *type, VariableInit *init) {
+Variable *new_local(Token *tok, Type *type) {
   if (find_local_in_scope(tok, current_scope))
     error_at(tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, VK_LOCAL, init);
+  Variable *var = new_variable(tok, type, VK_LOCAL);
   var->offset = offset + type->size;
   offset = var->offset;
   vector_push(current_scope->local_variables, &var);
   return var;
 }
 
-Variable *new_global(Token *tok, Type *type, VariableInit *init) {
+Variable *new_global(Token *tok, Type *type) {
   if (find_global(tok))
     error_at(tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, VK_GLOBAL, init);
+  Variable *var = new_variable(tok, type, VK_GLOBAL);
   vector_push(globals, &var);
   return var;
 }
@@ -257,14 +255,13 @@ void toplevel() {
     func(type, name);
   } else {
     type = consume_array_brackets(type);
-    VariableInit *init = NULL;
+    Variable *var = new_global(name, type);
     if (consume(TK_ASSIGN))
-      init = varinit();
-    if (init && type->kind == TYPE_ARRAY && init->vec == NULL &&
+      var->init = varinit();
+    if (var->init && type->kind == TYPE_ARRAY && var->init->vec == NULL &&
         type->base->kind != TYPE_CHAR)
       error_at(name->pos, "invalid initializer for an array");
     expect(TK_SEMICOLON);
-    new_global(name, type, init);
   }
 }
 
@@ -303,7 +300,7 @@ void funcparam(Vector *params) {
       ty = pointer_type(ty); // array as a pointer
       expect(TK_RBRACKET);
     }
-    Variable *var = new_local(id, ty, NULL);
+    Variable *var = new_local(id, ty);
     vector_push(params, &var);
   } while (consume(TK_COMMA));
 }
@@ -427,14 +424,13 @@ Node *stmt() {
   } else if ((ty = consume_type())) {
     Token *id = expect(TK_IDENT);
     ty = consume_array_brackets(ty);
-    VariableInit *init = NULL;
+    Variable *var = new_local(id, ty);
     if (consume(TK_ASSIGN))
-      init = varinit();
-    if (init && ty->kind == TYPE_ARRAY && init->vec == NULL &&
+      var->init = varinit();
+    if (var->init && ty->kind == TYPE_ARRAY && var->init->vec == NULL &&
         ty->base->kind != TYPE_CHAR)
       error_at(id->pos, "invalid initializer for an array");
     expect(TK_SEMICOLON);
-    Variable *var = new_local(id, ty, init);
     return init_local_variable(var, id);
   } else {
     Node *node = expr();

@@ -175,6 +175,15 @@ int main() {
     int x = {1};
     verify(1, x, __FILE__, __LINE__);
   }
-
+  {
+    int a = 3;
+    int b = a * a + 4 / 2;
+    int x[3] = {1, b - a};
+    verify(3, a, __FILE__, __LINE__);
+    verify(11, b, __FILE__, __LINE__);
+    verify(1, x[0], __FILE__, __LINE__);
+    verify(8, x[1], __FILE__, __LINE__);
+    verify(0, x[2], __FILE__, __LINE__);
+  }
   return 0;
 }

@@ -59,5 +59,17 @@ int main() {
     b;
     verify(20, b, __FILE__, __LINE__);
   }
+  {
+    int s = 0;
+    for (int i = 1; i <= 10; i = i + 1)
+      s = s + i;
+    verify(55, s, __FILE__, __LINE__);
+  }
+  {
+    int s = 0;
+    for (int i = 1, *p; i <= 10; i = i + 1)
+      s = s + sizeof(p);
+    verify(80, s, __FILE__, __LINE__);
+  }
   return 0;
 }

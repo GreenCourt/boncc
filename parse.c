@@ -18,7 +18,7 @@ stmt       = expr ";"
              | "{" stmt* "}"
              | "if" "(" expr ")" stmt ("else" stmt)?
              | "while" "(" expr ")" stmt
-             | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+             | "for" "(" (expr | vardec)? ";" expr? ";" expr? ")" stmt
              | "return" expr ";"
 expr       = assign
 assign     = equality ("=" assign)?
@@ -274,7 +274,7 @@ Vector *vardec(Type *type, Token *name, VariableKind kind) {
     type = base;
     while (consume(TK_STAR))
       type = pointer_type(type);
-    name = consume(TK_IDENT);
+    name = expect(TK_IDENT);
   }
   expect(TK_SEMICOLON);
   return variables;
@@ -407,6 +407,37 @@ Node *init_local_variable(Variable *var) {
   return NULL;
 }
 
+Node *init_multiple_local_variables(Vector *variables) {
+  assert(variables->size > 0);
+  bool no_init = true;
+  for (int i = 0; i < variables->size; ++i) {
+    Variable *var = *(Variable **)vector_get(variables, i);
+    if (var->init) {
+      no_init = false;
+      break;
+    }
+  }
+  if (no_init)
+    return NULL;
+
+  if (variables->size == 1) {
+    Variable *var = *(Variable **)vector_get(variables, 0);
+    return init_local_variable(var);
+  }
+
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_BLOCK;
+  node->blk_stmts = new_vector(0, sizeof(Node *));
+
+  for (int i = 0; i < variables->size; ++i) {
+    Variable *var = *(Variable **)vector_get(variables, i);
+    Node *s = init_local_variable(var);
+    if (s)
+      vector_push(node->blk_stmts, &s);
+  }
+  return node;
+}
+
 Node *stmt() {
   Type *ty;
   if (consume(TK_LBRACE)) {
@@ -429,22 +460,7 @@ Node *stmt() {
   } else if ((ty = consume_type())) {
     Token *id = expect(TK_IDENT);
     Vector *vars = vardec(ty, id, VK_LOCAL);
-    assert(vars->size > 0);
-    if (vars->size == 1) {
-      Variable *var = *(Variable **)vector_get(vars, 0);
-      return init_local_variable(var);
-    } else {
-      Node *node = calloc(1, sizeof(Node));
-      node->kind = ND_BLOCK;
-      node->blk_stmts = new_vector(0, sizeof(Node *));
-      for (int i = 0; i < vars->size; ++i) {
-        Variable *var = *(Variable **)vector_get(vars, i);
-        Node *s = init_local_variable(var);
-        if (s)
-          vector_push(node->blk_stmts, &s);
-      }
-      return node;
-    }
+    return init_multiple_local_variables(vars);
   } else {
     Node *node = expr();
     expect(TK_SEMICOLON);
@@ -505,8 +521,15 @@ Node *stmt_for() {
 
   new_scope();
   if (!consume(TK_SEMICOLON)) {
-    node->init = expr();
-    expect(TK_SEMICOLON);
+    Type *type = consume_type();
+    if (type) {
+      Token *name = expect(TK_IDENT);
+      Vector *vars = vardec(type, name, VK_LOCAL);
+      node->init = init_multiple_local_variables(vars);
+    } else {
+      node->init = expr();
+      expect(TK_SEMICOLON);
+    }
   }
 
   if (!consume(TK_SEMICOLON)) {

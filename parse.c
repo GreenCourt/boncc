@@ -8,7 +8,7 @@
 program    = toplevel*
 toplevel   = func | vardec
 type       = "int" "*"*
-vardec     = type ident ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" num "]")* ("=" varinit)?)* ";"
+vardec     = type ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
 varinit    = expr
              | "{" varinit ("," varinit)* "}"
 func       = type ident "(" funcparam? ")" "{" stmt* "}"

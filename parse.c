@@ -101,9 +101,15 @@ Type *consume_type() {
 Type *consume_array_brackets(Type *type) {
   if (!consume(TK_LBRACKET))
     return type;
-  int size = expect_number();
-  expect(TK_RBRACKET);
-  return array_type(consume_array_brackets(type), size);
+  Token *num = consume(TK_NUM);
+  if (num && num->val < 0)
+    error_at(num->pos, "invalid array size");
+  int size = num ? num->val : -1; // -1 will be assumed by rhs initializer
+  Token *r = expect(TK_RBRACKET);
+  type = consume_array_brackets(type);
+  if (type->size < 0)
+    error_at(r->pos, "array size assumption is allowed only in the first dimension");
+  return array_type(type, size);
 }
 
 Type *expect_type() {
@@ -168,10 +174,15 @@ Variable *new_local(Token *tok, Type *type) {
   if (find_local_in_scope(tok, current_scope))
     error_at(tok->pos, "duplicated identifier");
   Variable *var = new_variable(tok, type, VK_LOCAL);
-  var->offset = offset + type->size;
-  offset = var->offset;
   vector_push(current_scope->local_variables, &var);
   return var;
+}
+
+void set_offset(Variable *var) {
+  assert(var->kind == VK_LOCAL);
+  assert(var->offset == 0);
+  var->offset = offset + var->type->size;
+  offset = var->offset;
 }
 
 Variable *new_global(Token *tok, Type *type) {
@@ -258,16 +269,40 @@ Vector *vardec(Type *type, Token *name, VariableKind kind) {
   while (true) {
     type = consume_array_brackets(type);
     Variable *var = NULL;
+
     if (kind == VK_GLOBAL)
       var = new_global(name, type);
     else if (kind == VK_LOCAL)
       var = new_local(name, type);
     else
       assert(false);
-    if (consume(TK_ASSIGN))
+
+    if (consume(TK_ASSIGN)) {
       var->init = varinit();
-    if (var->init && type->kind == TYPE_ARRAY && var->init->vec == NULL && type->base->kind != TYPE_CHAR)
-      error_at(name->pos, "invalid initializer for an array");
+      if (type->kind == TYPE_ARRAY) {
+        if (var->init->vec == NULL) {
+          if (type->base->kind != TYPE_CHAR) {
+            error_at(name->pos, "invalid initializer for an array");
+          } else if (var->init->expr->kind != ND_VAR || var->init->expr->variable->kind != VK_STRLIT) {
+            error_at(name->pos, "invalid initializer for an array");
+          } else if (type->array_size < 0) {
+            type->array_size = var->init->expr->variable->type->array_size;
+            type->size = var->init->expr->variable->type->size;
+          }
+        } else if (type->array_size < 0) {
+          type->array_size = var->init->vec->size;
+          type->size = type->base->size * type->array_size;
+        }
+        assert(type->size >= 0);
+        assert(type->array_size >= 0);
+      }
+    } else if (type->array_size < 0) {
+      error_at(name->pos, "invalid array size");
+    }
+
+    if (kind == VK_LOCAL)
+      set_offset(var);
+
     vector_push(variables, &var);
     if (!consume(TK_COMMA))
       break;
@@ -325,6 +360,7 @@ void funcparam(Vector *params) {
       expect(TK_RBRACKET);
     }
     Variable *var = new_local(id, ty);
+    set_offset(var);
     vector_push(params, &var);
   } while (consume(TK_COMMA));
 }
@@ -361,7 +397,7 @@ Node *init_local_variable(Variable *var) {
         node->blk_stmts = new_vector(0, sizeof(Node *));
 
         char *lit = var->init->expr->variable->string_literal;
-        if (var->type->array_size != strlen(lit) + 1)
+        if (var->type->array_size != (int)strlen(lit) + 1)
           error_at(var->token->pos, "miss-match between array-size and string-length");
 
         for (int i = 0; i < (int)var->type->array_size; ++i) {

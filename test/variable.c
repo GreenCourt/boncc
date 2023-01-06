@@ -6,6 +6,8 @@ int global_array20[20];
 int global_2darray[2][2] = {{1, 2}, {(27 / 3 == 9) * 3}};
 int global_2darray_zero[2][2] = {(3 > 1) + (2 <= 2) - (5 != 4) - (3 >= 2)};
 int global_3darray[2][2][3] = {{{1, 2}, {4, 5, 6}}};
+int global_array_size_assumption[] = {1, 2, 3};
+int global_2darray_size_assumption[][2] = {{1, 2}, {3}};
 int *global_int_pointer;
 
 int main() {
@@ -42,6 +44,17 @@ int main() {
   verify(0, global_3darray[1][1][0], __FILE__, __LINE__);
   verify(0, global_3darray[1][1][1], __FILE__, __LINE__);
   verify(0, global_3darray[1][1][2], __FILE__, __LINE__);
+
+  verify(12, sizeof(global_array_size_assumption), __FILE__, __LINE__);
+  verify(1, global_array_size_assumption[0], __FILE__, __LINE__);
+  verify(2, global_array_size_assumption[1], __FILE__, __LINE__);
+  verify(3, global_array_size_assumption[2], __FILE__, __LINE__);
+
+  verify(16, sizeof(global_2darray_size_assumption), __FILE__, __LINE__);
+  verify(1, global_2darray_size_assumption[0][0], __FILE__, __LINE__);
+  verify(2, global_2darray_size_assumption[0][1], __FILE__, __LINE__);
+  verify(3, global_2darray_size_assumption[1][0], __FILE__, __LINE__);
+  verify(0, global_2darray_size_assumption[1][1], __FILE__, __LINE__);
 
   {
     int a;
@@ -204,6 +217,13 @@ int main() {
     verify(2, x[1], __FILE__, __LINE__);
     verify(3, x[2], __FILE__, __LINE__);
     verify(2, a, __FILE__, __LINE__);
+  }
+  {
+    int x[] = {1, x[0], 2};
+    verify(1, x[0], __FILE__, __LINE__);
+    verify(1, x[1], __FILE__, __LINE__);
+    verify(2, x[2], __FILE__, __LINE__);
+    verify(12, sizeof(x), __FILE__, __LINE__);
   }
   return 0;
 }

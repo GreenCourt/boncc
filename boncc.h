@@ -59,7 +59,7 @@ struct Type {
   TypeKind kind;
   int size;          // sizeof
   struct Type *base; // only for TYPE_PTR and TYPE_ARRAY
-  size_t array_size; // number of elements for TYPE_ARRAY
+  int array_size;    // number of elements for TYPE_ARRAY
 };
 
 typedef struct Node Node;

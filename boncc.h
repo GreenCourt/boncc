@@ -65,8 +65,9 @@ struct Type {
 typedef struct Node Node;
 typedef struct VariableInit VariableInit;
 struct VariableInit {
-  Vector *vec;
   Node *expr;
+  Vector *vec;
+  bool nested; // true if vec is nested
 };
 
 typedef enum { VK_GLOBAL,

@@ -6,6 +6,9 @@ int global_array20[20];
 int global_2darray[2][2] = {{1, 2}, {(27 / 3 == 9) * 3}};
 int global_2darray_zero[2][2] = {(3 > 1) + (2 <= 2) - (5 != 4) - (3 >= 2)};
 int global_3darray[2][2][3] = {{{1, 2}, {4, 5, 6}}};
+char global_3darray2[2][2][3] = {{1, 2}, {4, 5}};
+int global_3darray3[][2][3] = {{1, 2}, {4, 5, 6, 7, 8, 9}};
+char global_3darray4[1][2][3] = {1, 2, 3, 4, 5};
 int global_array_size_assumption[] = {1, 2, 3};
 int global_2darray_size_assumption[][2] = {{1, 2}, {3}};
 int *global_int_pointer;
@@ -55,6 +58,42 @@ int main() {
   verify(2, global_2darray_size_assumption[0][1], __FILE__, __LINE__);
   verify(3, global_2darray_size_assumption[1][0], __FILE__, __LINE__);
   verify(0, global_2darray_size_assumption[1][1], __FILE__, __LINE__);
+
+  verify(12, sizeof(global_3darray2), __FILE__, __LINE__);
+  verify(1, global_3darray2[0][0][0], __FILE__, __LINE__);
+  verify(2, global_3darray2[0][0][1], __FILE__, __LINE__);
+  verify(0, global_3darray2[0][0][2], __FILE__, __LINE__);
+  verify(0, global_3darray2[0][1][0], __FILE__, __LINE__);
+  verify(0, global_3darray2[0][1][1], __FILE__, __LINE__);
+  verify(0, global_3darray2[0][1][2], __FILE__, __LINE__);
+  verify(4, global_3darray2[1][0][0], __FILE__, __LINE__);
+  verify(5, global_3darray2[1][0][1], __FILE__, __LINE__);
+  verify(0, global_3darray2[1][0][2], __FILE__, __LINE__);
+  verify(0, global_3darray2[1][1][0], __FILE__, __LINE__);
+  verify(0, global_3darray2[1][1][1], __FILE__, __LINE__);
+  verify(0, global_3darray2[1][1][2], __FILE__, __LINE__);
+
+  verify(48, sizeof(global_3darray3), __FILE__, __LINE__);
+  verify(1, global_3darray3[0][0][0], __FILE__, __LINE__);
+  verify(2, global_3darray3[0][0][1], __FILE__, __LINE__);
+  verify(0, global_3darray3[0][0][2], __FILE__, __LINE__);
+  verify(0, global_3darray3[0][1][0], __FILE__, __LINE__);
+  verify(0, global_3darray3[0][1][1], __FILE__, __LINE__);
+  verify(0, global_3darray3[0][1][2], __FILE__, __LINE__);
+  verify(4, global_3darray3[1][0][0], __FILE__, __LINE__);
+  verify(5, global_3darray3[1][0][1], __FILE__, __LINE__);
+  verify(6, global_3darray3[1][0][2], __FILE__, __LINE__);
+  verify(7, global_3darray3[1][1][0], __FILE__, __LINE__);
+  verify(8, global_3darray3[1][1][1], __FILE__, __LINE__);
+  verify(9, global_3darray3[1][1][2], __FILE__, __LINE__);
+
+  verify(6, sizeof(global_3darray4), __FILE__, __LINE__);
+  verify(1, global_3darray4[0][0][0], __FILE__, __LINE__);
+  verify(2, global_3darray4[0][0][1], __FILE__, __LINE__);
+  verify(3, global_3darray4[0][0][2], __FILE__, __LINE__);
+  verify(4, global_3darray4[0][1][0], __FILE__, __LINE__);
+  verify(5, global_3darray4[0][1][1], __FILE__, __LINE__);
+  verify(0, global_3darray4[0][1][2], __FILE__, __LINE__);
 
   {
     int a;

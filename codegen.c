@@ -193,39 +193,58 @@ void gen_global_init(VariableInit *init, Type *type) {
   if (type->kind == TYPE_ARRAY) {
     if (init->expr) {
       if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == VK_STRLIT) {
+        // initilize the array as a string
         char *lit = init->expr->variable->string_literal;
         if (type->array_size != (int)strlen(lit) + 1)
           error_at(init->expr->token->pos, "miss-match between array-size and string-length");
         printf("  .ascii \"%s\\0\"\n", lit);
-        return;
+      } else {
+        // When init->expr is given for an array, only the first element will be initialized.
+        Type *ty = type;
+        while (ty->kind == TYPE_ARRAY)
+          ty = ty->base;
+        gen_global_init(init, ty);
+        printf("  .zero %d\n", type->size - ty->size);
       }
-
-      Type *ty = type;
-      while (ty->kind == TYPE_ARRAY)
-        ty = ty->base;
-      gen_global_init(init, ty);
-      printf("  .zero %d\n", type->size - ty->size);
     } else if (init->vec) {
       assert(init->vec->size > 0);
-      int zero_size = type->size;
-      for (int i = 0; i < (int)type->array_size; i++) {
-        if (i >= init->vec->size) {
-          printf("  .zero %d\n", zero_size);
-          break;
+      if (init->nested) {
+        // init arrays recursively
+        int zero_size = type->size;
+        int len = type->array_size;
+        if (len > init->vec->size)
+          len = init->vec->size;
+        for (int i = 0; i < len; i++) {
+          zero_size -= type->base->size;
+          gen_global_init(*(VariableInit **)vector_get(init->vec, i), type->base);
         }
-        zero_size -= type->base->size;
-        gen_global_init(*(VariableInit **)vector_get(init->vec, i), type->base);
+        if (zero_size)
+          printf("  .zero %d\n", zero_size);
+      } else {
+        // init as a one-dimensional array
+        Type *base = type;
+        while (base->kind == TYPE_ARRAY)
+          base = base->base;
+        int len = type->size / base->size;
+        if (len > init->vec->size)
+          len = init->vec->size;
+        for (int i = 0; i < len; i++)
+          gen_global_init(*(VariableInit **)vector_get(init->vec, i), base);
+        int zero_size = type->size - (base->size * len);
+        if (zero_size)
+          printf("  .zero %d\n", zero_size);
       }
     } else
       assert(false);
   } else if (type->kind == TYPE_PTR) {
     if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == VK_STRLIT) {
+      // initilize the pointer to a string-literal
       printf("  .quad %.*s\n", init->expr->variable->name_length, init->expr->variable->name);
       return;
     }
     error("initilizing a global pointer is not implemented."); // TODO
   } else if (type->kind == TYPE_INT || type->kind == TYPE_CHAR) {
-    while (init->vec) {
+    while (init->vec) { // for non-array primitive types, only the first element in the brace will be used
       assert(init->vec->size > 0);
       init = *(VariableInit **)vector_get(init->vec, 0);
     }
@@ -233,7 +252,7 @@ void gen_global_init(VariableInit *init, Type *type) {
     int val = eval(init->expr);
     if (type->kind == TYPE_INT) {
       printf("  .long %d\n", val);
-    } else if (type->kind == TYPE_INT) {
+    } else if (type->kind == TYPE_CHAR) {
       printf("  .byte %d\n", val);
     } else
       assert(false);

@@ -374,6 +374,8 @@ VariableInit *varinit() {
     init->vec = new_vector(0, sizeof(VariableInit *));
     do {
       VariableInit *i = varinit();
+      if (i->vec)
+        init->nested = true;
       vector_push(init->vec, &i);
     } while (consume(TK_COMMA));
     expect(TK_RBRACE);

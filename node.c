@@ -1,4 +1,5 @@
 #include "boncc.h"
+#include <assert.h>
 #include <stdlib.h>
 
 Node *new_node_num(Token *tok, int val) {
@@ -135,7 +136,10 @@ Node *new_node_deref(Token *tok, Node *operand) {
 }
 
 Node *new_node_assign(Token *tok, Node *lhs, Node *rhs) {
-  Node *node = new_node(ND_ASSIGN, lhs, rhs, lhs->type);
+  Type *type = lhs->type;
+  while (type->kind == TYPE_ARRAY)
+    type = type->base;
+  Node *node = new_node(ND_ASSIGN, lhs, rhs, type);
   node->token = tok;
   return node;
 }
@@ -147,4 +151,20 @@ Node *new_node_var(Token *tok, Variable *var) {
   node->type = var->type;
   node->token = tok;
   return node;
+}
+
+Node *new_node_array_set_expr(Variable *var, int idx, Node *expr) {
+  assert(var->type->kind == TYPE_ARRAY);
+  assert(idx >= 0);
+  Type *base = var->type->base;
+  while (base->kind == TYPE_ARRAY)
+    base = base->base;
+  idx *= base->size;
+  return new_node_assign(NULL, new_node_deref(NULL, new_node(ND_ADD, new_node_var(NULL, var), new_node_num(NULL, idx), pointer_type(var->type->base))), expr);
+}
+
+Node *new_node_array_set_val(Variable *var, int idx, int val) {
+  assert(var->type->kind == TYPE_ARRAY);
+  assert(idx >= 0);
+  return new_node_array_set_expr(var, idx, new_node_num(NULL, val));
 }

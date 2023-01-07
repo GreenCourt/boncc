@@ -238,10 +238,10 @@ int main() {
     verify(0, x[2], __FILE__, __LINE__);
   }
   {
-    int x[3] = {1, x[0], 2};
+    int x[3] = {1, x[0]};
     verify(1, x[0], __FILE__, __LINE__);
     verify(1, x[1], __FILE__, __LINE__);
-    verify(2, x[2], __FILE__, __LINE__);
+    verify(0, x[2], __FILE__, __LINE__);
   }
   {
     int x[3] = {1, 2, 3}, *p[4], a = 2, *t;
@@ -263,6 +263,83 @@ int main() {
     verify(1, x[1], __FILE__, __LINE__);
     verify(2, x[2], __FILE__, __LINE__);
     verify(12, sizeof(x), __FILE__, __LINE__);
+  }
+
+  {
+    int x[2][2] = {{1, 2}, {(27 / 3 == 9) * 3}};
+    verify(1, x[0][0], sizeof(x), __FILE__, __LINE__);
+    verify(2, x[0][1], sizeof(x), __FILE__, __LINE__);
+    verify(3, x[1][0], sizeof(x), __FILE__, __LINE__);
+    verify(0, x[1][1], sizeof(x), __FILE__, __LINE__);
+    verify(16, sizeof(x), __FILE__, __LINE__);
+  }
+  {
+    int x[2][2] = {(3 > 1) + (2 <= 2) - (5 != 4) - (3 >= 2)};
+    verify(0, x[0][0], sizeof(x), __FILE__, __LINE__);
+    verify(0, x[0][1], sizeof(x), __FILE__, __LINE__);
+    verify(0, x[0][1], sizeof(x), __FILE__, __LINE__);
+    verify(0, x[1][1], sizeof(x), __FILE__, __LINE__);
+    verify(16, sizeof(x), __FILE__, __LINE__);
+  }
+  {
+    int x[3][2][3] = {{{1, 2}, {4, 5, 6}}};
+    verify(1, x[0][0][0], __FILE__, __LINE__);
+    verify(2, x[0][0][1], __FILE__, __LINE__);
+    verify(0, x[0][0][2], __FILE__, __LINE__);
+    verify(4, x[0][1][0], __FILE__, __LINE__);
+    verify(5, x[0][1][1], __FILE__, __LINE__);
+    verify(6, x[0][1][2], __FILE__, __LINE__);
+    verify(0, x[1][0][0], __FILE__, __LINE__);
+    verify(0, x[1][0][1], __FILE__, __LINE__);
+    verify(0, x[1][0][2], __FILE__, __LINE__);
+    verify(0, x[1][1][0], __FILE__, __LINE__);
+    verify(0, x[1][1][1], __FILE__, __LINE__);
+    verify(0, x[1][1][2], __FILE__, __LINE__);
+    verify(72, sizeof(x), __FILE__, __LINE__);
+    verify(24, sizeof(x[0]), __FILE__, __LINE__);
+    verify(12, sizeof(x[0][0]), __FILE__, __LINE__);
+  }
+  {
+    char x[2][2][3] = {{1, 2}, {4, 5}};
+    verify(12, sizeof(x), __FILE__, __LINE__);
+    verify(1, x[0][0][0], __FILE__, __LINE__);
+    verify(2, x[0][0][1], __FILE__, __LINE__);
+    verify(0, x[0][0][2], __FILE__, __LINE__);
+    verify(0, x[0][1][0], __FILE__, __LINE__);
+    verify(0, x[0][1][1], __FILE__, __LINE__);
+    verify(0, x[0][1][2], __FILE__, __LINE__);
+    verify(4, x[1][0][0], __FILE__, __LINE__);
+    verify(5, x[1][0][1], __FILE__, __LINE__);
+    verify(0, x[1][0][2], __FILE__, __LINE__);
+    verify(0, x[1][1][0], __FILE__, __LINE__);
+    verify(0, x[1][1][1], __FILE__, __LINE__);
+    verify(0, x[1][1][2], __FILE__, __LINE__);
+  }
+  {
+    int x[][2][3] = {{1, 2}, {4, 5, 6, 7, 8, 9}};
+    verify(48, sizeof(x), __FILE__, __LINE__);
+    verify(1, x[0][0][0], __FILE__, __LINE__);
+    verify(2, x[0][0][1], __FILE__, __LINE__);
+    verify(0, x[0][0][2], __FILE__, __LINE__);
+    verify(0, x[0][1][0], __FILE__, __LINE__);
+    verify(0, x[0][1][1], __FILE__, __LINE__);
+    verify(0, x[0][1][2], __FILE__, __LINE__);
+    verify(4, x[1][0][0], __FILE__, __LINE__);
+    verify(5, x[1][0][1], __FILE__, __LINE__);
+    verify(6, x[1][0][2], __FILE__, __LINE__);
+    verify(7, x[1][1][0], __FILE__, __LINE__);
+    verify(8, x[1][1][1], __FILE__, __LINE__);
+    verify(9, x[1][1][2], __FILE__, __LINE__);
+  }
+  {
+    char x[1][2][3] = {1, 2, 3, 4, 5};
+    verify(6, sizeof(x), __FILE__, __LINE__);
+    verify(1, x[0][0][0], __FILE__, __LINE__);
+    verify(2, x[0][0][1], __FILE__, __LINE__);
+    verify(3, x[0][0][2], __FILE__, __LINE__);
+    verify(4, x[0][1][0], __FILE__, __LINE__);
+    verify(5, x[0][1][1], __FILE__, __LINE__);
+    verify(0, x[0][1][2], __FILE__, __LINE__);
   }
   return 0;
 }

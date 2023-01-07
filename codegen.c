@@ -347,7 +347,7 @@ void gen(Node *node) {
     gen_left_value(node->lhs);
     gen(node->rhs);
     printf("  pop rax\n");
-    store(node->lhs->type);
+    store(node->type);
     printf("  push rax\n");
     return;
   case ND_ADDR:

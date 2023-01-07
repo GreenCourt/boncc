@@ -230,6 +230,8 @@ Node *new_node_addr(Token *tok, Node *operand);
 Node *new_node_deref(Token *tok, Node *operand);
 Node *new_node_assign(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_var(Token *tok, Variable *var);
+Node *new_node_array_set_expr(Variable *var, int idx, Node *expr);
+Node *new_node_array_set_val(Variable *var, int idx, int val);
 
 void program();
 void toplevel();
@@ -385,60 +387,87 @@ VariableInit *varinit() {
   return init;
 }
 
-Node *init_local_variable(Variable *var) {
-  if (var->init == NULL)
+Node *init_local_variable(Variable *var, VariableInit *init, Type *type, int array_index_offset) {
+  assert(array_index_offset == 0 || (var->type->kind == TYPE_ARRAY && var->type != type && var->init != init));
+
+  if (init == NULL)
     return NULL;
 
-  if (var->type->kind == TYPE_ARRAY) {
-    if (var->type->base->kind == TYPE_ARRAY)
-      error_at(var->token->pos, "initilizing an multi-dimensional array is not implemented.");
-    if (var->init->expr) {
-      if (var->type->base->kind == TYPE_CHAR && var->init->expr->kind == ND_VAR && var->init->expr->variable->kind == VK_STRLIT) {
-        Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_BLOCK;
-        node->blk_stmts = new_vector(0, sizeof(Node *));
+  if (type->kind == TYPE_ARRAY) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_BLOCK;
+    node->blk_stmts = new_vector(0, sizeof(Node *));
 
-        char *lit = var->init->expr->variable->string_literal;
-        if (var->type->array_size != (int)strlen(lit) + 1)
+    if (init->expr) {
+      if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == VK_STRLIT) {
+        // initilize the array as a string
+        char *lit = init->expr->variable->string_literal;
+        if (type->array_size != (int)strlen(lit) + 1)
           error_at(var->token->pos, "miss-match between array-size and string-length");
 
-        for (int i = 0; i < (int)var->type->array_size; ++i) {
-          Node *s = new_node_assign(NULL, new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var), new_node_num(NULL, i))), new_node_num(NULL, (int)lit[i]));
+        for (int i = 0; i < type->array_size; ++i) {
+          Node *s = new_node_array_set_val(var, i + array_index_offset, (int)lit[i]);
           vector_push(node->blk_stmts, &s);
         }
-        return node;
+      } else {
+        // When init->expr is given for an array, only the first element will be initialized.
+        Type *ty = type;
+        while (ty->kind == TYPE_ARRAY)
+          ty = ty->base;
+        Node *s = init_local_variable(var, init, ty, array_index_offset);
+        vector_push(node->blk_stmts, &s);
+        for (int i = 1; i < type->array_size; ++i) {
+          s = new_node_array_set_val(var, i + array_index_offset, 0);
+          vector_push(node->blk_stmts, &s);
+        }
       }
+    } else if (init->vec) {
+      assert(init->vec->size > 0);
+      Type *base = type;
+      while (base->kind == TYPE_ARRAY)
+        base = base->base;
+      if (init->nested) {
+        // init arrays recursively
+        int len1d = type->size / base->size;
+        int ofs = len1d / type->array_size;
+        int len = type->array_size < init->vec->size ? type->array_size : init->vec->size;
+        for (int i = 0; i < len; i++) {
+          Node *s = init_local_variable(var, *(VariableInit **)vector_get(init->vec, i), type->base, array_index_offset + i * ofs);
+          vector_push(node->blk_stmts, &s);
+        }
+        // fill zero
+        for (int i = len * ofs; i < len1d; ++i) {
+          Node *s = new_node_array_set_val(var, array_index_offset + i, 0);
+          vector_push(node->blk_stmts, &s);
+        }
+      } else {
+        // init as a one-dimensional array
+        int len1d = type->size / base->size;
+        int len = len1d < init->vec->size ? len1d : init->vec->size;
+        for (int i = 0; i < len; i++) {
+          VariableInit *vi = *(VariableInit **)vector_get(init->vec, i);
+          assert(vi->expr);
+          Node *s = new_node_array_set_expr(var, array_index_offset + i, vi->expr);
+          vector_push(node->blk_stmts, &s);
+        }
+        // fill zero
+        for (int i = len; i < len1d; ++i) {
+          Node *s = new_node_array_set_val(var, array_index_offset + i, 0);
+          vector_push(node->blk_stmts, &s);
+        }
+      }
+    } else
       assert(false);
-    } else if (var->init->vec) {
-      assert(var->init->vec->size > 0);
-
-      Node *node = calloc(1, sizeof(Node));
-      node->kind = ND_BLOCK;
-      node->blk_stmts = new_vector(0, sizeof(Node *));
-
-      for (int i = 0; i < (int)var->type->array_size; i++) {
-        if (i < var->init->vec->size) {
-          VariableInit *init = *(VariableInit **)vector_get(var->init->vec, i);
-          if (init->vec)
-            error_at(var->token->pos, "invalid array initializer (multi-dimension is not implemented)");
-          // TODO type checking
-          Node *s = new_node_assign(NULL, new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var), new_node_num(NULL, i))), init->expr);
-          vector_push(node->blk_stmts, &s);
-        } else {
-          Node *s = new_node_assign(NULL, new_node_deref(NULL, new_node_add(NULL, new_node_var(NULL, var), new_node_num(NULL, i))), new_node_num(NULL, 0));
-          vector_push(node->blk_stmts, &s);
-        }
-      }
-      return node;
-    }
-  } else if (var->type->kind == TYPE_PTR || var->type->kind == TYPE_INT || var->type->kind == TYPE_CHAR) {
-    VariableInit *init = var->init;
-    while (init->vec) {
+    return node;
+  } else if (type->kind == TYPE_PTR || type->kind == TYPE_INT || type->kind == TYPE_CHAR) {
+    while (init->vec) { // for non-array primitive types, only the first element in the brace will be used
       assert(init->vec->size > 0);
       init = *(VariableInit **)vector_get(init->vec, 0);
     }
     assert(init->expr);
-    if (init->expr) // TODO type checking
+    if (var->type->kind == TYPE_ARRAY) {
+      return new_node_array_set_expr(var, array_index_offset, init->expr);
+    } else
       return new_node_assign(NULL, new_node_var(NULL, var), init->expr);
   } else
     assert(false);
@@ -460,7 +489,7 @@ Node *init_multiple_local_variables(Vector *variables) {
 
   if (variables->size == 1) {
     Variable *var = *(Variable **)vector_get(variables, 0);
-    return init_local_variable(var);
+    return init_local_variable(var, var->init, var->type, 0);
   }
 
   Node *node = calloc(1, sizeof(Node));
@@ -469,7 +498,7 @@ Node *init_multiple_local_variables(Vector *variables) {
 
   for (int i = 0; i < variables->size; ++i) {
     Variable *var = *(Variable **)vector_get(variables, i);
-    Node *s = init_local_variable(var);
+    Node *s = init_local_variable(var, var->init, var->type, 0);
     if (s)
       vector_push(node->blk_stmts, &s);
   }

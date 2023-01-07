@@ -10,7 +10,7 @@ boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenize.o parse.o codegen.o Vec
 
 
 test: $(addprefix $(TEST_EXE_DIR)/,$(basename $(filter-out common.c,$(notdir $(wildcard test/*.c)))))
-	for i in $^; do echo $$i; $$i; done
+	for i in $^; do echo $$i; $$i || exit $$?; done
 
 clean:
 	rm -rf boncc $(OBJ_DIR) $(TEST_OBJ_DIR) $(TEST_EXE_DIR)

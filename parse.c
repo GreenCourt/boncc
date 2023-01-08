@@ -70,7 +70,7 @@ Token *consume(TokenKind kind) {
 
 Token *expect(TokenKind kind) {
   if (token->kind != kind)
-    error_at(&token->pos, "'%s' expected but not found", token_str[kind]);
+    error_at(&token->pos, "'%s' expected but not found", token_text[kind]);
   Token *tok = token;
   token = token->next;
   return tok;

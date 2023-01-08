@@ -14,7 +14,7 @@ Vector *functions;
 Vector *globals;
 Vector *strings;
 
-const char *token_str[] = {
+const char *token_text[] = {
     // corresponding to TokenKind
     "+",
     "-",

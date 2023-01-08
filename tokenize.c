@@ -68,116 +68,49 @@ Token *tokenize(char *src) {
       continue;
     }
 
-    if (match(p.pos, "return")) {
-      new_token(TK_RETURN, &tail, &p, 6);
-      continue;
-    }
+    static const TokenKind kinds[] = {
+        // ordering is important, e.g) "==" must be checked before "=".
+        TK_RETURN,
+        TK_IF,
+        TK_ELSE,
+        TK_WHILE,
+        TK_FOR,
+        TK_INT,
+        TK_CHAR,
+        TK_SIZEOF,
+        TK_LE,
+        TK_GE,
+        TK_EQ,
+        TK_NE,
+        TK_PLUS,
+        TK_MINUS,
+        TK_STAR,
+        TK_SLASH,
+        TK_AMP,
+        TK_LPAREN,
+        TK_RPAREN,
+        TK_LBRACE,
+        TK_RBRACE,
+        TK_LBRACKET,
+        TK_RBRACKET,
+        TK_LT,
+        TK_GT,
+        TK_ASSIGN,
+        TK_SEMICOLON,
+        TK_COMMA};
 
-    if (match(p.pos, "if")) {
-      new_token(TK_IF, &tail, &p, 2);
-      continue;
+    bool cont = false;
+    for (int i = 0; i < (int)(sizeof(kinds) / sizeof(TokenKind)); ++i) {
+      int k = kinds[i];
+      const char *t = token_text[k];
+      if (match(p.pos, t)) {
+        new_token(k, &tail, &p, strlen(t));
+        cont = true;
+        break;
+      }
     }
-
-    if (match(p.pos, "else")) {
-      new_token(TK_ELSE, &tail, &p, 4);
+    if (cont)
       continue;
-    }
-
-    if (match(p.pos, "while")) {
-      new_token(TK_WHILE, &tail, &p, 5);
-      continue;
-    }
-
-    if (match(p.pos, "for")) {
-      new_token(TK_FOR, &tail, &p, 3);
-      continue;
-    }
-
-    if (match(p.pos, "int")) {
-      new_token(TK_INT, &tail, &p, 3);
-      continue;
-    }
-
-    if (match(p.pos, "char")) {
-      new_token(TK_CHAR, &tail, &p, 4);
-      continue;
-    }
-
-    if (match(p.pos, "sizeof")) {
-      new_token(TK_SIZEOF, &tail, &p, 6);
-      continue;
-    }
-
-    if (match(p.pos, "<=")) {
-      new_token(TK_LE, &tail, &p, 2);
-      continue;
-    }
-
-    if (match(p.pos, ">=")) {
-      new_token(TK_GE, &tail, &p, 2);
-      continue;
-    }
-
-    if (match(p.pos, "==")) {
-      new_token(TK_EQ, &tail, &p, 2);
-      continue;
-    }
-
-    if (match(p.pos, "!=")) {
-      new_token(TK_NE, &tail, &p, 2);
-      continue;
-    }
-
-    switch (*p.pos) {
-    case '+':
-      new_token(TK_PLUS, &tail, &p, 1);
-      continue;
-    case '-':
-      new_token(TK_MINUS, &tail, &p, 1);
-      continue;
-    case '*':
-      new_token(TK_STAR, &tail, &p, 1);
-      continue;
-    case '/':
-      new_token(TK_SLASH, &tail, &p, 1);
-      continue;
-    case '&':
-      new_token(TK_AMP, &tail, &p, 1);
-      continue;
-    case '(':
-      new_token(TK_LPAREN, &tail, &p, 1);
-      continue;
-    case ')':
-      new_token(TK_RPAREN, &tail, &p, 1);
-      continue;
-    case '{':
-      new_token(TK_LBRACE, &tail, &p, 1);
-      continue;
-    case '}':
-      new_token(TK_RBRACE, &tail, &p, 1);
-      continue;
-    case '[':
-      new_token(TK_LBRACKET, &tail, &p, 1);
-      continue;
-    case ']':
-      new_token(TK_RBRACKET, &tail, &p, 1);
-      continue;
-    case '<':
-      new_token(TK_LT, &tail, &p, 1);
-      continue;
-    case '>':
-      new_token(TK_GT, &tail, &p, 1);
-      continue;
-    case '=':
-      new_token(TK_ASSIGN, &tail, &p, 1);
-      continue;
-    case ';':
-      new_token(TK_SEMICOLON, &tail, &p, 1);
-      continue;
-    case ',':
-      new_token(TK_COMMA, &tail, &p, 1);
-      continue;
-    }
 
     if (*p.pos == '"') { // string literal
       advance(&p, 1);

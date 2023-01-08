@@ -36,7 +36,7 @@ typedef enum {
   TK_EOF,
 } TokenKind;
 
-extern const char *token_str[];
+extern const char *token_text[];
 
 typedef struct Position Position;
 struct Position {

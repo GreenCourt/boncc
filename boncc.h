@@ -38,12 +38,19 @@ typedef enum {
 
 extern const char *token_str[];
 
-typedef struct Token Token;
+typedef struct Position Position;
+struct Position {
+  char *file_name;
+  char *pos;
+  int line_number;
+  int column_number;
+};
 
+typedef struct Token Token;
 struct Token {
   TokenKind kind;
   Token *next;
-  char *pos;
+  Position pos;
   int token_length;
   int val;              // only for TK_NUM
   char *string_literal; // null terminated, only for TK_STR
@@ -144,7 +151,6 @@ struct Node {
 };
 
 extern char *source_file_name;
-extern char *source_code;
 extern Token *token;
 extern Vector *functions;
 extern Vector *globals;
@@ -152,7 +158,7 @@ extern Vector *strings;
 
 bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);
-void error_at(char *loc, char *fmt, ...);
+void error_at(Position *pos, char *fmt, ...);
 void error(char *fmt, ...);
 char *read_file(char *path);
 

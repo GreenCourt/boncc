@@ -9,7 +9,6 @@
 #include <string.h>
 
 char *source_file_name;
-char *source_code;
 Token *token;
 Vector *functions;
 Vector *globals;
@@ -50,29 +49,20 @@ const char *token_str[] = {
     "number",
 };
 
-void error_at(char *loc, char *fmt, ...) {
+void error_at(Position *pos, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
-  char *line_start = loc;
-  while (source_code < line_start && line_start[-1] != '\n')
-    line_start--;
-
-  char *line_end = loc;
+  char *line_start = pos->pos - pos->column_number + 1;
+  char *line_end = pos->pos;
   while (*line_end != '\n')
     line_end++;
 
-  int line_number = 1;
-  for (char *p = source_code; p < line_start; p++)
-    line_number += (*p == '\n');
-
-  int column = loc - line_start + 1;
-
-  int indent = fprintf(stderr, "%s:%d:%d: ", source_file_name, line_number, column);
+  int indent = fprintf(stderr, "%s:%d:%d: ", pos->file_name, pos->line_number, pos->column_number);
   fprintf(stderr, "%.*s\n", (int)(line_end - line_start), line_start);
 
-  int pos = loc - line_start + indent;
-  fprintf(stderr, "%*s", pos, ""); // print spaces
+  int sp = pos->pos - line_start + indent;
+  fprintf(stderr, "%*s", sp, ""); // print spaces
   fprintf(stderr, "^ ");
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");

@@ -29,7 +29,7 @@ void gen_left_value(Node *node) {
     } else
       assert(false);
   } else {
-    error_at(node->token->pos, "left-value must be a variable");
+    error_at(&node->token->pos, "left-value must be a variable");
   }
 }
 
@@ -175,7 +175,7 @@ void gen_global_init(VariableInit *init, Type *type) {
         // initilize the array as a string
         char *lit = init->expr->variable->string_literal;
         if (type->array_size != (int)strlen(lit) + 1)
-          error_at(init->expr->token->pos, "miss-match between array-size and string-length");
+          error_at(&init->expr->token->pos, "miss-match between array-size and string-length");
         printf("  .ascii \"%s\\0\"\n", lit);
       } else {
         // When init->expr is given for an array, only the first element will be initialized.

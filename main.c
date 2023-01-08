@@ -1,5 +1,7 @@
 #include "boncc.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -8,7 +10,7 @@ int main(int argc, char **argv) {
   }
 
   source_file_name = argv[1];
-  source_code = read_file(source_file_name);
+  char *source_code = read_file(source_file_name);
 
   token = tokenize(source_code);
   program();

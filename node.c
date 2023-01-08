@@ -24,7 +24,7 @@ Node *new_node_mul(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   if (left_is_ptr || right_is_ptr)
-    error_at(tok->pos, "invalid operands to binary * operator");
+    error_at(&tok->pos, "invalid operands to binary * operator");
   Node *node = new_node(ND_MUL, lhs, rhs, base_type(TYPE_INT));
   node->token = tok;
   return node;
@@ -34,7 +34,7 @@ Node *new_node_div(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   if (left_is_ptr || right_is_ptr)
-    error_at(tok->pos, "invalid operands to binary / operator");
+    error_at(&tok->pos, "invalid operands to binary / operator");
   Node *node = new_node(ND_DIV, lhs, rhs, base_type(TYPE_INT));
   node->token = tok;
   return node;
@@ -44,7 +44,7 @@ Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   if (left_is_ptr && right_is_ptr)
-    error_at(tok->pos, "invalid operands to binary + operator (pointer and pointer)");
+    error_at(&tok->pos, "invalid operands to binary + operator (pointer and pointer)");
 
   Type *type;
   if (lhs->type->kind == TYPE_PTR)
@@ -73,7 +73,7 @@ Node *new_node_sub(Token *tok, Node *lhs, Node *rhs) {
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
 
   if (!left_is_ptr && right_is_ptr)
-    error_at(tok->pos, "pointer is not allowed here");
+    error_at(&tok->pos, "pointer is not allowed here");
 
   Type *type;
   if (left_is_ptr && right_is_ptr)
@@ -128,7 +128,7 @@ Node *new_node_addr(Token *tok, Node *operand) {
 
 Node *new_node_deref(Token *tok, Node *operand) {
   if ((operand->type->kind != TYPE_PTR) && (operand->type->kind != TYPE_ARRAY))
-    error_at(tok->pos, "invalid unary * operands to non-pointer");
+    error_at(&tok->pos, "invalid unary * operands to non-pointer");
   Type *type = operand->type->base;
   Node *node = new_node(ND_DEREF, operand, NULL, type);
   node->token = tok;
@@ -209,7 +209,7 @@ int eval(Node *node) {
   case ND_NUM:
     return node->val;
   default:
-    error_at(node->token->pos, "not a constant expr");
+    error_at(&node->token->pos, "not a constant expr");
     return 0;
   }
 }

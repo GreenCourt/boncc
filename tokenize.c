@@ -17,16 +17,6 @@ static void advance(Position *p, int n) {
   }
 }
 
-static void new_token(TokenKind kind, Token **tail, Position *p, int len) {
-  Token *tok = calloc(1, sizeof(Token));
-  tok->kind = kind;
-  tok->pos = *p;
-  tok->token_length = len;
-  (*tail)->next = tok;
-  *tail = tok;
-  advance(p, len);
-}
-
 bool match(char *p, const char *keyword) {
   int len = strlen(keyword);
   if (strncmp(p, keyword, len) != 0)
@@ -34,6 +24,26 @@ bool match(char *p, const char *keyword) {
   if (is_alphanumeric_or_underscore(p[len - 1]) && is_alphanumeric_or_underscore(p[len]))
     return false;
   return true;
+}
+
+static void new_token(TokenKind kind, Token **tail, Position *p, int len) {
+  Token *tok = calloc(1, sizeof(Token));
+  tok->kind = kind;
+  tok->pos = *p;
+  tok->token_length = len;
+
+  if (match(p->pos, "__FILE__")) {
+    tok->kind = TK_STR;
+    tok->string_literal = p->file_name;
+  }
+  if (match(p->pos, "__LINE__")) {
+    tok->kind = TK_NUM;
+    tok->val = p->line_number;
+  }
+
+  (*tail)->next = tok;
+  *tail = tok;
+  advance(p, len);
 }
 
 Token *tokenize(char *src) {

@@ -10,6 +10,11 @@ static const char *reg_args2[] = {"di", "si", "dx", "cx", "r8w", "r9w"};
 static const char *reg_args4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 static const char *reg_args8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
+// node.c -->
+bool is_constant_number(Node *node);
+int eval(Node *node);
+// <-- node.c
+
 void gen_left_value(Node *node) {
   // push address to stack top
   if (node->kind == ND_DEREF) {
@@ -158,32 +163,6 @@ void gen_call(Node *node) {
   printf("  push rax\n");
 }
 
-int eval(Node *node) {
-  switch (node->kind) {
-  case ND_ADD:
-    return eval(node->lhs) + eval(node->rhs);
-  case ND_SUB:
-    return eval(node->lhs) - eval(node->rhs);
-  case ND_MUL:
-    return eval(node->lhs) * eval(node->rhs);
-  case ND_DIV:
-    return eval(node->lhs) / eval(node->rhs);
-  case ND_EQ:
-    return eval(node->lhs) == eval(node->rhs);
-  case ND_NE:
-    return eval(node->lhs) != eval(node->rhs);
-  case ND_LT:
-    return eval(node->lhs) < eval(node->rhs);
-  case ND_LE:
-    return eval(node->lhs) <= eval(node->rhs);
-  case ND_NUM:
-    return node->val;
-  default:
-    error_at(node->token->pos, "not a constant expr");
-    return 0;
-  }
-}
-
 void gen_global_init(VariableInit *init, Type *type) {
   if (init == NULL) {
     printf("  .zero %d\n", type->size);
@@ -237,12 +216,41 @@ void gen_global_init(VariableInit *init, Type *type) {
     } else
       assert(false);
   } else if (type->kind == TYPE_PTR) {
+    while (init->vec) { // for non-array primitive types, only the first element in the brace will be used
+      assert(init->vec->size > 0);
+      init = *(VariableInit **)vector_get(init->vec, 0);
+    }
+    assert(init->expr);
     if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == VK_STRLIT) {
       // initilize the pointer to a string-literal
       printf("  .quad %.*s\n", init->expr->variable->name_length, init->expr->variable->name);
       return;
+    } else if (init->expr->kind == ND_ADD) {
+      bool left_is_addr = init->expr->lhs->kind == ND_ADDR && init->expr->lhs->lhs->kind == ND_VAR && init->expr->lhs->lhs->variable->kind == VK_GLOBAL;
+      bool right_is_addr = init->expr->rhs->kind == ND_ADDR && init->expr->rhs->lhs->kind == ND_VAR && init->expr->rhs->lhs->variable->kind == VK_GLOBAL;
+
+      if (left_is_addr && is_constant_number(init->expr->rhs)) {
+        printf("  .quad %.*s+%d\n",
+               init->expr->lhs->lhs->variable->name_length,
+               init->expr->lhs->lhs->variable->name,
+               eval(init->expr->rhs));
+      } else if (right_is_addr && is_constant_number(init->expr->lhs)) {
+        printf("  .quad %.*s+%d\n",
+               init->expr->rhs->lhs->variable->name_length,
+               init->expr->rhs->lhs->variable->name,
+               eval(init->expr->lhs));
+      } else {
+        error("unsupported initalization of a global pointer.");
+      }
+    } else if (init->expr->kind == ND_ADDR && init->expr->lhs->kind == ND_VAR && init->expr->lhs->variable->kind == VK_GLOBAL) {
+      printf("  .quad %.*s\n",
+             init->expr->lhs->variable->name_length,
+             init->expr->lhs->variable->name);
+    } else if (is_constant_number(init->expr)) {
+      printf("  .quad %d\n", eval(init->expr));
+    } else {
+      error("unsupported initalization of a global pointer.");
     }
-    error("initilizing a global pointer is not implemented."); // TODO
   } else if (type->kind == TYPE_INT || type->kind == TYPE_CHAR) {
     while (init->vec) { // for non-array primitive types, only the first element in the brace will be used
       assert(init->vec->size > 0);

@@ -168,3 +168,48 @@ Node *new_node_array_set_val(Variable *var, int idx, int val) {
   assert(idx >= 0);
   return new_node_array_set_expr(var, idx, new_node_num(NULL, val));
 }
+
+int is_constant_number(Node *node) {
+  assert(node);
+  switch (node->kind) {
+  case ND_ADD:
+  case ND_SUB:
+  case ND_MUL:
+  case ND_DIV:
+  case ND_EQ:
+  case ND_NE:
+  case ND_LT:
+  case ND_LE:
+    return is_constant_number(node->lhs) && is_constant_number(node->rhs);
+  case ND_NUM:
+    return true;
+  default:
+    return false;
+  }
+}
+
+int eval(Node *node) {
+  switch (node->kind) {
+  case ND_ADD:
+    return eval(node->lhs) + eval(node->rhs);
+  case ND_SUB:
+    return eval(node->lhs) - eval(node->rhs);
+  case ND_MUL:
+    return eval(node->lhs) * eval(node->rhs);
+  case ND_DIV:
+    return eval(node->lhs) / eval(node->rhs);
+  case ND_EQ:
+    return eval(node->lhs) == eval(node->rhs);
+  case ND_NE:
+    return eval(node->lhs) != eval(node->rhs);
+  case ND_LT:
+    return eval(node->lhs) < eval(node->rhs);
+  case ND_LE:
+    return eval(node->lhs) <= eval(node->rhs);
+  case ND_NUM:
+    return node->val;
+  default:
+    error_at(node->token->pos, "not a constant expr");
+    return 0;
+  }
+}

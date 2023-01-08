@@ -217,6 +217,7 @@ Function *find_function(Token *tok) {
   return NULL;
 }
 
+// node.c -->
 Node *new_node_num(Token *tok, int val);
 Node *new_node_mul(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_div(Token *tok, Node *lhs, Node *rhs);
@@ -232,6 +233,7 @@ Node *new_node_assign(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_var(Token *tok, Variable *var);
 Node *new_node_array_set_expr(Variable *var, int idx, Node *expr);
 Node *new_node_array_set_val(Variable *var, int idx, int val);
+// <-- node.c
 
 void program();
 void toplevel();

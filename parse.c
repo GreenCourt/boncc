@@ -715,7 +715,7 @@ Node *primary() {
       node->func = find_function(tok);
       if (node->func == NULL) {
         // TODO
-        // error_at(tok->pos, "undefined function: '%.*s'", tok->token_length, tok->pos);
+        // error_at(&tok->pos, "undefined function: '%.*s'", tok->token_length, tok->pos.pos);
         node->func = calloc(1, sizeof(Function));
         node->func->name = tok->pos.pos;
         node->func->name_length = tok->token_length;
@@ -736,7 +736,7 @@ Node *primary() {
     } else { // variable
       Variable *var = find_variable(tok);
       if (!var)
-        error_at(&tok->pos, "undefined identifier: '%.*s'", tok->token_length, tok->pos);
+        error_at(&tok->pos, "undefined identifier: '%.*s'", tok->token_length, tok->pos.pos);
       return new_node_var(tok, var);
     }
   }

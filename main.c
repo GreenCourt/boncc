@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
 
   gen_global_variables();
 
+  printf(".text\n");
   for (int i = 0; i < functions->size; i++) {
     Node *f = *(Node **)vector_get(functions, i);
     gen(f);

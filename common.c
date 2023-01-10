@@ -49,6 +49,8 @@ const char *token_text[] = {
     "number",
 };
 
+bool same_ident(Ident *a, Ident *b) { return a->len == b->len && strncmp(a->name, b->name, a->len) == 0; }
+
 void error_at(Position *pos, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);

@@ -46,12 +46,19 @@ struct Position {
   int column_number;
 };
 
+typedef struct Ident Ident;
+struct Ident {
+  char *name;
+  int len;
+};
+
 typedef struct Token Token;
 struct Token {
   TokenKind kind;
   Token *next;
   Position pos;
   int token_length;
+  Ident *ident;         // TK_IDENT
   int val;              // only for TK_NUM
   char *string_literal; // null terminated, only for TK_STR
 };
@@ -82,8 +89,7 @@ typedef enum { VK_GLOBAL,
                VK_STRLIT } VariableKind;
 typedef struct Variable Variable;
 struct Variable {
-  char *name;
-  int name_length;
+  Ident *ident;
   VariableKind kind;
   Type *type;
   Token *token;         // for error messages
@@ -94,8 +100,7 @@ struct Variable {
 
 typedef struct Function Function;
 struct Function {
-  char *name;
-  int name_length;
+  Ident *ident;
   Type *type;
   Vector *params;
   int offset; // total offset
@@ -161,6 +166,7 @@ bool is_alphanumeric_or_underscore(char c);
 void error_at(Position *pos, char *fmt, ...);
 void error(char *fmt, ...);
 char *read_file(char *path);
+bool same_ident(Ident *a, Ident *b);
 
 void gen(Node *node);
 void gen_global_variables();

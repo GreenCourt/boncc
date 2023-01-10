@@ -24,7 +24,7 @@ void gen_left_value(Node *node) {
       printf("  lea rax, [rbp-%d]\n", node->variable->offset);
       printf("  push rax\n");
     } else if (node->variable->kind == VK_GLOBAL || node->variable->kind == VK_STRLIT) {
-      printf("  lea rax, %.*s[rip]\n", node->variable->name_length, node->variable->name);
+      printf("  lea rax, %.*s[rip]\n", node->variable->ident->len, node->variable->ident->name);
       printf("  push rax\n");
     } else
       assert(false);
@@ -150,12 +150,12 @@ void gen_call(Node *node) {
   printf("  and rax, 15\n"); // rax % 16 == rax & 0xF
   printf("  jnz .Lcall%d\n", l);
   printf("  mov al, 0\n");
-  printf("  call %.*s\n", node->func->name_length, node->func->name);
+  printf("  call %.*s\n", node->func->ident->len, node->func->ident->name);
   printf("  jmp .Lend%d\n", l);
   printf(".Lcall%d:\n", l);
   printf("  sub rsp, 8\n");
   printf("  mov al, 0\n");
-  printf("  call %.*s\n", node->func->name_length, node->func->name);
+  printf("  call %.*s\n", node->func->ident->len, node->func->ident->name);
   printf("  add rsp, 8\n");
   printf(".Lend%d:\n", l);
 
@@ -223,7 +223,7 @@ void gen_global_init(VariableInit *init, Type *type) {
     assert(init->expr);
     if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == VK_STRLIT) {
       // initilize the pointer to a string-literal
-      printf("  .quad %.*s\n", init->expr->variable->name_length, init->expr->variable->name);
+      printf("  .quad %.*s\n", init->expr->variable->ident->len, init->expr->variable->ident->name);
       return;
     } else if (init->expr->kind == ND_ADD) {
       bool left_is_addr = init->expr->lhs->kind == ND_ADDR && init->expr->lhs->lhs->kind == ND_VAR && init->expr->lhs->lhs->variable->kind == VK_GLOBAL;
@@ -231,21 +231,21 @@ void gen_global_init(VariableInit *init, Type *type) {
 
       if (left_is_addr && is_constant_number(init->expr->rhs)) {
         printf("  .quad %.*s+%d\n",
-               init->expr->lhs->lhs->variable->name_length,
-               init->expr->lhs->lhs->variable->name,
+               init->expr->lhs->lhs->variable->ident->len,
+               init->expr->lhs->lhs->variable->ident->name,
                eval(init->expr->rhs));
       } else if (right_is_addr && is_constant_number(init->expr->lhs)) {
         printf("  .quad %.*s+%d\n",
-               init->expr->rhs->lhs->variable->name_length,
-               init->expr->rhs->lhs->variable->name,
+               init->expr->rhs->lhs->variable->ident->len,
+               init->expr->rhs->lhs->variable->ident->name,
                eval(init->expr->lhs));
       } else {
         error("unsupported initalization of a global pointer.");
       }
     } else if (init->expr->kind == ND_ADDR && init->expr->lhs->kind == ND_VAR && init->expr->lhs->variable->kind == VK_GLOBAL) {
       printf("  .quad %.*s\n",
-             init->expr->lhs->variable->name_length,
-             init->expr->lhs->variable->name);
+             init->expr->lhs->variable->ident->len,
+             init->expr->lhs->variable->ident->name);
     } else if (is_constant_number(init->expr)) {
       printf("  .quad %d\n", eval(init->expr));
     } else {
@@ -272,17 +272,17 @@ void gen_global_variables() {
   for (int i = 0; i < globals->size; i++) {
     Variable *v = *(Variable **)vector_get(globals, i);
     printf(".data\n");
-    printf(".globl %.*s\n", v->name_length, v->name);
-    printf("%.*s:\n", v->name_length, v->name);
+    printf(".globl %.*s\n", v->ident->len, v->ident->name);
+    printf("%.*s:\n", v->ident->len, v->ident->name);
     gen_global_init(v->init, v->type);
   }
 }
 
 void gen_func(Node *node) {
-  if (strncmp(node->func->name, "main", 4) == 0) {
+  if (strncmp(node->func->ident->name, "main", 4) == 0) {
     printf(".globl main\n");
   }
-  printf("%.*s:\n", node->func->name_length, node->func->name);
+  printf("%.*s:\n", node->func->ident->len, node->func->ident->name);
 
   // prologue
   printf("  push rbp\n");

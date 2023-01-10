@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 
   for (int i = 0; i < strings->size; i++) {
     Variable *v = *(Variable **)vector_get(strings, i);
-    printf("%.*s:\n", v->name_length, v->name);
+    printf("%.*s:\n", v->ident->len, v->ident->name);
     printf("  .string \"%s\"\n", v->string_literal);
   }
 

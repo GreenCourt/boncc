@@ -32,6 +32,12 @@ static void new_token(TokenKind kind, Token **tail, Position *p, int len) {
   tok->pos = *p;
   tok->token_length = len;
 
+  if (tok->kind == TK_IDENT) {
+    tok->ident = calloc(1, sizeof(Ident));
+    tok->ident->name = p->pos;
+    tok->ident->len = len;
+  }
+
   if (match(p->pos, "__FILE__")) {
     tok->kind = TK_STR;
     tok->string_literal = p->file_name;

@@ -126,7 +126,7 @@ Variable *find_local_in_scope(Token *tok, Scope *scope) {
   int sz = locals->size;
   for (int i = 0; i < sz; ++i) {
     Variable *var = *(Variable **)vector_get(locals, i);
-    if (var->name_length == tok->token_length && !memcmp(tok->pos.pos, var->name, var->name_length))
+    if (same_ident(var->ident, tok->ident))
       return var;
   }
   return NULL;
@@ -147,7 +147,7 @@ Variable *find_global(Token *tok) {
   int sz = globals->size;
   for (int i = 0; i < sz; ++i) {
     Variable *var = *(Variable **)vector_get(globals, i);
-    if (var->name_length == tok->token_length && !memcmp(tok->pos.pos, var->name, var->name_length))
+    if (same_ident(var->ident, tok->ident))
       return var;
   }
   return NULL;
@@ -162,8 +162,7 @@ Variable *find_variable(Token *tok) {
 
 Variable *new_variable(Token *tok, Type *type, VariableKind kind) {
   Variable *var = calloc(1, sizeof(Variable));
-  var->name = tok->pos.pos;
-  var->name_length = tok->token_length;
+  var->ident = tok->ident;
   var->type = type;
   var->kind = kind;
   var->token = tok;
@@ -197,9 +196,10 @@ Variable *new_string_literal(Token *tok) {
   static int idx = 0;
   assert(tok->kind == TK_STR);
   Variable *var = calloc(1, sizeof(Variable));
-  var->name = calloc(15, sizeof(char));
-  sprintf(var->name, ".LC%d", idx++);
-  var->name_length = strlen(var->name);
+  var->ident = calloc(1, sizeof(Ident));
+  var->ident->name = calloc(15, sizeof(char));
+  sprintf(var->ident->name, ".LC%d", idx++);
+  var->ident->len = strlen(var->ident->name);
   var->type = array_type(base_type(TYPE_CHAR), strlen(tok->string_literal) + 1);
   var->kind = VK_STRLIT;
   var->string_literal = tok->string_literal;
@@ -211,7 +211,7 @@ Variable *new_string_literal(Token *tok) {
 Function *find_function(Token *tok) {
   for (int i = 0; i < functions->size; i++) {
     Function *f = (*(Node **)vector_get(functions, i))->func;
-    if (strncmp(tok->pos.pos, f->name, f->name_length) == 0)
+    if (same_ident(f->ident, tok->ident))
       return f;
   }
   return NULL;
@@ -328,15 +328,14 @@ void toplevel() {
     vardec(type, name, VK_GLOBAL);
 }
 
-void func(Type *type, Token *name) {
+void func(Type *type, Token *tok) {
   Node *node = calloc(1, sizeof(Node));
   vector_push(functions, &node);
-  node->token = name;
+  node->token = tok;
   node->type = type;
   node->kind = ND_FUNC;
   node->func = calloc(1, sizeof(Function));
-  node->func->name = name->pos.pos;
-  node->func->name_length = name->token_length;
+  node->func->ident = tok->ident;
   node->func->params = new_vector(0, sizeof(Variable *));
   node->func->type = type;
   assert(offset == 0);
@@ -717,8 +716,7 @@ Node *primary() {
         // TODO
         // error_at(&tok->pos, "undefined function: '%.*s'", tok->token_length, tok->pos.pos);
         node->func = calloc(1, sizeof(Function));
-        node->func->name = tok->pos.pos;
-        node->func->name_length = tok->token_length;
+        node->func->ident = tok->ident;
       }
       node->type = node->func->type;
       node->args = new_vector(0, sizeof(Node *));

@@ -144,6 +144,18 @@ Node *new_node_assign(Token *tok, Node *lhs, Node *rhs) {
   return node;
 }
 
+Node *new_node_member(Token *tok, Node *x, Member *y) {
+  // struct member access (x.y)
+  assert(x->type->kind == TYPE_STRUCT);
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_MEMBER;
+  node->type = y->type;
+  node->lhs = x;
+  node->member = y;
+  node->token = tok;
+  return node;
+}
+
 Node *new_node_var(Token *tok, Variable *var) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_VAR;

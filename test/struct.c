@@ -30,7 +30,13 @@ int main() {
       int b;
       char c;
     } x;
+    x.a = 11;
+    x.b = 12;
+    x.c = 13;
     verify(9, sizeof(x), __FILE__, __LINE__);
+    verify(11, x.a, __FILE__, __LINE__);
+    verify(12, x.b, __FILE__, __LINE__);
+    verify(13, x.c, __FILE__, __LINE__);
   }
   {
     // declare named struct
@@ -50,8 +56,17 @@ int main() {
       char c;
       char d;
     } x;
+    x.a = 5;
+    x.b = 6;
+    x.c = 7;
+    x.d = 9;
     verify(10, sizeof(struct st), __FILE__, __LINE__);
     verify(10, sizeof(x), __FILE__, __LINE__);
+    verify(4, sizeof(x.b), __FILE__, __LINE__);
+    verify(5, x.a, __FILE__, __LINE__);
+    verify(6, x.b, __FILE__, __LINE__);
+    verify(7, x.c, __FILE__, __LINE__);
+    verify(9, x.d, __FILE__, __LINE__);
   }
   {
     // empty struct;

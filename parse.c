@@ -30,12 +30,13 @@ add        = mul ("+" mul | "-" mul)*
 mul        = unary ("*" unary | "/" unary)*
 unary      = postfix
              | ("sizeof" unary)
-             | ("sizeof" (type | ("(" type ")") ))
+             | ("sizeof" "(" type ")")
              | ("+" unary)
              | ("-" unary)
              | ("*" unary)
              | ("&" unary)
-postfix    = primary ("[" expr "]")*
+postfix    = primary tail*
+tail       =  ("[" expr "]") | ("." ident) | ("->" ident)
 primary    = "(" expr ")"
              | ident ("(" (expr ("," expr)*)? ")")?
              | ident
@@ -56,6 +57,7 @@ Node *new_node_le(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_addr(Token *tok, Node *operand);
 Node *new_node_deref(Token *tok, Node *operand);
 Node *new_node_assign(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_member(Token *tok, Node *x, Member *y);
 Node *new_node_var(Token *tok, Variable *var);
 Node *new_node_array_set_expr(Variable *var, int idx, Node *expr);
 Node *new_node_array_set_val(Variable *var, int idx, int val);
@@ -93,7 +95,7 @@ struct Scope {
   Vector *local_structs;   // vector of Type*
 };
 static Scope *current_scope = NULL;
-static int offset; // for local variables
+static int local_variable_offset;
 
 void new_scope() {
   Scope *s = calloc(1, sizeof(Scope));
@@ -171,6 +173,18 @@ Type *find_struct(Token *tok) {
   return find_global_struct(tok);
 }
 
+Member *find_member(Type *st, Token *tok) {
+  assert(st->kind == TYPE_STRUCT);
+  assert(tok->kind == TK_IDENT);
+  Member *member = st->member;
+  while (member) {
+    if (same_ident(member->ident, tok->ident))
+      return member;
+    member = member->next;
+  }
+  return NULL;
+}
+
 Type *consume_struct(Token *struct_name) {
   static int idx = 0;
   Ident *struct_ident = NULL;
@@ -200,7 +214,7 @@ Type *consume_struct(Token *struct_name) {
   head.next = NULL;
   head.offset = 0;
   Member *tail = &head;
-  int size = 0;
+  int offset = 0;
 
   while (!consume(TK_RBRACE)) {
     Type *base = consume_type();
@@ -218,16 +232,16 @@ Type *consume_struct(Token *struct_name) {
       Member *m = calloc(1, sizeof(Member));
       m->ident = var_name->ident;
       m->type = type;
-      m->offset = tail->offset + type->size;
+      m->offset = offset;
+      offset += type->size;
 
       tail->next = m;
       tail = m;
-      size = m->offset;
     } while (consume(TK_COMMA));
     expect(TK_SEMICOLON);
   }
 
-  Type *st = struct_type(struct_ident, head.next, size);
+  Type *st = struct_type(struct_ident, head.next, offset);
   if (current_scope == NULL)
     vector_push(structs, &st);
   else
@@ -334,8 +348,8 @@ Variable *new_local_variable(Token *tok, Type *type) {
 void set_offset(Variable *var) {
   assert(var->kind == VK_LOCAL);
   assert(var->offset == 0);
-  var->offset = offset + var->type->size;
-  offset = var->offset;
+  var->offset = local_variable_offset + var->type->size;
+  local_variable_offset = var->offset;
 }
 
 Variable *new_global(Token *tok, Type *type) {
@@ -457,7 +471,7 @@ void func(Type *type, Token *tok) {
   node->func->ident = tok->ident;
   node->func->params = new_vector(0, sizeof(Variable *));
   node->func->type = type;
-  assert(offset == 0);
+  assert(local_variable_offset == 0);
   assert(current_scope == NULL);
   new_scope();
   expect(TK_LPAREN);
@@ -467,9 +481,9 @@ void func(Type *type, Token *tok) {
   }
   expect(TK_LBRACE);
   node->body = stmt_block();
-  node->func->offset = offset;
+  node->func->offset = local_variable_offset;
   restore_scope();
-  offset = 0;
+  local_variable_offset = 0;
 }
 
 void funcparam(Vector *params) {
@@ -893,13 +907,45 @@ Node *primary() {
   return NULL;
 }
 
-Node *postfix() {
-  Node *node = primary();
-  while (consume(TK_LBRACKET)) {
+Node *tail(Node *x) {
+  if (consume(TK_LBRACKET)) {
     // x[y] --> *(x+y)
     Node *y = expr();
     Token *tok = expect(TK_RBRACKET);
-    node = new_node_deref(tok, new_node_add(tok, node, y));
+    return new_node_deref(tok, new_node_add(tok, x, y));
   }
-  return node;
+
+  Token *op;
+  if ((op = consume(TK_DOT))) {
+    // struct member access (x.y)
+    if (x->type == NULL || x->type->kind != TYPE_STRUCT)
+      error_at(&op->pos, "not a struct");
+    Token *y = expect(TK_IDENT);
+    Member *member = find_member(x->type, y);
+    if (member == NULL)
+      error_at(&y->pos, "unknown struct member");
+    return new_node_member(op, x, member);
+  }
+  if ((op = consume(TK_ARROW))) {
+    // struct member access
+    // x->y is (*x).y
+    if (x->type == NULL || x->type->kind != TYPE_PTR || x->type->base->kind != TYPE_STRUCT)
+      error_at(&op->pos, "not a struct pointer");
+    Token *y = expect(TK_IDENT);
+    Member *member = find_member(x->type->base, y);
+    if (member == NULL)
+      error_at(&y->pos, "unknown struct member");
+    return new_node_member(op, new_node_deref(NULL, x), member);
+  }
+  return x;
+}
+
+Node *postfix() {
+  Node *p = primary();
+  Node *q = tail(p);
+  while (p != q) {
+    p = q;
+    q = tail(p);
+  }
+  return p;
 }

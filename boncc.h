@@ -22,6 +22,8 @@ typedef enum {
   TK_RBRACKET,  // ]
   TK_SEMICOLON, // ;
   TK_COMMA,     // ,
+  TK_DOT,       // .
+  TK_ARROW,     // ->
   TK_RETURN,    // return
   TK_IF,        // if
   TK_ELSE,      // else
@@ -142,6 +144,7 @@ typedef enum {
   ND_FUNC,   // function
   ND_ADDR,   // &val
   ND_DEREF,  // *ptr
+  ND_MEMBER, // struct member access
 } NodeKind;
 
 typedef struct Node Node;
@@ -168,6 +171,8 @@ struct Node {
 
   Function *func; // for ND_FUNC or ND_CALL
   Vector *args;   // arguments for ND_CALL
+
+  Member *member; // ND_MEMBER
 };
 
 extern char *source_file_name;

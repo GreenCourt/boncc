@@ -17,9 +17,11 @@ int eval(Node *node);
 
 void gen_left_value(Node *node) {
   // push address to stack top
-  if (node->kind == ND_DEREF) {
+  switch (node->kind) {
+  case ND_DEREF:
     gen(node->lhs);
-  } else if (node->kind == ND_VAR) {
+    return;
+  case ND_VAR:
     if (node->variable->kind == VK_LOCAL) {
       printf("  lea rax, [rbp-%d]\n", node->variable->offset);
       printf("  push rax\n");
@@ -28,7 +30,14 @@ void gen_left_value(Node *node) {
       printf("  push rax\n");
     } else
       assert(false);
-  } else {
+    return;
+  case ND_MEMBER:
+    gen_left_value(node->lhs);
+    printf("  pop rax\n");
+    printf("  add rax, %d\n", node->member->offset);
+    printf("  push rax\n");
+    return;
+  default:
     error_at(&node->token->pos, "left-value must be a variable");
   }
 }
@@ -363,6 +372,10 @@ void gen(Node *node) {
     return;
   case ND_DEREF:
     gen(node->lhs);
+    load(node->type);
+    return;
+  case ND_MEMBER:
+    gen_left_value(node);
     load(node->type);
     return;
   default:

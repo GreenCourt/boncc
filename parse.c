@@ -7,12 +7,12 @@
 /* BNF
 program    = toplevel*
 toplevel   = func | vardec
-type       = "int" "*"*
-vardec     = type ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
+type       = "int" | "char"
+vardec     = type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
 varinit    = expr
              | "{" varinit ("," varinit)* "}"
-func       = type ident "(" funcparam? ")" "{" stmt* "}"
-funcparam  = type ident ("[" num? "]")* ("," type ident ("[" num? "]")* )*
+func       = type "*"* ident "(" funcparam? ")" "{" stmt* "}"
+funcparam  = type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
 stmt       = expr ";"
              | vardec
              | "{" stmt* "}"
@@ -84,18 +84,19 @@ int expect_number() {
   return val;
 }
 
-Type *consume_type() {
-  TypeKind kind;
-  if (consume(TK_INT))
-    kind = TYPE_INT;
-  else if (consume(TK_CHAR))
-    kind = TYPE_CHAR;
-  else
-    return NULL;
-  Type *type = base_type(kind);
+Type *consume_type_star(Type *type) {
   while (consume(TK_STAR))
     type = pointer_type(type);
   return type;
+}
+
+Type *consume_type() {
+  if (consume(TK_INT))
+    return base_type(TYPE_INT);
+  else if (consume(TK_CHAR))
+    return base_type(TYPE_CHAR);
+  else
+    return NULL;
 }
 
 Type *consume_array_brackets(Type *type) {
@@ -310,9 +311,7 @@ Vector *vardec(Type *type, Token *name, VariableKind kind) {
     vector_push(variables, &var);
     if (!consume(TK_COMMA))
       break;
-    type = base;
-    while (consume(TK_STAR))
-      type = pointer_type(type);
+    type = consume_type_star(base);
     name = expect(TK_IDENT);
   }
   expect(TK_SEMICOLON);
@@ -320,7 +319,7 @@ Vector *vardec(Type *type, Token *name, VariableKind kind) {
 }
 
 void toplevel() {
-  Type *type = expect_type();
+  Type *type = consume_type_star(expect_type());
   Token *name = expect(TK_IDENT);
   if (token->kind == TK_LPAREN)
     func(type, name);
@@ -355,7 +354,7 @@ void func(Type *type, Token *tok) {
 
 void funcparam(Vector *params) {
   do {
-    Type *ty = expect_type();
+    Type *ty = consume_type_star(expect_type());
     Token *id = expect(TK_IDENT);
     while (consume(TK_LBRACKET)) {
       consume(TK_NUM);       // currently not used
@@ -526,6 +525,7 @@ Node *stmt() {
     expect(TK_SEMICOLON);
     return node;
   } else if ((ty = consume_type())) {
+    ty = consume_type_star(ty);
     Token *id = expect(TK_IDENT);
     Vector *vars = vardec(ty, id, VK_LOCAL);
     return init_multiple_local_variables(vars);
@@ -591,6 +591,7 @@ Node *stmt_for() {
   if (!consume(TK_SEMICOLON)) {
     Type *type = consume_type();
     if (type) {
+      type = consume_type_star(type);
       Token *name = expect(TK_IDENT);
       Vector *vars = vardec(type, name, VK_LOCAL);
       node->init = init_multiple_local_variables(vars);

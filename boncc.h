@@ -30,6 +30,7 @@ typedef enum {
   TK_INT,       // int
   TK_CHAR,      // char
   TK_SIZEOF,    // sizeof
+  TK_STRUCT,    // struct
   TK_STR,       // string literal
   TK_IDENT,
   TK_NUM,
@@ -63,17 +64,31 @@ struct Token {
   char *string_literal; // null terminated, only for TK_STR
 };
 
+typedef struct Type Type;
+typedef struct Member Member;
+struct Member {
+  Ident *ident;
+  Type *type;
+  int offset;
+  Member *next; // liked list
+};
+
 typedef enum { TYPE_PTR,
                TYPE_ARRAY,
+               TYPE_STRUCT,
                TYPE_INT,
                TYPE_CHAR } TypeKind;
 
 typedef struct Type Type;
 struct Type {
   TypeKind kind;
-  int size;          // sizeof
+  int size; // sizeof
+
   struct Type *base; // only for TYPE_PTR and TYPE_ARRAY
   int array_size;    // number of elements for TYPE_ARRAY
+
+  Ident *ident;   // TYPE_STRUCT
+  Member *member; // TYPE_STRUCT
 };
 
 typedef struct Node Node;
@@ -157,9 +172,10 @@ struct Node {
 
 extern char *source_file_name;
 extern Token *token;
-extern Vector *functions;
-extern Vector *globals;
-extern Vector *strings;
+extern Vector *functions; // Node*
+extern Vector *globals;   // Variable*
+extern Vector *strings;   // Variable*
+extern Vector *structs;   // Type*
 
 bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);
@@ -176,3 +192,4 @@ void program();
 Type *base_type(TypeKind kind);
 Type *pointer_type(Type *base);
 Type *array_type(Type *base, int len);
+Type *struct_type(Ident *ident, Member *member, int size);

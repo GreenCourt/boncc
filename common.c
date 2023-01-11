@@ -13,6 +13,7 @@ Token *token;
 Vector *functions;
 Vector *globals;
 Vector *strings;
+Vector *structs;
 
 const char *token_text[] = {
     // corresponding to TokenKind
@@ -44,6 +45,7 @@ const char *token_text[] = {
     "int",
     "char",
     "sizeof",
+    "struct",
     "str",
     "identifier",
     "number",

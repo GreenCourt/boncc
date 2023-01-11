@@ -94,6 +94,7 @@ Token *tokenize(char *src) {
         TK_INT,
         TK_CHAR,
         TK_SIZEOF,
+        TK_STRUCT,
         TK_LE,
         TK_GE,
         TK_EQ,

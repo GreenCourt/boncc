@@ -6,8 +6,10 @@
 
 /* BNF
 program    = toplevel*
-toplevel   = func | vardec
-type       = "int" | "char"
+toplevel   = func | vardec | struct ";"
+type       = "int" | "char" | struct
+struct     = ("struct" ident ("{" member* "}")?) | ("struct" ident? "{" member* "}")
+member     = type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";"
 vardec     = type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
 varinit    = expr
              | "{" varinit ("," varinit)* "}"
@@ -41,18 +43,63 @@ primary    = "(" expr ")"
              | str
 */
 
+// node.c -->
+Node *new_node_num(Token *tok, int val);
+Node *new_node_mul(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_div(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_add(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_sub(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_eq(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_ne(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_lt(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_le(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_addr(Token *tok, Node *operand);
+Node *new_node_deref(Token *tok, Node *operand);
+Node *new_node_assign(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_var(Token *tok, Variable *var);
+Node *new_node_array_set_expr(Variable *var, int idx, Node *expr);
+Node *new_node_array_set_val(Variable *var, int idx, int val);
+// <-- node.c
+
+void program();
+void toplevel();
+void func(Type *type, Token *name);
+void funcparam(Vector *params);
+VariableInit *varinit();
+Node *stmt();
+Node *expr();
+Node *assign();
+Node *equality();
+Node *relational();
+Node *add();
+Node *mul();
+Node *primary();
+Node *unary();
+Node *postfix();
+
+Node *stmt_if();
+Node *stmt_while();
+Node *stmt_for();
+Node *stmt_block();
+
+Type *consume_type();
+Type *consume_type_star(Type *type);
+Type *consume_array_brackets(Type *type);
+
 typedef struct Scope Scope;
 struct Scope {
   Scope *prev;
-  Vector *local_variables;
+  Vector *local_variables; // vector of Variable*
+  Vector *local_structs;   // vector of Type*
 };
-static Scope *current_scope;
+static Scope *current_scope = NULL;
 static int offset; // for local variables
 
 void new_scope() {
   Scope *s = calloc(1, sizeof(Scope));
   s->prev = current_scope;
   s->local_variables = new_vector(0, sizeof(Variable *));
+  s->local_structs = new_vector(0, sizeof(Type *));
   current_scope = s;
 }
 
@@ -85,6 +132,109 @@ int expect_number() {
   return val;
 }
 
+Type *find_local_struct_in_scope(Token *tok, Scope *scope) {
+  Vector *vec = scope->local_structs;
+  int sz = vec->size;
+  for (int i = 0; i < sz; ++i) {
+    Type *st = *(Type **)vector_get(vec, i);
+    if (same_ident(st->ident, tok->ident))
+      return st;
+  }
+  return NULL;
+}
+
+Type *find_local_structure(Token *tok) {
+  Scope *scope = current_scope;
+  while (scope) {
+    Type *st = find_local_struct_in_scope(tok, scope);
+    if (st)
+      return st;
+    scope = scope->prev;
+  }
+  return NULL;
+}
+
+Type *find_global_struct(Token *tok) {
+  int sz = structs->size;
+  for (int i = 0; i < sz; ++i) {
+    Type *st = *(Type **)vector_get(structs, i);
+    if (same_ident(st->ident, tok->ident))
+      return st;
+  }
+  return NULL;
+}
+
+Type *find_struct(Token *tok) {
+  Type *st = find_local_structure(tok);
+  if (st)
+    return st;
+  return find_global_struct(tok);
+}
+
+Type *consume_struct(Token *struct_name) {
+  static int idx = 0;
+  Ident *struct_ident = NULL;
+
+  if (struct_name) {
+    assert(struct_name->kind == TK_IDENT);
+    struct_ident = struct_name->ident;
+    if (consume(TK_LBRACE)) {
+      if (current_scope ? find_local_struct_in_scope(struct_name, current_scope) : find_global_struct(struct_name))
+        error_at(&struct_name->pos, "duplicated struct identifier");
+    } else {
+      Type *predefined_struct = find_struct(struct_name);
+      if (predefined_struct == NULL)
+        error_at(&struct_name->pos, "undefined struct identifier");
+      return predefined_struct;
+    }
+  } else {
+    // unnamed struct
+    expect(TK_LBRACE);
+    struct_ident = calloc(1, sizeof(Ident));
+    struct_ident->name = calloc(20, sizeof(char));
+    sprintf(struct_ident->name, ".struct%d", idx++);
+    struct_ident->len = strlen(struct_ident->name);
+  }
+
+  Member head;
+  head.next = NULL;
+  head.offset = 0;
+  Member *tail = &head;
+  int size = 0;
+
+  while (!consume(TK_RBRACE)) {
+    Type *base = consume_type();
+    if (!base)
+      error_at(&token->pos, "invalid member type");
+
+    do {
+      Type *type = consume_type_star(base);
+      Token *var_name = expect(TK_IDENT);
+      type = consume_array_brackets(base);
+      if (type->kind == TYPE_ARRAY && type->size < 0)
+        error_at(&var_name->pos, "invalid member array size");
+
+      // TODO alignment
+      Member *m = calloc(1, sizeof(Member));
+      m->ident = var_name->ident;
+      m->type = type;
+      m->offset = tail->offset + type->size;
+
+      tail->next = m;
+      tail = m;
+      size = m->offset;
+    } while (consume(TK_COMMA));
+    expect(TK_SEMICOLON);
+  }
+
+  Type *st = struct_type(struct_ident, head.next, size);
+  if (current_scope == NULL)
+    vector_push(structs, &st);
+  else
+    vector_push(current_scope->local_structs, &st);
+  return st;
+}
+
 Type *consume_type_star(Type *type) {
   while (consume(TK_STAR))
     type = pointer_type(type);
@@ -96,6 +246,8 @@ Type *consume_type() {
     return base_type(TYPE_INT);
   else if (consume(TK_CHAR))
     return base_type(TYPE_CHAR);
+  else if (consume(TK_STRUCT))
+    return consume_struct(consume(TK_IDENT));
   else
     return NULL;
 }
@@ -123,21 +275,21 @@ Type *expect_type() {
 
 bool at_eof() { return token->kind == TK_EOF; }
 
-Variable *find_local_in_scope(Token *tok, Scope *scope) {
-  Vector *locals = scope->local_variables;
-  int sz = locals->size;
+Variable *find_local_variable_in_scope(Token *tok, Scope *scope) {
+  Vector *vec = scope->local_variables;
+  int sz = vec->size;
   for (int i = 0; i < sz; ++i) {
-    Variable *var = *(Variable **)vector_get(locals, i);
+    Variable *var = *(Variable **)vector_get(vec, i);
     if (same_ident(var->ident, tok->ident))
       return var;
   }
   return NULL;
 }
 
-Variable *find_local(Token *tok) {
+Variable *find_local_variable(Token *tok) {
   Scope *scope = current_scope;
   while (scope) {
-    Variable *var = find_local_in_scope(tok, scope);
+    Variable *var = find_local_variable_in_scope(tok, scope);
     if (var)
       return var;
     scope = scope->prev;
@@ -156,7 +308,7 @@ Variable *find_global(Token *tok) {
 }
 
 Variable *find_variable(Token *tok) {
-  Variable *var = find_local(tok);
+  Variable *var = find_local_variable(tok);
   if (var)
     return var;
   return find_global(tok);
@@ -171,8 +323,8 @@ Variable *new_variable(Token *tok, Type *type, VariableKind kind) {
   return var;
 }
 
-Variable *new_local(Token *tok, Type *type) {
-  if (find_local_in_scope(tok, current_scope))
+Variable *new_local_variable(Token *tok, Type *type) {
+  if (find_local_variable_in_scope(tok, current_scope))
     error_at(&tok->pos, "duplicated identifier");
   Variable *var = new_variable(tok, type, VK_LOCAL);
   vector_push(current_scope->local_variables, &var);
@@ -219,49 +371,11 @@ Function *find_function(Token *tok) {
   return NULL;
 }
 
-// node.c -->
-Node *new_node_num(Token *tok, int val);
-Node *new_node_mul(Token *tok, Node *lhs, Node *rhs);
-Node *new_node_div(Token *tok, Node *lhs, Node *rhs);
-Node *new_node_add(Token *tok, Node *lhs, Node *rhs);
-Node *new_node_sub(Token *tok, Node *lhs, Node *rhs);
-Node *new_node_eq(Token *tok, Node *lhs, Node *rhs);
-Node *new_node_ne(Token *tok, Node *lhs, Node *rhs);
-Node *new_node_lt(Token *tok, Node *lhs, Node *rhs);
-Node *new_node_le(Token *tok, Node *lhs, Node *rhs);
-Node *new_node_addr(Token *tok, Node *operand);
-Node *new_node_deref(Token *tok, Node *operand);
-Node *new_node_assign(Token *tok, Node *lhs, Node *rhs);
-Node *new_node_var(Token *tok, Variable *var);
-Node *new_node_array_set_expr(Variable *var, int idx, Node *expr);
-Node *new_node_array_set_val(Variable *var, int idx, int val);
-// <-- node.c
-
-void program();
-void toplevel();
-void func(Type *type, Token *name);
-void funcparam(Vector *params);
-VariableInit *varinit();
-Node *stmt();
-Node *expr();
-Node *assign();
-Node *equality();
-Node *relational();
-Node *add();
-Node *mul();
-Node *primary();
-Node *unary();
-Node *postfix();
-
-Node *stmt_if();
-Node *stmt_while();
-Node *stmt_for();
-Node *stmt_block();
-
 void program() {
   functions = new_vector(0, sizeof(Node *));
   globals = new_vector(0, sizeof(Variable *));
   strings = new_vector(0, sizeof(Variable *));
+  structs = new_vector(0, sizeof(Type *));
   while (!at_eof())
     toplevel();
 }
@@ -279,7 +393,7 @@ Vector *vardec(Type *type, Token *name, VariableKind kind) {
     if (kind == VK_GLOBAL)
       var = new_global(name, type);
     else if (kind == VK_LOCAL)
-      var = new_local(name, type);
+      var = new_local_variable(name, type);
     else
       assert(false);
 
@@ -320,7 +434,12 @@ Vector *vardec(Type *type, Token *name, VariableKind kind) {
 }
 
 void toplevel() {
-  Type *type = consume_type_star(expect_type());
+  Type *base = expect_type();
+  if (base->kind == TYPE_STRUCT && consume(TK_SEMICOLON)) {
+    // struct declaration
+    return;
+  }
+  Type *type = consume_type_star(base);
   Token *name = expect(TK_IDENT);
   if (token->kind == TK_LPAREN)
     func(type, name);
@@ -362,7 +481,7 @@ void funcparam(Vector *params) {
       ty = pointer_type(ty); // array as a pointer
       expect(TK_RBRACKET);
     }
-    Variable *var = new_local(id, ty);
+    Variable *var = new_local_variable(id, ty);
     set_offset(var);
     vector_push(params, &var);
   } while (consume(TK_COMMA));
@@ -526,10 +645,15 @@ Node *stmt() {
     expect(TK_SEMICOLON);
     return node;
   } else if ((ty = consume_type())) {
-    ty = consume_type_star(ty);
-    Token *id = expect(TK_IDENT);
-    Vector *vars = vardec(ty, id, VK_LOCAL);
-    return init_multiple_local_variables(vars);
+    if (ty->kind == TYPE_STRUCT && consume(TK_SEMICOLON)) {
+      // struct declaration
+      return NULL;
+    } else {
+      ty = consume_type_star(ty);
+      Token *id = expect(TK_IDENT);
+      Vector *vars = vardec(ty, id, VK_LOCAL);
+      return init_multiple_local_variables(vars);
+    }
   } else {
     Node *node = expr();
     expect(TK_SEMICOLON);

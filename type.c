@@ -31,3 +31,13 @@ Type *array_type(Type *base, int len) {
   t->size = base->size * len;
   return t;
 }
+
+Type *struct_type(Ident *ident, Member *member, int size) {
+  assert(ident != NULL);
+  Type *t = calloc(1, sizeof(Type));
+  t->kind = TYPE_STRUCT;
+  t->ident = ident;
+  t->member = member;
+  t->size = size;
+  return t;
+}

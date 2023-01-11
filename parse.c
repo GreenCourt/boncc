@@ -26,12 +26,13 @@ equality   = relational ("==" relational | "!=" relational)*
 relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 add        = mul ("+" mul | "-" mul)*
 mul        = unary ("*" unary | "/" unary)*
-unary      = "sizeof"? unary
-             | "+"? unary
-             | "-"? unary
-             | "*"? unary
-             | "&"? unary
-             | postfix
+unary      = postfix
+             | ("sizeof" unary)
+             | ("sizeof" (type | ("(" type ")") ))
+             | ("+" unary)
+             | ("-" unary)
+             | ("*" unary)
+             | ("&" unary)
 postfix    = primary ("[" expr "]")*
 primary    = "(" expr ")"
              | ident ("(" (expr ("," expr)*)? ")")?
@@ -685,8 +686,24 @@ Node *mul() {
 
 Node *unary() {
   Token *tok;
-  if ((tok = consume(TK_SIZEOF)))
-    return new_node_num(tok, unary()->type->size);
+  if ((tok = consume(TK_SIZEOF))) {
+    Token *keep = token;
+    Token *left_paren = consume(TK_LPAREN);
+    Type *type = consume_type();
+    if (left_paren && type) {
+      // sizeof(type)
+      type = consume_array_brackets(consume_type_star(type));
+      if (type->size < 0)
+        error_at(&tok->pos, "invalid array size");
+      expect(TK_RPAREN);
+      return new_node_num(tok, type->size);
+    } else {
+      // sizeof unary
+      token = keep; // rollback token
+      return new_node_num(tok, unary()->type->size);
+    }
+  }
+
   if ((tok = consume(TK_PLUS)))
     return unary();
   if ((tok = consume(TK_MINUS)))

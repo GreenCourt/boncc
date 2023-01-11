@@ -14,6 +14,14 @@ int global_2darray_size_assumption[][2] = {{1, 2}, {3}};
 int *global_int_pointer;
 
 int main() {
+  // type size
+  verify(4, sizeof(int), __FILE__, __LINE__);
+  verify(1, sizeof(char), __FILE__, __LINE__);
+  verify(8, sizeof(int *), __FILE__, __LINE__);
+  verify(8, sizeof(char *), __FILE__, __LINE__);
+  verify(32, sizeof(char *[4]), __FILE__, __LINE__);
+  verify(48, sizeof(int *[3][2]), __FILE__, __LINE__);
+
   // global varinit
   verify(0, global_int1, __FILE__, __LINE__);
   verify(0, global_array20[0], __FILE__, __LINE__);

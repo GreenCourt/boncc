@@ -224,7 +224,7 @@ Type *consume_struct(Token *struct_name) {
     do {
       Type *type = consume_type_star(base);
       Token *var_name = expect(TK_IDENT);
-      type = consume_array_brackets(base);
+      type = consume_array_brackets(type);
       if (type->kind == TYPE_ARRAY && type->size < 0)
         error_at(&var_name->pos, "invalid member array size");
 

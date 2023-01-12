@@ -45,8 +45,9 @@ int main() {
       int b;
       char c;
       char d;
+      char *e;
     };
-    verify(10, sizeof(struct st), __FILE__, __LINE__);
+    verify(18, sizeof(struct st), __FILE__, __LINE__);
   }
   {
     // declare named struct and variable at same time

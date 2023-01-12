@@ -3,6 +3,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+char *type_text(TypeKind kind) {
+  switch (kind) {
+  case TYPE_INT:
+    return "int";
+  case TYPE_CHAR:
+    return "char";
+  case TYPE_PTR:
+    return "ptr";
+  case TYPE_ARRAY:
+    return "array";
+  case TYPE_STRUCT:
+    return "struct";
+  default:
+    assert(false);
+    return NULL;
+  }
+};
+
 Type *base_type(TypeKind kind) {
   Type *t = calloc(1, sizeof(Type));
   t->kind = kind;

@@ -194,6 +194,7 @@ void gen_global_variables();
 Token *tokenize(char *p);
 void program();
 
+char *type_text(TypeKind kind);
 Type *base_type(TypeKind kind);
 Type *pointer_type(Type *base);
 Type *array_type(Type *base, int len);

@@ -1,5 +1,6 @@
 #include "boncc.h"
 #include <assert.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,31 +16,41 @@ bool is_constant_number(Node *node);
 int eval(Node *node);
 // <-- node.c
 
+void comment(Token *tok, char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  printf("  # ");
+  vprintf(fmt, ap);
+  if (tok)
+    printf("    %s:%d:%d", tok->pos.file_name, tok->pos.line_number, tok->pos.column_number);
+  printf("\n");
+}
+
 void gen_left_value(Node *node) {
   // push address to stack top
   switch (node->kind) {
   case ND_DEREF:
-    printf("  # gen_left_value ND_DEREF\n");
+    comment(NULL, "gen_left_value ND_DEREF");
     gen(node->lhs);
     return;
   case ND_VAR:
     if (node->variable->kind == VK_LOCAL) {
-      printf("  # gen_left_value ND_VAR (local: %.*s)\n", node->variable->ident->len, node->variable->ident->name);
+      comment(NULL, "gen_left_value ND_VAR local: %.*s", node->variable->ident->len, node->variable->ident->name);
       printf("  lea rax, [rbp-%d]\n", node->variable->offset);
       printf("  push rax\n");
     } else if (node->variable->kind == VK_GLOBAL) {
-      printf("  # gen_left_value ND_VAR (global: %.*s)\n", node->variable->ident->len, node->variable->ident->name);
+      comment(NULL, "gen_left_value ND_VAR global: %.*s", node->variable->ident->len, node->variable->ident->name);
       printf("  lea rax, %.*s[rip]\n", node->variable->ident->len, node->variable->ident->name);
       printf("  push rax\n");
     } else if (node->variable->kind == VK_STRLIT) {
-      printf("  # gen_left_value ND_VAR (strlit: \"%s\")\n", node->variable->string_literal);
+      comment(NULL, "gen_left_value ND_VAR strlit: \"%s\"", node->variable->string_literal);
       printf("  lea rax, %.*s[rip]\n", node->variable->ident->len, node->variable->ident->name);
       printf("  push rax\n");
     } else
       assert(false);
     return;
   case ND_MEMBER:
-    printf("  # gen_left_value ND_MEMBER (%.*s)\n", node->member->ident->len, node->member->ident->name);
+    comment(NULL, "gen_left_value ND_MEMBER %.*s", node->member->ident->len, node->member->ident->name);
     gen_left_value(node->lhs);
     printf("  pop rax\n");
     printf("  add rax, %d\n", node->member->offset);
@@ -53,7 +64,7 @@ void gen_left_value(Node *node) {
 void load(Type *type) {
   // pop address from stack
   // push the value of address to stack
-  printf("  # load %s\n", type_text(type->kind));
+  comment(NULL, "load %s", type_text(type->kind), type->size);
 
   if (type->kind == TYPE_ARRAY)
     return; // nothing todo
@@ -74,7 +85,7 @@ void load(Type *type) {
 void store(Type *type) {
   // pop address from stack
   // store rax value to the address
-  printf("  # store %s\n", type_text(type->kind));
+  comment(NULL, "store %s", type_text(type->kind));
 
   printf("  pop rdi\n");
   if (type->size == 1)
@@ -166,7 +177,7 @@ void gen_call(Node *node) {
   }
 
   // align RSP to 16bytes (ABI requirements)
-  printf("  # RSP alignment for call\n");
+  comment(NULL, "RSP alignment for call");
   int l = label++;
   printf("  mov rax, rsp\n");
   printf("  and rax, 15\n"); // rax % 16 == rax & 0xF
@@ -311,7 +322,7 @@ void gen_func(Node *node) {
   printf("  mov rbp, rsp\n");
 
   // move args to stack
-  printf("  # function arguments to stack\n");
+  comment(NULL, "function arguments to stack");
   for (int i = 0; i < node->func->params->size; ++i) {
     Variable *v = *(Variable **)vector_get(node->func->params, i);
     if (v->type->size == 1)
@@ -343,31 +354,31 @@ void gen_func(Node *node) {
 void gen(Node *node) {
   switch (node->kind) {
   case ND_FUNC:
-    printf("  # ND_FUNC %.*s\n", node->func->ident->len, node->func->ident->name);
+    comment(node->token, "ND_FUNC %.*s", node->func->ident->len, node->func->ident->name);
     gen_func(node);
     return;
   case ND_CALL:
-    printf("  # ND_CALL %.*s\n", node->func->ident->len, node->func->ident->name);
+    comment(node->token, "ND_CALL %.*s", node->func->ident->len, node->func->ident->name);
     gen_call(node);
     return;
   case ND_BLOCK:
-    printf("  # ND_BLOCK\n");
+    comment(node->token, "ND_BLOCK");
     gen_block(node);
     return;
   case ND_IF:
-    printf("  # ND_IF\n");
+    comment(node->token, "ND_IF");
     gen_if(node);
     return;
   case ND_WHILE:
-    printf("  # ND_WHILE\n");
+    comment(node->token, "ND_WHILE");
     gen_while(node);
     return;
   case ND_FOR:
-    printf("  # ND_FOR\n");
+    comment(node->token, "ND_FOR");
     gen_for(node);
     return;
   case ND_RETURN:
-    printf("  # ND_RETURN\n");
+    comment(node->token, "ND_RETURN");
     gen(node->lhs);
     printf("  pop rax\n");
     printf("  mov rsp, rbp\n");
@@ -375,16 +386,16 @@ void gen(Node *node) {
     printf("  ret\n");
     return;
   case ND_NUM:
-    printf("  # ND_NUM\n");
+    comment(node->token, "ND_NUM");
     printf("  push %d\n", node->val);
     return;
   case ND_VAR:
-    printf("  # ND_VAR\n");
+    comment(node->token, "ND_VAR");
     gen_left_value(node);
     load(node->type);
     return;
   case ND_ASSIGN:
-    printf("  # ND_ASSIGN\n");
+    comment(node->token, "ND_ASSIGN");
     gen_left_value(node->lhs);
     gen(node->rhs);
     printf("  pop rax\n");
@@ -392,16 +403,16 @@ void gen(Node *node) {
     printf("  push rax\n");
     return;
   case ND_ADDR:
-    printf("  # ND_ADDR\n");
+    comment(node->token, "ND_ADDR");
     gen_left_value(node->lhs);
     return;
   case ND_DEREF:
-    printf("  # ND_DEREF\n");
+    comment(node->token, "ND_DEREF");
     gen(node->lhs);
     load(node->type);
     return;
   case ND_MEMBER:
-    printf("  # ND_MEMBER\n");
+    comment(node->token, "ND_MEMBER");
     gen_left_value(node);
     load(node->type);
     return;
@@ -411,7 +422,7 @@ void gen(Node *node) {
 
   switch (node->kind) {
   case ND_ADD:
-    printf("  # ND_ADD\n");
+    comment(node->token, "ND_ADD");
     gen(node->lhs);
     gen(node->rhs);
     printf("  pop rdi\n");
@@ -419,7 +430,7 @@ void gen(Node *node) {
     printf("  add rax, rdi\n");
     break;
   case ND_SUB:
-    printf("  # ND_SUB\n");
+    comment(node->token, "ND_SUB");
     gen(node->lhs);
     gen(node->rhs);
     printf("  pop rdi\n");
@@ -427,7 +438,7 @@ void gen(Node *node) {
     printf("  sub rax, rdi\n");
     break;
   case ND_MUL:
-    printf("  # ND_MUL\n");
+    comment(node->token, "ND_MUL");
     gen(node->lhs);
     gen(node->rhs);
     printf("  pop rdi\n");
@@ -435,7 +446,7 @@ void gen(Node *node) {
     printf("  imul rax, rdi\n");
     break;
   case ND_DIV:
-    printf("  # ND_DIV\n");
+    comment(node->token, "ND_DIV");
     gen(node->lhs);
     gen(node->rhs);
     printf("  pop rdi\n");
@@ -444,7 +455,7 @@ void gen(Node *node) {
     printf("  idiv rdi\n");
     break;
   case ND_EQ:
-    printf("  # ND_EQ\n");
+    comment(node->token, "ND_EQ");
     gen(node->lhs);
     gen(node->rhs);
     printf("  pop rdi\n");
@@ -454,7 +465,7 @@ void gen(Node *node) {
     printf("  movzb rax, al\n");
     break;
   case ND_NE:
-    printf("  # ND_NE\n");
+    comment(node->token, "ND_NE");
     gen(node->lhs);
     gen(node->rhs);
     printf("  pop rdi\n");
@@ -464,7 +475,7 @@ void gen(Node *node) {
     printf("  movzb rax, al\n");
     break;
   case ND_LT:
-    printf("  # ND_LT\n");
+    comment(node->token, "ND_LT");
     gen(node->lhs);
     gen(node->rhs);
     printf("  pop rdi\n");
@@ -474,7 +485,7 @@ void gen(Node *node) {
     printf("  movzb rax, al\n");
     break;
   case ND_LE:
-    printf("  # ND_LE\n");
+    comment(node->token, "ND_LE");
     gen(node->lhs);
     gen(node->rhs);
     printf("  pop rdi\n");

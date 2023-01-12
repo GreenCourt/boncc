@@ -11,8 +11,8 @@ struct global_struct2 {
 };
 
 int main() {
-  verify(9, sizeof(g), __FILE__, __LINE__);
-  verify(9, sizeof(struct global_struct1), __FILE__, __LINE__);
+  verify(12, sizeof(g), __FILE__, __LINE__);
+  verify(12, sizeof(struct global_struct1), __FILE__, __LINE__);
   verify(12, sizeof(struct global_struct2), __FILE__, __LINE__);
 
   {
@@ -21,19 +21,19 @@ int main() {
       int a;
       char c;
     };
-    verify(5, sizeof(struct global_struct1), __FILE__, __LINE__);
+    verify(8, sizeof(struct global_struct1), __FILE__, __LINE__);
   }
   {
     // declare unnamed struct and variable at same time
     struct {
       int a;
-      int b;
-      char c;
+      char b;
+      int c;
     } x;
     x.a = 11;
     x.b = 12;
     x.c = 13;
-    verify(9, sizeof(x), __FILE__, __LINE__);
+    verify(12, sizeof(x), __FILE__, __LINE__);
     verify(11, x.a, __FILE__, __LINE__);
     verify(12, x.b, __FILE__, __LINE__);
     verify(13, x.c, __FILE__, __LINE__);
@@ -47,7 +47,7 @@ int main() {
       char d;
       char *e;
     };
-    verify(18, sizeof(struct st), __FILE__, __LINE__);
+    verify(24, sizeof(struct st), __FILE__, __LINE__);
   }
   {
     // declare named struct and variable at same time
@@ -61,8 +61,8 @@ int main() {
     x.b = 6;
     x.c = 7;
     x.d = 9;
-    verify(10, sizeof(struct st), __FILE__, __LINE__);
-    verify(10, sizeof(x), __FILE__, __LINE__);
+    verify(12, sizeof(struct st), __FILE__, __LINE__);
+    verify(12, sizeof(x), __FILE__, __LINE__);
     verify(4, sizeof(x.b), __FILE__, __LINE__);
     verify(5, x.a, __FILE__, __LINE__);
     verify(6, x.b, __FILE__, __LINE__);
@@ -75,6 +75,31 @@ int main() {
     } x;
     verify(0, sizeof(struct empty), __FILE__, __LINE__);
     verify(0, sizeof(x), __FILE__, __LINE__);
+  }
+  {
+    // pointer
+    struct st {
+      int a;
+      int b;
+      char c;
+      char d;
+    } x, *p;
+    p = &x;
+    p->a = 5;
+    p->b = 6;
+    p->c = 7;
+    p->d = 9;
+    verify(12, sizeof(struct st), __FILE__, __LINE__);
+    verify(8, sizeof(p), __FILE__, __LINE__);
+    verify(4, sizeof(p->b), __FILE__, __LINE__);
+    verify(5, p->a, __FILE__, __LINE__);
+    verify(6, p->b, __FILE__, __LINE__);
+    verify(7, p->c, __FILE__, __LINE__);
+    verify(9, p->d, __FILE__, __LINE__);
+    verify(5, x.a, __FILE__, __LINE__);
+    verify(6, x.b, __FILE__, __LINE__);
+    verify(7, x.c, __FILE__, __LINE__);
+    verify(9, x.d, __FILE__, __LINE__);
   }
   return 0;
 }

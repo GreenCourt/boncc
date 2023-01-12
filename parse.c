@@ -215,6 +215,7 @@ Type *consume_struct(Token *struct_name) {
   head.offset = 0;
   Member *tail = &head;
   int offset = 0;
+  int align = 0;
 
   while (!consume(TK_RBRACE)) {
     Type *base = consume_type();
@@ -228,18 +229,25 @@ Type *consume_struct(Token *struct_name) {
       if (type->kind == TYPE_ARRAY && type->size < 0)
         error_at(&var_name->pos, "invalid member array size");
 
-      // TODO alignment
       Member *m = calloc(1, sizeof(Member));
       m->ident = var_name->ident;
       m->type = type;
+
+      int padding = (offset % type->size) ? type->size - (offset % type->size) : 0;
+      offset += padding;
       m->offset = offset;
       offset += type->size;
+      if (type->size > align)
+        align = type->size;
 
       tail->next = m;
       tail = m;
     } while (consume(TK_COMMA));
     expect(TK_SEMICOLON);
   }
+
+  if (align && offset % align)
+    offset += align - offset % align;
 
   Type *st = struct_type(struct_ident, head.next, offset);
   if (current_scope == NULL)

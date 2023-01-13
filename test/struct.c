@@ -50,6 +50,16 @@ int main() {
     verify(24, sizeof(struct st), __FILE__, __LINE__);
   }
   {
+    // this block contains only struct declaration
+    struct {
+      int a;
+      int b;
+      char c;
+      char d;
+      char *e;
+    };
+  }
+  {
     // declare named struct and variable at same time
     struct st {
       int a;

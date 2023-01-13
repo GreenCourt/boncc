@@ -26,35 +26,30 @@ void comment(Token *tok, char *fmt, ...) {
   printf("\n");
 }
 
-void gen_left_value(Node *node) {
-  // push address to stack top
+void gen_address(Node *node) {
+  // write address to rax
   switch (node->kind) {
   case ND_DEREF:
-    comment(NULL, "gen_left_value ND_DEREF");
+    comment(NULL, "gen_address ND_DEREF");
     gen(node->lhs);
     return;
   case ND_VAR:
     if (node->variable->kind == VK_LOCAL) {
-      comment(NULL, "gen_left_value ND_VAR local: %.*s", node->variable->ident->len, node->variable->ident->name);
+      comment(NULL, "gen_address ND_VAR local: %.*s", node->variable->ident->len, node->variable->ident->name);
       printf("  lea rax, [rbp-%d]\n", node->variable->offset);
-      printf("  push rax\n");
     } else if (node->variable->kind == VK_GLOBAL) {
-      comment(NULL, "gen_left_value ND_VAR global: %.*s", node->variable->ident->len, node->variable->ident->name);
+      comment(NULL, "gen_address ND_VAR global: %.*s", node->variable->ident->len, node->variable->ident->name);
       printf("  lea rax, %.*s[rip]\n", node->variable->ident->len, node->variable->ident->name);
-      printf("  push rax\n");
     } else if (node->variable->kind == VK_STRLIT) {
-      comment(NULL, "gen_left_value ND_VAR strlit: \"%s\"", node->variable->string_literal);
+      comment(NULL, "gen_address ND_VAR strlit: \"%s\"", node->variable->string_literal);
       printf("  lea rax, %.*s[rip]\n", node->variable->ident->len, node->variable->ident->name);
-      printf("  push rax\n");
     } else
       assert(false);
     return;
   case ND_MEMBER:
-    comment(NULL, "gen_left_value ND_MEMBER %.*s", node->member->ident->len, node->member->ident->name);
-    gen_left_value(node->lhs);
-    printf("  pop rax\n");
+    comment(NULL, "gen_address ND_MEMBER %.*s", node->member->ident->len, node->member->ident->name);
+    gen_address(node->lhs);
     printf("  add rax, %d\n", node->member->offset);
-    printf("  push rax\n");
     return;
   default:
     error_at(&node->token->pos, "left-value must be a variable");
@@ -62,13 +57,12 @@ void gen_left_value(Node *node) {
 }
 
 void load(Type *type) {
-  // pop address from stack
-  // push the value of address to stack
+  // src  : rax
+  // dest : the address from stack top
   comment(NULL, "load %s", type_text(type->kind), type->size);
 
   if (type->kind == TYPE_ARRAY)
     return; // nothing todo
-  printf("  pop rax\n");
   if (type->size == 1)
     printf("  movsx rax, byte ptr [rax]\n");
   else if (type->size == 2)
@@ -79,12 +73,11 @@ void load(Type *type) {
     printf("  mov rax, [rax]\n");
   else
     assert(false);
-  printf("  push rax\n");
 }
 
 void store(Type *type) {
-  // pop address from stack
-  // store rax value to the address
+  // src  : rax
+  // dest : the address popped from stack
   comment(NULL, "store %s", type_text(type->kind));
 
   printf("  pop rdi\n");
@@ -102,7 +95,6 @@ void store(Type *type) {
 
 void gen_if(Node *node) {
   gen(node->condition);
-  printf("  pop rax\n");
   printf("  cmp rax, 0\n");
 
   int l = label++;
@@ -126,7 +118,6 @@ void gen_while(Node *node) {
   printf(".Lwhile%d:\n", l);
 
   gen(node->condition);
-  printf("  pop rax\n");
   printf("  cmp rax, 0\n");
   printf("  je .Lend%d\n", l);
 
@@ -144,7 +135,6 @@ void gen_for(Node *node) {
   printf(".Lfor%d:\n", l);
   if (node->condition) {
     gen(node->condition);
-    printf("  pop rax\n");
     printf("  cmp rax, 0\n");
     printf("  je .Lend%d\n", l);
   }
@@ -160,20 +150,21 @@ void gen_block(Node *node) {
   for (int i = 0; i < sz; ++i) {
     Node *d = *(Node **)vector_get(node->blk_stmts, i);
     gen(d);
-    if (i != sz - 1)
-      printf("  pop rax\n");
   }
 }
 
 void gen_call(Node *node) {
   int sz = node->args->size;
+  if (sz > 6)
+    error("maximum number of argument is currently 6");
+
   for (int i = 0; i < sz; ++i) {
     Node *d = *(Node **)vector_get(node->args, i);
     gen(d);
+    printf("  push rax\n");
   }
   for (int i = sz - 1; i >= 0; --i) {
-    printf("  pop rax\n");
-    printf("  mov %s, rax\n", reg_args8[i]);
+    printf("  pop %s\n", reg_args8[i]);
   }
 
   // align RSP to 16bytes (ABI requirements)
@@ -191,9 +182,6 @@ void gen_call(Node *node) {
   printf("  call %.*s\n", node->func->ident->len, node->func->ident->name);
   printf("  add rsp, 8\n");
   printf(".Lend%d:\n", l);
-
-  // push return value to stack
-  printf("  push rax\n");
 }
 
 void gen_global_init(VariableInit *init, Type *type) {
@@ -343,7 +331,6 @@ void gen_func(Node *node) {
   }
 
   gen(node->body);
-  printf("  pop rax\n"); // return value
 
   // epilogue
   printf("  mov rsp, rbp\n");
@@ -380,31 +367,29 @@ void gen(Node *node) {
   case ND_RETURN:
     comment(node->token, "ND_RETURN");
     gen(node->lhs);
-    printf("  pop rax\n");
     printf("  mov rsp, rbp\n");
     printf("  pop rbp\n");
     printf("  ret\n");
     return;
   case ND_NUM:
     comment(node->token, "ND_NUM");
-    printf("  push %d\n", node->val);
+    printf("  mov rax, %d\n", node->val);
     return;
   case ND_VAR:
     comment(node->token, "ND_VAR");
-    gen_left_value(node);
+    gen_address(node);
     load(node->type);
     return;
   case ND_ASSIGN:
     comment(node->token, "ND_ASSIGN");
-    gen_left_value(node->lhs);
-    gen(node->rhs);
-    printf("  pop rax\n");
-    store(node->type);
+    gen_address(node->lhs);
     printf("  push rax\n");
+    gen(node->rhs);
+    store(node->type);
     return;
   case ND_ADDR:
     comment(node->token, "ND_ADDR");
-    gen_left_value(node->lhs);
+    gen_address(node->lhs);
     return;
   case ND_DEREF:
     comment(node->token, "ND_DEREF");
@@ -413,7 +398,7 @@ void gen(Node *node) {
     return;
   case ND_MEMBER:
     comment(node->token, "ND_MEMBER");
-    gen_left_value(node);
+    gen_address(node);
     load(node->type);
     return;
   default:
@@ -424,32 +409,34 @@ void gen(Node *node) {
   case ND_ADD:
     comment(node->token, "ND_ADD");
     gen(node->lhs);
+    printf("  push rax\n");
     gen(node->rhs);
     printf("  pop rdi\n");
-    printf("  pop rax\n");
     printf("  add rax, rdi\n");
     break;
   case ND_SUB:
     comment(node->token, "ND_SUB");
     gen(node->lhs);
+    printf("  push rax\n");
     gen(node->rhs);
-    printf("  pop rdi\n");
+    printf("  mov rdi, rax\n");
     printf("  pop rax\n");
     printf("  sub rax, rdi\n");
     break;
   case ND_MUL:
     comment(node->token, "ND_MUL");
     gen(node->lhs);
+    printf("  push rax\n");
     gen(node->rhs);
     printf("  pop rdi\n");
-    printf("  pop rax\n");
     printf("  imul rax, rdi\n");
     break;
   case ND_DIV:
     comment(node->token, "ND_DIV");
     gen(node->lhs);
+    printf("  push rax\n");
     gen(node->rhs);
-    printf("  pop rdi\n");
+    printf("  mov rdi, rax\n");
     printf("  pop rax\n");
     printf("  cqo\n");
     printf("  idiv rdi\n");
@@ -457,9 +444,9 @@ void gen(Node *node) {
   case ND_EQ:
     comment(node->token, "ND_EQ");
     gen(node->lhs);
+    printf("  push rax\n");
     gen(node->rhs);
     printf("  pop rdi\n");
-    printf("  pop rax\n");
     printf("  cmp rax, rdi\n");
     printf("  sete al\n");
     printf("  movzb rax, al\n");
@@ -467,9 +454,9 @@ void gen(Node *node) {
   case ND_NE:
     comment(node->token, "ND_NE");
     gen(node->lhs);
+    printf("  push rax\n");
     gen(node->rhs);
     printf("  pop rdi\n");
-    printf("  pop rax\n");
     printf("  cmp rax, rdi\n");
     printf("  setne al\n");
     printf("  movzb rax, al\n");
@@ -477,8 +464,9 @@ void gen(Node *node) {
   case ND_LT:
     comment(node->token, "ND_LT");
     gen(node->lhs);
+    printf("  push rax\n");
     gen(node->rhs);
-    printf("  pop rdi\n");
+    printf("  mov rdi, rax\n");
     printf("  pop rax\n");
     printf("  cmp rax, rdi\n");
     printf("  setl al\n");
@@ -487,8 +475,9 @@ void gen(Node *node) {
   case ND_LE:
     comment(node->token, "ND_LE");
     gen(node->lhs);
+    printf("  push rax\n");
     gen(node->rhs);
-    printf("  pop rdi\n");
+    printf("  mov rdi, rax\n");
     printf("  pop rax\n");
     printf("  cmp rax, rdi\n");
     printf("  setle al\n");
@@ -497,5 +486,4 @@ void gen(Node *node) {
   default:
     break;
   }
-  printf("  push rax\n");
 }

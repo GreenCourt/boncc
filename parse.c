@@ -709,13 +709,20 @@ Node *stmt_if() {
 
   expect(TK_LPAREN);
   node->condition = expr();
-  expect(TK_RPAREN);
+  Token *tok = expect(TK_RPAREN);
+
+  if (consume_type())
+    error_at(&tok->next->pos, "vardec is not allowed here");
+
   new_scope();
   node->body = stmt();
   restore_scope();
 
-  if (consume(TK_ELSE))
+  if ((tok = consume(TK_ELSE))) {
+    if (consume_type())
+      error_at(&tok->next->pos, "vardec is not allowed here");
     node->else_ = stmt();
+  }
 
   return node;
 }
@@ -726,7 +733,11 @@ Node *stmt_while() {
 
   expect(TK_LPAREN);
   node->condition = expr();
-  expect(TK_RPAREN);
+  Token *tok = expect(TK_RPAREN);
+
+  if (consume_type())
+    error_at(&tok->next->pos, "vardec is not allowed here");
+
   new_scope();
   node->body = stmt();
   restore_scope();
@@ -759,10 +770,14 @@ Node *stmt_for() {
     expect(TK_SEMICOLON);
   }
 
-  if (!consume(TK_RPAREN)) {
+  Token *tok = NULL;
+  if (!(tok = consume(TK_RPAREN))) {
     node->update = expr();
-    expect(TK_RPAREN);
+    tok = expect(TK_RPAREN);
   }
+
+  if (consume_type())
+    error_at(&tok->next->pos, "vardec is not allowed here");
 
   node->body = stmt();
   restore_scope();

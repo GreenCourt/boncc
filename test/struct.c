@@ -41,7 +41,7 @@ int main() {
   {
     // declare named struct
     struct st {
-      int a;
+      short a;
       int b;
       char c;
       char d;
@@ -53,7 +53,7 @@ int main() {
     // this block contains only struct declaration
     struct {
       int a;
-      int b;
+      long b;
       char c;
       char d;
       char *e;
@@ -63,7 +63,7 @@ int main() {
     // declare named struct and variable at same time
     struct st {
       int a;
-      int b;
+      long b;
       char c;
       char d;
     } x;
@@ -71,9 +71,9 @@ int main() {
     x.b = 6;
     x.c = 7;
     x.d = 9;
-    verify(12, sizeof(struct st), __FILE__, __LINE__);
-    verify(12, sizeof(x), __FILE__, __LINE__);
-    verify(4, sizeof(x.b), __FILE__, __LINE__);
+    verify(24, sizeof(struct st), __FILE__, __LINE__);
+    verify(24, sizeof(x), __FILE__, __LINE__);
+    verify(8, sizeof(x.b), __FILE__, __LINE__);
     verify(5, x.a, __FILE__, __LINE__);
     verify(6, x.b, __FILE__, __LINE__);
     verify(7, x.c, __FILE__, __LINE__);

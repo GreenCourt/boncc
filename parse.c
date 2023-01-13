@@ -7,7 +7,7 @@
 /* BNF
 program    = toplevel*
 toplevel   = func | vardec | struct ";"
-type       = "int" | "char" | struct
+type       = "void" | "int" | "char" | ("short" "int"?) | ("long" "long"? "int"?) | struct
 struct     = ("struct" ident ("{" member* "}")?) | ("struct" ident? "{" member* "}")
 member     = type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";"
 vardec     = type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
@@ -47,6 +47,7 @@ primary    = "(" expr ")"
 
 // node.c -->
 Node *new_node_num(Token *tok, int val);
+Node *new_node_long(Token *tok, long long val);
 Node *new_node_mul(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_div(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_add(Token *tok, Node *lhs, Node *rhs);
@@ -219,12 +220,17 @@ Type *consume_struct(Token *struct_name) {
   int align = 0;
 
   while (!consume(TK_RBRACE)) {
+    Token *tok_type = token;
     Type *base = consume_type();
     if (!base)
       error_at(&token->pos, "invalid member type");
 
     do {
       Type *type = consume_type_star(base);
+
+      if (type->kind == TYPE_VOID)
+        error_at(&tok_type->pos, "void type is not allowed");
+
       Token *var_name = expect(TK_IDENT);
       type = consume_array_brackets(type);
       if (type->kind == TYPE_ARRAY && type->size < 0)
@@ -265,14 +271,30 @@ Type *consume_type_star(Type *type) {
 }
 
 Type *consume_type() {
+  if (consume(TK_VOID))
+    return base_type(TYPE_VOID);
+
   if (consume(TK_INT))
     return base_type(TYPE_INT);
-  else if (consume(TK_CHAR))
+
+  if (consume(TK_CHAR))
     return base_type(TYPE_CHAR);
-  else if (consume(TK_STRUCT))
+
+  if (consume(TK_SHORT)) {
+    consume(TK_INT);
+    return base_type(TYPE_SHORT);
+  }
+
+  if (consume(TK_LONG)) {
+    consume(TK_LONG);
+    consume(TK_INT);
+    return base_type(TYPE_LONG);
+  }
+
+  if (consume(TK_STRUCT))
     return consume_struct(consume(TK_IDENT));
-  else
-    return NULL;
+
+  return NULL;
 }
 
 Type *consume_array_brackets(Type *type) {
@@ -410,6 +432,8 @@ Vector *vardec(Type *type, Token *name, VariableKind kind) {
 
   Vector *variables = new_vector(0, sizeof(Variable *));
   while (true) {
+    if (type->kind == TYPE_VOID)
+      error_at(&name->pos, "void type is not allowed");
     type = consume_array_brackets(type);
     Variable *var = NULL;
 
@@ -497,7 +521,10 @@ void func(Type *type, Token *tok) {
 
 void funcparam(Vector *params) {
   do {
+    Token *tok_type = token;
     Type *ty = consume_type_star(expect_type());
+    if (ty->kind == TYPE_VOID)
+      error_at(&tok_type->pos, "void type is not allowed");
     Token *id = expect(TK_IDENT);
     while (consume(TK_LBRACKET)) {
       consume(TK_NUM);       // currently not used
@@ -863,12 +890,14 @@ Node *unary() {
       if (type->size < 0)
         error_at(&tok->pos, "invalid array size");
       expect(TK_RPAREN);
-      return new_node_num(tok, type->size);
     } else {
       // sizeof unary
       token = keep; // rollback token
-      return new_node_num(tok, unary()->type->size);
+      type = unary()->type;
     }
+    if (type->kind == TYPE_VOID)
+      error_at(&tok->pos, "invalud sizeof operation for void type");
+    return new_node_long(tok, type->size);
   }
 
   if ((tok = consume(TK_PLUS)))

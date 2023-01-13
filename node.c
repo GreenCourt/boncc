@@ -11,6 +11,15 @@ Node *new_node_num(Token *tok, int val) {
   return node;
 }
 
+Node *new_node_long(Token *tok, long long val) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_NUM;
+  node->val = val;
+  node->type = base_type(TYPE_LONG);
+  node->token = tok;
+  return node;
+}
+
 static Node *new_node(NodeKind kind, Node *lhs, Node *rhs, Type *type) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = kind;

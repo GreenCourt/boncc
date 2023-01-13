@@ -29,8 +29,11 @@ typedef enum {
   TK_ELSE,      // else
   TK_WHILE,     // while
   TK_FOR,       // for
+  TK_VOID,      // void
   TK_INT,       // int
   TK_CHAR,      // char
+  TK_SHORT,     // short
+  TK_LONG,      // long
   TK_SIZEOF,    // sizeof
   TK_STRUCT,    // struct
   TK_STR,       // string literal
@@ -75,11 +78,14 @@ struct Member {
   Member *next; // liked list
 };
 
-typedef enum { TYPE_PTR,
+typedef enum { TYPE_VOID,
+               TYPE_PTR,
                TYPE_ARRAY,
                TYPE_STRUCT,
                TYPE_INT,
-               TYPE_CHAR } TypeKind;
+               TYPE_CHAR,
+               TYPE_SHORT,
+               TYPE_LONG } TypeKind;
 
 typedef struct Type Type;
 struct Type {
@@ -154,7 +160,7 @@ struct Node {
   Token *token; // for error messages
   Node *lhs;
   Node *rhs;
-  int val;            // only for ND_NUM
+  long long val;      // only for ND_NUM
   Variable *variable; // only for ND_VAR
   Type *type;
 
@@ -199,3 +205,4 @@ Type *base_type(TypeKind kind);
 Type *pointer_type(Type *base);
 Type *array_type(Type *base, int len);
 Type *struct_type(Ident *ident, Member *member, int size);
+bool is_integer(Type *type);

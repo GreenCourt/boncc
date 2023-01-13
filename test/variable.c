@@ -17,6 +17,11 @@ int main() {
   // type size
   verify(4, sizeof(int), __FILE__, __LINE__);
   verify(1, sizeof(char), __FILE__, __LINE__);
+  verify(2, sizeof(short), __FILE__, __LINE__);
+  verify(2, sizeof(short int), __FILE__, __LINE__);
+  verify(8, sizeof(long), __FILE__, __LINE__);
+  verify(8, sizeof(long long), __FILE__, __LINE__);
+  verify(8, sizeof(long long int), __FILE__, __LINE__);
   verify(8, sizeof(int *), __FILE__, __LINE__);
   verify(8, sizeof(char *), __FILE__, __LINE__);
   verify(32, sizeof(char *[4]), __FILE__, __LINE__);
@@ -153,7 +158,7 @@ int main() {
     int *x;
     verify(4, sizeof(*x), __FILE__, __LINE__);
   }
-  verify(4, sizeof(sizeof(1)), __FILE__, __LINE__);
+  verify(8, sizeof(sizeof(1)), __FILE__, __LINE__);
   verify(4, sizeof(1), __FILE__, __LINE__);
 
   global_int1 = 4;

@@ -373,7 +373,7 @@ void gen(Node *node) {
     return;
   case ND_NUM:
     comment(node->token, "ND_NUM");
-    printf("  mov rax, %d\n", node->val);
+    printf("  mov rax, %lld\n", node->val);
     return;
   case ND_VAR:
     comment(node->token, "ND_VAR");

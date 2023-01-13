@@ -15,7 +15,8 @@ varinit    = expr
              | "{" varinit ("," varinit)* "}"
 func       = type "*"* ident "(" funcparam? ")" "{" stmt* "}"
 funcparam  = type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
-stmt       = expr ";"
+stmt       = ";"
+             | expr ";"
              | vardec
              | "{" stmt* "}"
              | "if" "(" expr ")" stmt ("else" stmt)?
@@ -649,7 +650,9 @@ Node *init_multiple_local_variables(Vector *variables) {
 
 Node *stmt() {
   Type *ty;
-  if (consume(TK_LBRACE)) {
+  if (consume(TK_SEMICOLON)) {
+    return NULL;
+  } else if (consume(TK_LBRACE)) {
     new_scope();
     Node *node = stmt_block();
     restore_scope();
@@ -684,6 +687,9 @@ Node *stmt() {
 }
 
 Node *stmt_block() {
+  if (consume(TK_RBRACE))
+    return NULL;
+
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_BLOCK;
   node->blk_stmts = new_vector(0, sizeof(Node *));

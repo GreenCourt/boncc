@@ -71,5 +71,8 @@ int main() {
       s = s + sizeof(p);
     verify(80, s, __FILE__, __LINE__);
   }
+  {
+      // empty block
+  }; // empty statement
   return 0;
 }

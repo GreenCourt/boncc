@@ -93,8 +93,8 @@ Type *consume_array_brackets(Type *type);
 typedef struct Scope Scope;
 struct Scope {
   Scope *prev;
-  Vector *local_variables; // vector of Variable*
-  Vector *local_structs;   // vector of Type*
+  Map *local_variables; // Variable*
+  Map *local_structs;   // Type*
 };
 static Scope *current_scope = NULL;
 static int local_variable_offset;
@@ -102,8 +102,8 @@ static int local_variable_offset;
 void new_scope() {
   Scope *s = calloc(1, sizeof(Scope));
   s->prev = current_scope;
-  s->local_variables = new_vector(0, sizeof(Variable *));
-  s->local_structs = new_vector(0, sizeof(Type *));
+  s->local_variables = new_map();
+  s->local_structs = new_map();
   current_scope = s;
 }
 
@@ -136,25 +136,15 @@ int expect_number() {
   return val;
 }
 
-Type *find_type_in_vector(Ident *id, Vector *vec) {
-  int sz = vec->size;
-  for (int i = 0; i < sz; ++i) {
-    Type *t = *(Type **)vector_get(vec, i);
-    if (same_ident(t->ident, id))
-      return t;
-  }
-  return NULL;
-}
-
 Type *find_struct(Ident *id) {
   Scope *scope = current_scope;
   while (scope) {
-    Type *t = find_type_in_vector(id, scope->local_structs);
+    Type *t = map_get(scope->local_structs, id);
     if (t)
       return t;
     scope = scope->prev;
   }
-  return find_type_in_vector(id, structs);
+  return map_get(structs, id);
 }
 
 Member *find_member(Type *st, Token *tok) {
@@ -169,21 +159,23 @@ Member *find_member(Type *st, Token *tok) {
   return NULL;
 }
 
-Type *consume_struct(Token *struct_name) {
+Type *consume_struct() {
   static int idx = 0;
+
+  Token *struct_name = consume(TK_IDENT);
   Ident *struct_ident = NULL;
 
   if (struct_name) {
     assert(struct_name->kind == TK_IDENT);
     struct_ident = struct_name->ident;
     if (consume(TK_LBRACE)) {
-      if (current_scope ? find_type_in_vector(struct_ident, current_scope->local_structs) : find_type_in_vector(struct_ident, structs))
+      if (map_get(current_scope ? current_scope->local_structs : structs, struct_ident))
         error_at(&struct_name->pos, "duplicated struct identifier");
     } else {
-      Type *predefined_struct = find_struct(struct_ident);
-      if (predefined_struct == NULL)
+      Type *t = find_struct(struct_ident);
+      if (t == NULL)
         error_at(&struct_name->pos, "undefined struct identifier");
-      return predefined_struct;
+      return t;
     }
   } else {
     // unnamed struct
@@ -239,10 +231,7 @@ Type *consume_struct(Token *struct_name) {
     offset += align - offset % align;
 
   Type *st = struct_type(struct_ident, head.next, offset);
-  if (current_scope == NULL)
-    vector_push(structs, &st);
-  else
-    vector_push(current_scope->local_structs, &st);
+  map_push(current_scope ? current_scope->local_structs : structs, st->ident, st);
   return st;
 }
 
@@ -274,7 +263,7 @@ Type *consume_type() {
   }
 
   if (consume(TK_STRUCT))
-    return consume_struct(consume(TK_IDENT));
+    return consume_struct();
 
   return NULL;
 }
@@ -302,25 +291,15 @@ Type *expect_type() {
 
 bool at_eof() { return token->kind == TK_EOF; }
 
-Variable *find_variable_in_vector(Ident *id, Vector *vec) {
-  int sz = vec->size;
-  for (int i = 0; i < sz; ++i) {
-    Variable *var = *(Variable **)vector_get(vec, i);
-    if (same_ident(var->ident, id))
-      return var;
-  }
-  return NULL;
-}
-
 Variable *find_variable(Token *tok) {
   Scope *scope = current_scope;
   while (scope) {
-    Variable *var = find_variable_in_vector(tok->ident, scope->local_variables);
+    Variable *var = map_get(scope->local_variables, tok->ident);
     if (var)
       return var;
     scope = scope->prev;
   }
-  return find_variable_in_vector(tok->ident, globals);
+  return map_get(globals, tok->ident);
 }
 
 Variable *new_variable(Token *tok, Type *type, VariableKind kind) {
@@ -333,10 +312,10 @@ Variable *new_variable(Token *tok, Type *type, VariableKind kind) {
 }
 
 Variable *new_local_variable(Token *tok, Type *type) {
-  if (find_variable_in_vector(tok->ident, current_scope->local_variables))
+  if (map_get(current_scope->local_variables, tok->ident))
     error_at(&tok->pos, "duplicated identifier");
   Variable *var = new_variable(tok, type, VK_LOCAL);
-  vector_push(current_scope->local_variables, &var);
+  map_push(current_scope->local_variables, var->ident, var);
   return var;
 }
 
@@ -348,10 +327,10 @@ void set_offset(Variable *var) {
 }
 
 Variable *new_global(Token *tok, Type *type) {
-  if (find_variable_in_vector(tok->ident, globals))
+  if (map_get(globals, tok->ident))
     error_at(&tok->pos, "duplicated identifier");
   Variable *var = new_variable(tok, type, VK_GLOBAL);
-  vector_push(globals, &var);
+  map_push(globals, var->ident, var);
   return var;
 }
 
@@ -367,24 +346,15 @@ Variable *new_string_literal(Token *tok) {
   var->kind = VK_STRLIT;
   var->string_literal = tok->string_literal;
   var->token = tok;
-  vector_push(strings, &var);
+  map_push(strings, var->ident, var);
   return var;
 }
 
-Function *find_function(Token *tok) {
-  for (int i = 0; i < functions->size; i++) {
-    Function *f = (*(Node **)vector_get(functions, i))->func;
-    if (same_ident(f->ident, tok->ident))
-      return f;
-  }
-  return NULL;
-}
-
 void program() {
-  functions = new_vector(0, sizeof(Node *));
-  globals = new_vector(0, sizeof(Variable *));
-  strings = new_vector(0, sizeof(Variable *));
-  structs = new_vector(0, sizeof(Type *));
+  functions = new_map();
+  globals = new_map();
+  strings = new_map();
+  structs = new_map();
   while (!at_eof())
     toplevel();
 }
@@ -460,7 +430,7 @@ void toplevel() {
 
 void func(Type *type, Token *tok) {
   Node *node = calloc(1, sizeof(Node));
-  vector_push(functions, &node);
+  map_push(functions, tok->ident, node);
   node->token = tok;
   node->type = type;
   node->kind = ND_FUNC;
@@ -891,13 +861,17 @@ Node *primary() {
       node->kind = ND_CALL;
       node->token = tok;
 
-      node->func = find_function(tok);
-      if (node->func == NULL) {
+      Node *fn = (Node *)map_get(functions, tok->ident);
+
+      if (fn == NULL) {
         // TODO
         // error_at(&tok->pos, "undefined function: '%.*s'", tok->token_length, tok->pos.pos);
         node->func = calloc(1, sizeof(Function));
         node->func->ident = tok->ident;
+      } else {
+        node->func = fn->func;
       }
+
       node->type = node->func->type;
       node->args = new_vector(0, sizeof(Node *));
 

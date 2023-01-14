@@ -10,10 +10,10 @@
 
 char *source_file_name;
 Token *token;
-Vector *functions;
-Vector *globals;
-Vector *strings;
-Vector *structs;
+Map *functions;
+Map *globals;
+Map *strings;
+Map *structs;
 
 const char *token_text[] = {
     // corresponding to TokenKind

@@ -5,7 +5,7 @@ TEST_EXE_DIR=test/exe
 
 default: boncc
 
-boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenize.o parse.o codegen.o Vector.o type.o node.o)
+boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenize.o parse.o codegen.o vector.o type.o node.o map.o)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 
@@ -23,6 +23,7 @@ $(OBJ_DIR)/%.o:%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(TEST_OBJ_DIR)/std.o:
+	@mkdir -p $(TEST_OBJ_DIR)
 	printf "#include <stdio.h>\n#include <stdlib.h>\n" | cc -c -x c - -o $@
 
 $(TEST_EXE_DIR)/%: $(addprefix $(TEST_OBJ_DIR)/,%.o common.o std.o)
@@ -34,11 +35,11 @@ $(TEST_OBJ_DIR)/%.o: test/%.c boncc
 	./boncc $< -o $(basename $@).s
 	$(CC) $(CFLAGS) -c -o $@ $(basename $@).s
 
-$(TEST_EXE_DIR)/Vector: $(TEST_OBJ_DIR)/Vector.o $(OBJ_DIR)/Vector.o
+$(TEST_EXE_DIR)/vector: $(TEST_OBJ_DIR)/vector.o $(OBJ_DIR)/vector.o
 	@mkdir -p $(TEST_EXE_DIR)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-$(TEST_OBJ_DIR)/Vector.o: test/Vector.c
+$(TEST_OBJ_DIR)/vector.o: test/vector.c
 	@mkdir -p $(TEST_OBJ_DIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 

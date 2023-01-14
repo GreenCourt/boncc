@@ -299,16 +299,6 @@ void gen_global_init(VariableInit *init, Type *type) {
     assert(false);
 }
 
-void gen_global_variables() {
-  for (int i = 0; i < globals->size; i++) {
-    Variable *v = *(Variable **)vector_get(globals, i);
-    writeline(".data");
-    writeline(".globl %.*s", v->ident->len, v->ident->name);
-    writeline("%.*s:", v->ident->len, v->ident->name);
-    gen_global_init(v->init, v->type);
-  }
-}
-
 void gen_func(Node *node) {
   writeline("  .globl %.*s", node->func->ident->len, node->func->ident->name);
   writeline("%.*s:", node->func->ident->len, node->func->ident->name);
@@ -502,17 +492,26 @@ void gen_toplevel(FILE *output_stream) {
   ostream = output_stream;
   writeline(".intel_syntax noprefix");
 
+  // string literals
   for (int i = 0; i < strings->size; i++) {
-    Variable *v = *(Variable **)vector_get(strings, i);
+    Variable *v = map_geti(strings, i);
     writeline("%.*s:", v->ident->len, v->ident->name);
     writeline("  .string \"%s\"", v->string_literal);
   }
 
-  gen_global_variables();
+  // global variables
+  for (int i = 0; i < globals->size; i++) {
+    Variable *v = map_geti(globals, i);
+    writeline(".data");
+    writeline(".globl %.*s", v->ident->len, v->ident->name);
+    writeline("%.*s:", v->ident->len, v->ident->name);
+    gen_global_init(v->init, v->type);
+  }
 
+  // functions
   writeline(".text");
   for (int i = 0; i < functions->size; i++) {
-    Node *f = *(Node **)vector_get(functions, i);
+    Node *f = map_geti(functions, i);
     gen(f);
   }
   ostream = NULL;

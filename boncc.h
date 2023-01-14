@@ -1,4 +1,4 @@
-#include "Vector.h"
+#include "vector.h"
 #include <stdbool.h>
 
 typedef enum {
@@ -95,7 +95,7 @@ struct Type {
   struct Type *base; // only for TYPE_PTR and TYPE_ARRAY
   int array_size;    // number of elements for TYPE_ARRAY
 
-  Ident *ident;   // TYPE_STRUCT
+  Ident *ident;
   Member *member; // TYPE_STRUCT
 };
 
@@ -181,12 +181,18 @@ struct Node {
   Member *member; // ND_MEMBER
 };
 
+typedef struct Vector Map;
+Map *new_map();
+void *map_geti(Map *map, int idx);
+void *map_get(Map *map, Ident *key);
+void map_push(Map *map, Ident *key, void *val);
+
 extern char *source_file_name;
 extern Token *token;
-extern Vector *functions; // Node*
-extern Vector *globals;   // Variable*
-extern Vector *strings;   // Variable*
-extern Vector *structs;   // Type*
+extern Map *functions; // Node*
+extern Map *globals;   // Variable*
+extern Map *strings;   // Variable*
+extern Map *structs;   // Type*
 
 bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);

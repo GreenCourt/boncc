@@ -500,8 +500,8 @@ void gen_toplevel(FILE *output_stream) {
   }
 
   // global variables
-  for (int i = 0; i < globals->size; i++) {
-    Variable *v = map_geti(globals, i);
+  for (int i = 0; i < global_scope->variables->size; i++) {
+    Variable *v = map_geti(global_scope->variables, i);
     writeline(".data");
     writeline(".globl %.*s", v->ident->len, v->ident->name);
     writeline("%.*s:", v->ident->len, v->ident->name);

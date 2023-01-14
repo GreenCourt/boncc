@@ -90,20 +90,14 @@ Type *consume_type();
 Type *consume_type_star(Type *type);
 Type *consume_array_brackets(Type *type);
 
-typedef struct Scope Scope;
-struct Scope {
-  Scope *prev;
-  Map *local_variables; // Variable*
-  Map *local_structs;   // Type*
-};
 static Scope *current_scope = NULL;
 static int local_variable_offset;
 
 void new_scope() {
   Scope *s = calloc(1, sizeof(Scope));
   s->prev = current_scope;
-  s->local_variables = new_map();
-  s->local_structs = new_map();
+  s->variables = new_map();
+  s->structs = new_map();
   current_scope = s;
 }
 
@@ -139,12 +133,12 @@ int expect_number() {
 Type *find_struct(Ident *id) {
   Scope *scope = current_scope;
   while (scope) {
-    Type *t = map_get(scope->local_structs, id);
+    Type *t = map_get(scope->structs, id);
     if (t)
       return t;
     scope = scope->prev;
   }
-  return map_get(structs, id);
+  return NULL;
 }
 
 Member *find_member(Type *st, Token *tok) {
@@ -169,7 +163,7 @@ Type *consume_struct() {
     assert(struct_name->kind == TK_IDENT);
     struct_ident = struct_name->ident;
     if (consume(TK_LBRACE)) {
-      if (map_get(current_scope ? current_scope->local_structs : structs, struct_ident))
+      if (map_get(current_scope->structs, struct_ident))
         error_at(&struct_name->pos, "duplicated struct identifier");
     } else {
       Type *t = find_struct(struct_ident);
@@ -231,7 +225,7 @@ Type *consume_struct() {
     offset += align - offset % align;
 
   Type *st = struct_type(struct_ident, head.next, offset);
-  map_push(current_scope ? current_scope->local_structs : structs, st->ident, st);
+  map_push(current_scope->structs, st->ident, st);
   return st;
 }
 
@@ -294,12 +288,12 @@ bool at_eof() { return token->kind == TK_EOF; }
 Variable *find_variable(Token *tok) {
   Scope *scope = current_scope;
   while (scope) {
-    Variable *var = map_get(scope->local_variables, tok->ident);
+    Variable *var = map_get(scope->variables, tok->ident);
     if (var)
       return var;
     scope = scope->prev;
   }
-  return map_get(globals, tok->ident);
+  return NULL;
 }
 
 Variable *new_variable(Token *tok, Type *type, VariableKind kind) {
@@ -312,10 +306,10 @@ Variable *new_variable(Token *tok, Type *type, VariableKind kind) {
 }
 
 Variable *new_local_variable(Token *tok, Type *type) {
-  if (map_get(current_scope->local_variables, tok->ident))
+  if (map_get(current_scope->variables, tok->ident))
     error_at(&tok->pos, "duplicated identifier");
   Variable *var = new_variable(tok, type, VK_LOCAL);
-  map_push(current_scope->local_variables, var->ident, var);
+  map_push(current_scope->variables, var->ident, var);
   return var;
 }
 
@@ -327,17 +321,26 @@ void set_offset(Variable *var) {
 }
 
 Variable *new_global(Token *tok, Type *type) {
-  if (map_get(globals, tok->ident))
+  if (map_get(global_scope->variables, tok->ident))
     error_at(&tok->pos, "duplicated identifier");
   Variable *var = new_variable(tok, type, VK_GLOBAL);
-  map_push(globals, var->ident, var);
+  map_push(global_scope->variables, var->ident, var);
   return var;
 }
 
 Variable *new_string_literal(Token *tok) {
   static int idx = 0;
   assert(tok->kind == TK_STR);
-  Variable *var = calloc(1, sizeof(Variable));
+
+  Ident *key = calloc(1, sizeof(Ident));
+  key->name = tok->string_literal;
+  key->len = strlen(tok->string_literal);
+
+  Variable *var = map_get(strings, key);
+  if (var)
+    return var;
+
+  var = calloc(1, sizeof(Variable));
   var->ident = calloc(1, sizeof(Ident));
   var->ident->name = calloc(15, sizeof(char));
   sprintf(var->ident->name, ".LC%d", idx++);
@@ -346,15 +349,17 @@ Variable *new_string_literal(Token *tok) {
   var->kind = VK_STRLIT;
   var->string_literal = tok->string_literal;
   var->token = tok;
-  map_push(strings, var->ident, var);
+
+  map_push(strings, key, var);
   return var;
 }
 
 void program() {
   functions = new_map();
-  globals = new_map();
   strings = new_map();
-  structs = new_map();
+  assert(current_scope == NULL);
+  new_scope();
+  global_scope = current_scope;
   while (!at_eof())
     toplevel();
 }
@@ -439,7 +444,7 @@ void func(Type *type, Token *tok) {
   node->func->params = new_vector(0, sizeof(Variable *));
   node->func->type = type;
   assert(local_variable_offset == 0);
-  assert(current_scope == NULL);
+  assert(current_scope == global_scope);
   new_scope();
   expect(TK_LPAREN);
   if (!consume(TK_RPAREN)) {

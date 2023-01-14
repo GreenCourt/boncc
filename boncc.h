@@ -182,6 +182,14 @@ struct Node {
 };
 
 typedef struct Vector Map;
+
+typedef struct Scope Scope;
+struct Scope {
+  Scope *prev;
+  Map *variables; // Variable*
+  Map *structs;   // Type*
+};
+
 Map *new_map();
 void *map_geti(Map *map, int idx);
 void *map_get(Map *map, Ident *key);
@@ -190,9 +198,8 @@ void map_push(Map *map, Ident *key, void *val);
 extern char *source_file_name;
 extern Token *token;
 extern Map *functions; // Node*
-extern Map *globals;   // Variable*
 extern Map *strings;   // Variable*
-extern Map *structs;   // Type*
+extern Scope *global_scope;
 
 bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);

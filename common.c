@@ -11,9 +11,8 @@
 char *source_file_name;
 Token *token;
 Map *functions;
-Map *globals;
 Map *strings;
-Map *structs;
+Scope *global_scope;
 
 const char *token_text[] = {
     // corresponding to TokenKind

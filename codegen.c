@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+static FILE *ostream;
 static int label = 0;
 static const char *reg_args1[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
 static const char *reg_args2[] = {"di", "si", "dx", "cx", "r8w", "r9w"};
@@ -16,14 +17,23 @@ bool is_constant_number(Node *node);
 int eval(Node *node);
 // <-- node.c
 
+void gen(Node *node);
+
+void writeline(char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(ostream, fmt, ap);
+  fprintf(ostream, "\n");
+}
+
 void comment(Token *tok, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
-  printf("  # ");
-  vprintf(fmt, ap);
+  fprintf(ostream, "  # ");
+  vfprintf(ostream, fmt, ap);
   if (tok)
-    printf("    %s:%d:%d", tok->pos.file_name, tok->pos.line_number, tok->pos.column_number);
-  printf("\n");
+    fprintf(ostream, "    %s:%d:%d", tok->pos.file_name, tok->pos.line_number, tok->pos.column_number);
+  fprintf(ostream, "\n");
 }
 
 void gen_address(Node *node) {
@@ -36,20 +46,20 @@ void gen_address(Node *node) {
   case ND_VAR:
     if (node->variable->kind == VK_LOCAL) {
       comment(NULL, "gen_address ND_VAR local: %.*s", node->variable->ident->len, node->variable->ident->name);
-      printf("  lea rax, [rbp-%d]\n", node->variable->offset);
+      writeline("  lea rax, [rbp-%d]", node->variable->offset);
     } else if (node->variable->kind == VK_GLOBAL) {
       comment(NULL, "gen_address ND_VAR global: %.*s", node->variable->ident->len, node->variable->ident->name);
-      printf("  lea rax, %.*s[rip]\n", node->variable->ident->len, node->variable->ident->name);
+      writeline("  lea rax, %.*s[rip]", node->variable->ident->len, node->variable->ident->name);
     } else if (node->variable->kind == VK_STRLIT) {
       comment(NULL, "gen_address ND_VAR strlit: \"%s\"", node->variable->string_literal);
-      printf("  lea rax, %.*s[rip]\n", node->variable->ident->len, node->variable->ident->name);
+      writeline("  lea rax, %.*s[rip]", node->variable->ident->len, node->variable->ident->name);
     } else
       assert(false);
     return;
   case ND_MEMBER:
     comment(NULL, "gen_address ND_MEMBER %.*s", node->member->ident->len, node->member->ident->name);
     gen_address(node->lhs);
-    printf("  add rax, %d\n", node->member->offset);
+    writeline("  add rax, %d", node->member->offset);
     return;
   default:
     error_at(&node->token->pos, "left-value must be a variable");
@@ -64,13 +74,13 @@ void load(Type *type) {
   if (type->kind == TYPE_ARRAY)
     return; // nothing todo
   if (type->size == 1)
-    printf("  movsx rax, byte ptr [rax]\n");
+    writeline("  movsx rax, byte ptr [rax]");
   else if (type->size == 2)
-    printf("  movsx rax, word ptr [rax]\n");
+    writeline("  movsx rax, word ptr [rax]");
   else if (type->size == 4)
-    printf("  movsxd rax, dword ptr [rax]\n");
+    writeline("  movsxd rax, dword ptr [rax]");
   else if (type->size == 8)
-    printf("  mov rax, [rax]\n");
+    writeline("  mov rax, [rax]");
   else
     assert(false);
 }
@@ -80,50 +90,50 @@ void store(Type *type) {
   // dest : the address popped from stack
   comment(NULL, "store %s", type_text(type->kind));
 
-  printf("  pop rdi\n");
+  writeline("  pop rdi");
   if (type->size == 1)
-    printf("  mov [rdi], al\n");
+    writeline("  mov [rdi], al");
   else if (type->size == 2)
-    printf("  mov [rdi], ax\n");
+    writeline("  mov [rdi], ax");
   else if (type->size == 4)
-    printf("  mov [rdi], eax\n");
+    writeline("  mov [rdi], eax");
   else if (type->size == 8)
-    printf("  mov [rdi], rax\n");
+    writeline("  mov [rdi], rax");
   else
     assert(false);
 }
 
 void gen_if(Node *node) {
   gen(node->condition);
-  printf("  cmp rax, 0\n");
+  writeline("  cmp rax, 0");
 
   int l = label++;
 
   if (node->else_) {
-    printf("  je .Lelse%d\n", l);
+    writeline("  je .Lelse%d", l);
     gen(node->body);
-    printf("  jmp .Lend%d\n", l);
-    printf(".Lelse%d:\n", l);
+    writeline("  jmp .Lend%d", l);
+    writeline(".Lelse%d:", l);
     gen(node->else_);
-    printf(".Lend%d:\n", l);
+    writeline(".Lend%d:", l);
   } else {
-    printf("  je .Lend%d\n", l);
+    writeline("  je .Lend%d", l);
     gen(node->body);
-    printf(".Lend%d:\n", l);
+    writeline(".Lend%d:", l);
   }
 }
 
 void gen_while(Node *node) {
   int l = label++;
-  printf(".Lwhile%d:\n", l);
+  writeline(".Lwhile%d:", l);
 
   gen(node->condition);
-  printf("  cmp rax, 0\n");
-  printf("  je .Lend%d\n", l);
+  writeline("  cmp rax, 0");
+  writeline("  je .Lend%d", l);
 
   gen(node->body);
-  printf("  jmp .Lwhile%d\n", l);
-  printf(".Lend%d:\n", l);
+  writeline("  jmp .Lwhile%d", l);
+  writeline(".Lend%d:", l);
 }
 
 void gen_for(Node *node) {
@@ -132,17 +142,17 @@ void gen_for(Node *node) {
   if (node->init)
     gen(node->init);
 
-  printf(".Lfor%d:\n", l);
+  writeline(".Lfor%d:", l);
   if (node->condition) {
     gen(node->condition);
-    printf("  cmp rax, 0\n");
-    printf("  je .Lend%d\n", l);
+    writeline("  cmp rax, 0");
+    writeline("  je .Lend%d", l);
   }
   gen(node->body);
   if (node->update)
     gen(node->update);
-  printf("  jmp .Lfor%d\n", l);
-  printf(".Lend%d:\n", l);
+  writeline("  jmp .Lfor%d", l);
+  writeline(".Lend%d:", l);
 }
 
 void gen_block(Node *node) {
@@ -161,32 +171,32 @@ void gen_call(Node *node) {
   for (int i = 0; i < sz; ++i) {
     Node *d = *(Node **)vector_get(node->args, i);
     gen(d);
-    printf("  push rax\n");
+    writeline("  push rax");
   }
   for (int i = sz - 1; i >= 0; --i) {
-    printf("  pop %s\n", reg_args8[i]);
+    writeline("  pop %s", reg_args8[i]);
   }
 
   // align RSP to 16bytes (ABI requirements)
   comment(NULL, "RSP alignment for call");
   int l = label++;
-  printf("  mov rax, rsp\n");
-  printf("  and rax, 15\n"); // rax % 16 == rax & 0xF
-  printf("  jnz .Lcall%d\n", l);
-  printf("  mov al, 0\n");
-  printf("  call %.*s\n", node->func->ident->len, node->func->ident->name);
-  printf("  jmp .Lend%d\n", l);
-  printf(".Lcall%d:\n", l);
-  printf("  sub rsp, 8\n");
-  printf("  mov al, 0\n");
-  printf("  call %.*s\n", node->func->ident->len, node->func->ident->name);
-  printf("  add rsp, 8\n");
-  printf(".Lend%d:\n", l);
+  writeline("  mov rax, rsp");
+  writeline("  and rax, 15"); // rax % 16 == rax & 0xF
+  writeline("  jnz .Lcall%d", l);
+  writeline("  mov al, 0");
+  writeline("  call %.*s", node->func->ident->len, node->func->ident->name);
+  writeline("  jmp .Lend%d", l);
+  writeline(".Lcall%d:", l);
+  writeline("  sub rsp, 8");
+  writeline("  mov al, 0");
+  writeline("  call %.*s", node->func->ident->len, node->func->ident->name);
+  writeline("  add rsp, 8");
+  writeline(".Lend%d:", l);
 }
 
 void gen_global_init(VariableInit *init, Type *type) {
   if (init == NULL) {
-    printf("  .zero %d\n", type->size);
+    writeline("  .zero %d", type->size);
     return;
   }
 
@@ -197,14 +207,14 @@ void gen_global_init(VariableInit *init, Type *type) {
         char *lit = init->expr->variable->string_literal;
         if (type->array_size != (int)strlen(lit) + 1)
           error_at(&init->expr->token->pos, "miss-match between array-size and string-length");
-        printf("  .ascii \"%s\\0\"\n", lit);
+        writeline("  .ascii \"%s\\0\"", lit);
       } else {
         // When init->expr is given for an array, only the first element will be initialized.
         Type *ty = type;
         while (ty->kind == TYPE_ARRAY)
           ty = ty->base;
         gen_global_init(init, ty);
-        printf("  .zero %d\n", type->size - ty->size);
+        writeline("  .zero %d", type->size - ty->size);
       }
     } else if (init->vec) {
       assert(init->vec->size > 0);
@@ -219,7 +229,7 @@ void gen_global_init(VariableInit *init, Type *type) {
           gen_global_init(*(VariableInit **)vector_get(init->vec, i), type->base);
         }
         if (zero_size)
-          printf("  .zero %d\n", zero_size);
+          writeline("  .zero %d", zero_size);
       } else {
         // init as a one-dimensional array
         Type *base = type;
@@ -232,7 +242,7 @@ void gen_global_init(VariableInit *init, Type *type) {
           gen_global_init(*(VariableInit **)vector_get(init->vec, i), base);
         int zero_size = type->size - (base->size * len);
         if (zero_size)
-          printf("  .zero %d\n", zero_size);
+          writeline("  .zero %d", zero_size);
       }
     } else
       assert(false);
@@ -244,31 +254,31 @@ void gen_global_init(VariableInit *init, Type *type) {
     assert(init->expr);
     if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == VK_STRLIT) {
       // initilize the pointer to a string-literal
-      printf("  .quad %.*s\n", init->expr->variable->ident->len, init->expr->variable->ident->name);
+      writeline("  .quad %.*s", init->expr->variable->ident->len, init->expr->variable->ident->name);
       return;
     } else if (init->expr->kind == ND_ADD) {
       bool left_is_addr = init->expr->lhs->kind == ND_ADDR && init->expr->lhs->lhs->kind == ND_VAR && init->expr->lhs->lhs->variable->kind == VK_GLOBAL;
       bool right_is_addr = init->expr->rhs->kind == ND_ADDR && init->expr->rhs->lhs->kind == ND_VAR && init->expr->rhs->lhs->variable->kind == VK_GLOBAL;
 
       if (left_is_addr && is_constant_number(init->expr->rhs)) {
-        printf("  .quad %.*s+%d\n",
-               init->expr->lhs->lhs->variable->ident->len,
-               init->expr->lhs->lhs->variable->ident->name,
-               eval(init->expr->rhs));
+        writeline("  .quad %.*s+%d",
+                  init->expr->lhs->lhs->variable->ident->len,
+                  init->expr->lhs->lhs->variable->ident->name,
+                  eval(init->expr->rhs));
       } else if (right_is_addr && is_constant_number(init->expr->lhs)) {
-        printf("  .quad %.*s+%d\n",
-               init->expr->rhs->lhs->variable->ident->len,
-               init->expr->rhs->lhs->variable->ident->name,
-               eval(init->expr->lhs));
+        writeline("  .quad %.*s+%d",
+                  init->expr->rhs->lhs->variable->ident->len,
+                  init->expr->rhs->lhs->variable->ident->name,
+                  eval(init->expr->lhs));
       } else {
         error("unsupported initalization of a global pointer.");
       }
     } else if (init->expr->kind == ND_ADDR && init->expr->lhs->kind == ND_VAR && init->expr->lhs->variable->kind == VK_GLOBAL) {
-      printf("  .quad %.*s\n",
-             init->expr->lhs->variable->ident->len,
-             init->expr->lhs->variable->ident->name);
+      writeline("  .quad %.*s",
+                init->expr->lhs->variable->ident->len,
+                init->expr->lhs->variable->ident->name);
     } else if (is_constant_number(init->expr)) {
-      printf("  .quad %d\n", eval(init->expr));
+      writeline("  .quad %d", eval(init->expr));
     } else {
       error("unsupported initalization of a global pointer.");
     }
@@ -280,9 +290,9 @@ void gen_global_init(VariableInit *init, Type *type) {
     assert(init->expr);
     int val = eval(init->expr);
     if (type->kind == TYPE_INT) {
-      printf("  .long %d\n", val);
+      writeline("  .long %d", val);
     } else if (type->kind == TYPE_CHAR) {
-      printf("  .byte %d\n", val);
+      writeline("  .byte %d", val);
     } else
       assert(false);
   } else
@@ -292,48 +302,48 @@ void gen_global_init(VariableInit *init, Type *type) {
 void gen_global_variables() {
   for (int i = 0; i < globals->size; i++) {
     Variable *v = *(Variable **)vector_get(globals, i);
-    printf(".data\n");
-    printf(".globl %.*s\n", v->ident->len, v->ident->name);
-    printf("%.*s:\n", v->ident->len, v->ident->name);
+    writeline(".data");
+    writeline(".globl %.*s", v->ident->len, v->ident->name);
+    writeline("%.*s:", v->ident->len, v->ident->name);
     gen_global_init(v->init, v->type);
   }
 }
 
 void gen_func(Node *node) {
-  printf("  .globl %.*s\n", node->func->ident->len, node->func->ident->name);
-  printf("%.*s:\n", node->func->ident->len, node->func->ident->name);
+  writeline("  .globl %.*s", node->func->ident->len, node->func->ident->name);
+  writeline("%.*s:", node->func->ident->len, node->func->ident->name);
 
   // prologue
-  printf("  push rbp\n");
-  printf("  mov rbp, rsp\n");
+  writeline("  push rbp");
+  writeline("  mov rbp, rsp");
 
   // move args to stack
   comment(NULL, "function arguments to stack");
   for (int i = 0; i < node->func->params->size; ++i) {
     Variable *v = *(Variable **)vector_get(node->func->params, i);
     if (v->type->size == 1)
-      printf("  mov [rbp-%d], %s\n", v->offset, reg_args1[i]);
+      writeline("  mov [rbp-%d], %s", v->offset, reg_args1[i]);
     else if (v->type->size == 2)
-      printf("  mov [rbp-%d], %s\n", v->offset, reg_args2[i]);
+      writeline("  mov [rbp-%d], %s", v->offset, reg_args2[i]);
     else if (v->type->size == 4)
-      printf("  mov [rbp-%d], %s\n", v->offset, reg_args4[i]);
+      writeline("  mov [rbp-%d], %s", v->offset, reg_args4[i]);
     else
-      printf("  mov [rbp-%d], %s\n", v->offset, reg_args8[i]);
+      writeline("  mov [rbp-%d], %s", v->offset, reg_args8[i]);
   }
 
   if (node->func->offset) {
     int ofs = node->func->offset;
     if (ofs % 8)
       ofs += 8 - ofs % 8; // align by 8
-    printf("  sub rsp, %d\n", ofs);
+    writeline("  sub rsp, %d", ofs);
   }
 
   gen(node->body);
 
   // epilogue
-  printf("  mov rsp, rbp\n");
-  printf("  pop rbp\n");
-  printf("  ret\n");
+  writeline("  mov rsp, rbp");
+  writeline("  pop rbp");
+  writeline("  ret");
 }
 
 void gen(Node *node) {
@@ -366,13 +376,13 @@ void gen(Node *node) {
     comment(node->token, "ND_RETURN");
     if (node->lhs)
       gen(node->lhs);
-    printf("  mov rsp, rbp\n");
-    printf("  pop rbp\n");
-    printf("  ret\n");
+    writeline("  mov rsp, rbp");
+    writeline("  pop rbp");
+    writeline("  ret");
     return;
   case ND_NUM:
     comment(node->token, "ND_NUM");
-    printf("  mov rax, %lld\n", node->val);
+    writeline("  mov rax, %lld", node->val);
     return;
   case ND_VAR:
     comment(node->token, "ND_VAR");
@@ -382,7 +392,7 @@ void gen(Node *node) {
   case ND_ASSIGN:
     comment(node->token, "ND_ASSIGN");
     gen_address(node->lhs);
-    printf("  push rax\n");
+    writeline("  push rax");
     gen(node->rhs);
     store(node->type);
     return;
@@ -408,81 +418,102 @@ void gen(Node *node) {
   case ND_ADD:
     comment(node->token, "ND_ADD");
     gen(node->lhs);
-    printf("  push rax\n");
+    writeline("  push rax");
     gen(node->rhs);
-    printf("  pop rdi\n");
-    printf("  add rax, rdi\n");
+    writeline("  pop rdi");
+    writeline("  add rax, rdi");
     break;
   case ND_SUB:
     comment(node->token, "ND_SUB");
     gen(node->lhs);
-    printf("  push rax\n");
+    writeline("  push rax");
     gen(node->rhs);
-    printf("  mov rdi, rax\n");
-    printf("  pop rax\n");
-    printf("  sub rax, rdi\n");
+    writeline("  mov rdi, rax");
+    writeline("  pop rax");
+    writeline("  sub rax, rdi");
     break;
   case ND_MUL:
     comment(node->token, "ND_MUL");
     gen(node->lhs);
-    printf("  push rax\n");
+    writeline("  push rax");
     gen(node->rhs);
-    printf("  pop rdi\n");
-    printf("  imul rax, rdi\n");
+    writeline("  pop rdi");
+    writeline("  imul rax, rdi");
     break;
   case ND_DIV:
     comment(node->token, "ND_DIV");
     gen(node->lhs);
-    printf("  push rax\n");
+    writeline("  push rax");
     gen(node->rhs);
-    printf("  mov rdi, rax\n");
-    printf("  pop rax\n");
-    printf("  cqo\n");
-    printf("  idiv rdi\n");
+    writeline("  mov rdi, rax");
+    writeline("  pop rax");
+    writeline("  cqo");
+    writeline("  idiv rdi");
     break;
   case ND_EQ:
     comment(node->token, "ND_EQ");
     gen(node->lhs);
-    printf("  push rax\n");
+    writeline("  push rax");
     gen(node->rhs);
-    printf("  pop rdi\n");
-    printf("  cmp rax, rdi\n");
-    printf("  sete al\n");
-    printf("  movzb rax, al\n");
+    writeline("  pop rdi");
+    writeline("  cmp rax, rdi");
+    writeline("  sete al");
+    writeline("  movzb rax, al");
     break;
   case ND_NE:
     comment(node->token, "ND_NE");
     gen(node->lhs);
-    printf("  push rax\n");
+    writeline("  push rax");
     gen(node->rhs);
-    printf("  pop rdi\n");
-    printf("  cmp rax, rdi\n");
-    printf("  setne al\n");
-    printf("  movzb rax, al\n");
+    writeline("  pop rdi");
+    writeline("  cmp rax, rdi");
+    writeline("  setne al");
+    writeline("  movzb rax, al");
     break;
   case ND_LT:
     comment(node->token, "ND_LT");
     gen(node->lhs);
-    printf("  push rax\n");
+    writeline("  push rax");
     gen(node->rhs);
-    printf("  mov rdi, rax\n");
-    printf("  pop rax\n");
-    printf("  cmp rax, rdi\n");
-    printf("  setl al\n");
-    printf("  movzb rax, al\n");
+    writeline("  mov rdi, rax");
+    writeline("  pop rax");
+    writeline("  cmp rax, rdi");
+    writeline("  setl al");
+    writeline("  movzb rax, al");
     break;
   case ND_LE:
     comment(node->token, "ND_LE");
     gen(node->lhs);
-    printf("  push rax\n");
+    writeline("  push rax");
     gen(node->rhs);
-    printf("  mov rdi, rax\n");
-    printf("  pop rax\n");
-    printf("  cmp rax, rdi\n");
-    printf("  setle al\n");
-    printf("  movzb rax, al\n");
+    writeline("  mov rdi, rax");
+    writeline("  pop rax");
+    writeline("  cmp rax, rdi");
+    writeline("  setle al");
+    writeline("  movzb rax, al");
     break;
   default:
     break;
   }
+}
+
+void gen_toplevel(FILE *output_stream) {
+  assert(output_stream);
+  ostream = output_stream;
+  writeline(".intel_syntax noprefix");
+
+  for (int i = 0; i < strings->size; i++) {
+    Variable *v = *(Variable **)vector_get(strings, i);
+    writeline("%.*s:", v->ident->len, v->ident->name);
+    writeline("  .string \"%s\"", v->string_literal);
+  }
+
+  gen_global_variables();
+
+  writeline(".text");
+  for (int i = 0; i < functions->size; i++) {
+    Node *f = *(Node **)vector_get(functions, i);
+    gen(f);
+  }
+  ostream = NULL;
 }

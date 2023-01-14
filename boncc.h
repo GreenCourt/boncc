@@ -195,10 +195,9 @@ void error(char *fmt, ...);
 char *read_file(char *path);
 bool same_ident(Ident *a, Ident *b);
 
-void gen(Node *node);
-void gen_global_variables();
 Token *tokenize(char *p);
 void program();
+void gen_toplevel();
 
 char *type_text(TypeKind kind);
 Type *base_type(TypeKind kind);

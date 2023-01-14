@@ -31,7 +31,7 @@ $(TEST_EXE_DIR)/%: $(addprefix $(TEST_OBJ_DIR)/,%.o common.o std.o)
 
 $(TEST_OBJ_DIR)/%.o: test/%.c boncc
 	@mkdir -p $(TEST_OBJ_DIR)
-	./boncc $< > $(basename $@).s
+	./boncc $< -o $(basename $@).s
 	$(CC) $(CFLAGS) -c -o $@ $(basename $@).s
 
 $(TEST_EXE_DIR)/Vector: $(TEST_OBJ_DIR)/Vector.o $(OBJ_DIR)/Vector.o

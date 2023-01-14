@@ -22,7 +22,7 @@ stmt       = ";"
              | "if" "(" expr ")" stmt ("else" stmt)?
              | "while" "(" expr ")" stmt
              | "for" "(" (expr | vardec)? ";" expr? ";" expr? ")" stmt
-             | "return" expr ";"
+             | "return" expr? ";"
 expr       = assign
 assign     = equality ("=" assign)?
 equality   = relational ("==" relational | "!=" relational)*
@@ -693,8 +693,10 @@ Node *stmt() {
   } else if (consume(TK_RETURN)) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_RETURN;
-    node->lhs = expr();
-    expect(TK_SEMICOLON);
+    if (!consume(TK_SEMICOLON)) {
+      node->lhs = expr();
+      expect(TK_SEMICOLON);
+    }
     return node;
   } else if ((ty = consume_type())) {
     if (ty->kind == TYPE_STRUCT && consume(TK_SEMICOLON)) {

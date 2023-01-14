@@ -208,6 +208,9 @@ Type *consume_struct() {
     struct_ident->len = strlen(struct_ident->name);
   }
 
+  Type *st = struct_type(struct_ident);
+  map_push(current_scope->structs, st->ident, st);
+
   Member head;
   head.next = NULL;
   head.offset = 0;
@@ -252,8 +255,8 @@ Type *consume_struct() {
   if (align && offset % align)
     offset += align - offset % align;
 
-  Type *st = struct_type(struct_ident, head.next, offset);
-  map_push(current_scope->structs, st->ident, st);
+  st->member = head.next;
+  st->size = offset;
   return st;
 }
 

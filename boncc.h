@@ -219,5 +219,5 @@ char *type_text(TypeKind kind);
 Type *base_type(TypeKind kind);
 Type *pointer_type(Type *base);
 Type *array_type(Type *base, int len);
-Type *struct_type(Ident *ident, Member *member, int size);
+Type *struct_type(Ident *ident);
 bool is_integer(Type *type);

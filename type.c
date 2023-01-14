@@ -62,13 +62,12 @@ Type *array_type(Type *base, int len) {
   return t;
 }
 
-Type *struct_type(Ident *ident, Member *member, int size) {
+Type *struct_type(Ident *ident) {
   assert(ident != NULL);
   Type *t = calloc(1, sizeof(Type));
   t->kind = TYPE_STRUCT;
   t->ident = ident;
-  t->member = member;
-  t->size = size;
+  t->size = -1;
   return t;
 }
 

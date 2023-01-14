@@ -111,5 +111,16 @@ int main() {
     verify(7, x.c, __FILE__, __LINE__);
     verify(9, x.d, __FILE__, __LINE__);
   }
+  {
+    // struct pointer in the struct
+    struct st {
+      struct st *p;
+      int a;
+    };
+    struct st x;
+    x.a = 12;
+    x.p = &x;
+    verify(12, x.p->a, __FILE__, __LINE__);
+  }
   return 0;
 }

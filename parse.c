@@ -420,11 +420,25 @@ Variable *new_string_literal(Token *tok) {
   var->ident->name = calloc(15, sizeof(char));
   sprintf(var->ident->name, ".LC%d", idx++);
   var->ident->len = strlen(var->ident->name);
-  var->type = array_type(base_type(TYPE_CHAR), strlen(tok->string_literal) + 1);
   var->kind = VK_STRLIT;
   var->string_literal = tok->string_literal;
   var->token = tok;
 
+  // Because of escaped charactors, actual array length is not always equal to (strlen(var->string_literal) + 1).
+  int len = strlen(var->string_literal);
+  int array_length = len + 1;
+  for (int i = 0; i < len; ++i) {
+    char c = *(var->string_literal + i);
+    char d = *(var->string_literal + i + 1);
+    if (c == '\\' && d == '\n') {
+      i++;
+      array_length -= 2;
+    } else if (c == '\\') {
+      i++;
+      array_length--;
+    }
+  }
+  var->type = array_type(base_type(TYPE_CHAR), array_length);
   map_push(strings, key, var);
   return var;
 }

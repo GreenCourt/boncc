@@ -138,7 +138,19 @@ Token *tokenize(char *src) {
     if (*p.pos == '"') { // string literal
       advance(&p, 1);
       char *q = p.pos;
-      while (*q != '"') {
+      while (true) {
+        char c = *q;
+        char d = *(q + 1);
+        if (c == '"')
+          break;
+
+        if (c == '\\') { // escape
+          if (d == '\0')
+            error_at(&p, "missing terminating \" character");
+          q += 2;
+          continue;
+        }
+
         q++;
         if (*q == '\0' || *q == '\n')
           error_at(&p, "missing terminating \" character");

@@ -3,6 +3,15 @@ char *global_char_ptr = "abc";
 char *global_array_of_char_ptr[] = {"abc", "def", "ghi"};
 
 int main() {
+  verify(5, sizeof("a\nb\n"), __FILE__, __LINE__);
+  verify(6, sizeof("a\\\nb\n"), __FILE__, __LINE__);
+  verify(4, sizeof("ab\0"), __FILE__, __LINE__);
+
+  // ignore newline by backslash
+  verify(7, sizeof("ab\
+cdef"),
+         __FILE__, __LINE__);
+
   verify(97, global_str[0], __FILE__, __LINE__);
   verify(98, global_str[1], __FILE__, __LINE__);
   verify(99, global_str[2], __FILE__, __LINE__);

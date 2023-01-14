@@ -204,10 +204,10 @@ void gen_global_init(VariableInit *init, Type *type) {
     if (init->expr) {
       if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == VK_STRLIT) {
         // initilize the array as a string
-        char *lit = init->expr->variable->string_literal;
-        if (type->array_size != (int)strlen(lit) + 1)
+        Variable *lit = init->expr->variable;
+        if (type->array_size != lit->type->array_size)
           error_at(&init->expr->token->pos, "miss-match between array-size and string-length");
-        writeline("  .ascii \"%s\\0\"", lit);
+        writeline("  .ascii \"%s\\0\"", lit->string_literal);
       } else {
         // When init->expr is given for an array, only the first element will be initialized.
         Type *ty = type;

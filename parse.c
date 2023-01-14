@@ -136,43 +136,25 @@ int expect_number() {
   return val;
 }
 
-Type *find_local_struct_in_scope(Token *tok, Scope *scope) {
-  Vector *vec = scope->local_structs;
+Type *find_type_in_vector(Ident *id, Vector *vec) {
   int sz = vec->size;
   for (int i = 0; i < sz; ++i) {
-    Type *st = *(Type **)vector_get(vec, i);
-    if (same_ident(st->ident, tok->ident))
-      return st;
+    Type *t = *(Type **)vector_get(vec, i);
+    if (same_ident(t->ident, id))
+      return t;
   }
   return NULL;
 }
 
-Type *find_local_structure(Token *tok) {
+Type *find_struct(Ident *id) {
   Scope *scope = current_scope;
   while (scope) {
-    Type *st = find_local_struct_in_scope(tok, scope);
-    if (st)
-      return st;
+    Type *t = find_type_in_vector(id, scope->local_structs);
+    if (t)
+      return t;
     scope = scope->prev;
   }
-  return NULL;
-}
-
-Type *find_global_struct(Token *tok) {
-  int sz = structs->size;
-  for (int i = 0; i < sz; ++i) {
-    Type *st = *(Type **)vector_get(structs, i);
-    if (same_ident(st->ident, tok->ident))
-      return st;
-  }
-  return NULL;
-}
-
-Type *find_struct(Token *tok) {
-  Type *st = find_local_structure(tok);
-  if (st)
-    return st;
-  return find_global_struct(tok);
+  return find_type_in_vector(id, structs);
 }
 
 Member *find_member(Type *st, Token *tok) {
@@ -195,10 +177,10 @@ Type *consume_struct(Token *struct_name) {
     assert(struct_name->kind == TK_IDENT);
     struct_ident = struct_name->ident;
     if (consume(TK_LBRACE)) {
-      if (current_scope ? find_local_struct_in_scope(struct_name, current_scope) : find_global_struct(struct_name))
+      if (current_scope ? find_type_in_vector(struct_ident, current_scope->local_structs) : find_type_in_vector(struct_ident, structs))
         error_at(&struct_name->pos, "duplicated struct identifier");
     } else {
-      Type *predefined_struct = find_struct(struct_name);
+      Type *predefined_struct = find_struct(struct_ident);
       if (predefined_struct == NULL)
         error_at(&struct_name->pos, "undefined struct identifier");
       return predefined_struct;
@@ -320,43 +302,25 @@ Type *expect_type() {
 
 bool at_eof() { return token->kind == TK_EOF; }
 
-Variable *find_local_variable_in_scope(Token *tok, Scope *scope) {
-  Vector *vec = scope->local_variables;
+Variable *find_variable_in_vector(Ident *id, Vector *vec) {
   int sz = vec->size;
   for (int i = 0; i < sz; ++i) {
     Variable *var = *(Variable **)vector_get(vec, i);
-    if (same_ident(var->ident, tok->ident))
-      return var;
-  }
-  return NULL;
-}
-
-Variable *find_local_variable(Token *tok) {
-  Scope *scope = current_scope;
-  while (scope) {
-    Variable *var = find_local_variable_in_scope(tok, scope);
-    if (var)
-      return var;
-    scope = scope->prev;
-  }
-  return NULL;
-}
-
-Variable *find_global(Token *tok) {
-  int sz = globals->size;
-  for (int i = 0; i < sz; ++i) {
-    Variable *var = *(Variable **)vector_get(globals, i);
-    if (same_ident(var->ident, tok->ident))
+    if (same_ident(var->ident, id))
       return var;
   }
   return NULL;
 }
 
 Variable *find_variable(Token *tok) {
-  Variable *var = find_local_variable(tok);
-  if (var)
-    return var;
-  return find_global(tok);
+  Scope *scope = current_scope;
+  while (scope) {
+    Variable *var = find_variable_in_vector(tok->ident, scope->local_variables);
+    if (var)
+      return var;
+    scope = scope->prev;
+  }
+  return find_variable_in_vector(tok->ident, globals);
 }
 
 Variable *new_variable(Token *tok, Type *type, VariableKind kind) {
@@ -369,7 +333,7 @@ Variable *new_variable(Token *tok, Type *type, VariableKind kind) {
 }
 
 Variable *new_local_variable(Token *tok, Type *type) {
-  if (find_local_variable_in_scope(tok, current_scope))
+  if (find_variable_in_vector(tok->ident, current_scope->local_variables))
     error_at(&tok->pos, "duplicated identifier");
   Variable *var = new_variable(tok, type, VK_LOCAL);
   vector_push(current_scope->local_variables, &var);
@@ -384,7 +348,7 @@ void set_offset(Variable *var) {
 }
 
 Variable *new_global(Token *tok, Type *type) {
-  if (find_global(tok))
+  if (find_variable_in_vector(tok->ident, globals))
     error_at(&tok->pos, "duplicated identifier");
   Variable *var = new_variable(tok, type, VK_GLOBAL);
   vector_push(globals, &var);

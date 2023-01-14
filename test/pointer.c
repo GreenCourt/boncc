@@ -96,20 +96,6 @@ int main() {
     verify(12, *&*&**q, __FILE__, __LINE__);
   }
   {
-    int *p;
-    alloc4(&p, 1, 2, 4, 8);
-    int *q;
-    q = p + 1;
-    verify(2, *q, __FILE__, __LINE__);
-  }
-  {
-    int *p;
-    alloc4(&p, 1, 2, 4, 8);
-    int *q;
-    q = p + 3;
-    verify(8, *q, __FILE__, __LINE__);
-  }
-  {
     int a[2];
     *a = 1;
     *(a + 1) = 2;

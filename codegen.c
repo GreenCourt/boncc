@@ -300,9 +300,7 @@ void gen_global_variables() {
 }
 
 void gen_func(Node *node) {
-  if (strncmp(node->func->ident->name, "main", 4) == 0) {
-    printf(".globl main\n");
-  }
+  printf("  .globl %.*s\n", node->func->ident->len, node->func->ident->name);
   printf("%.*s:\n", node->func->ident->len, node->func->ident->name);
 
   // prologue

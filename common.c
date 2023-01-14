@@ -50,6 +50,7 @@ const char *token_text[] = {
     "long",
     "sizeof",
     "struct",
+    "enum",
     "str",
     "identifier",
     "number",

@@ -36,6 +36,7 @@ typedef enum {
   TK_LONG,      // long
   TK_SIZEOF,    // sizeof
   TK_STRUCT,    // struct
+  TK_ENUM,      // enum
   TK_STR,       // string literal
   TK_IDENT,
   TK_NUM,
@@ -186,8 +187,10 @@ typedef struct Vector Map;
 typedef struct Scope Scope;
 struct Scope {
   Scope *prev;
-  Map *variables; // Variable*
-  Map *structs;   // Type*
+  Map *variables;     // Variable*
+  Map *structs;       // Type*
+  Map *enums;         // Type*
+  Map *enum_elements; // int*
 };
 
 Map *new_map();

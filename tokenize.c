@@ -98,6 +98,7 @@ Token *tokenize(char *src) {
         TK_LONG,
         TK_SIZEOF,
         TK_STRUCT,
+        TK_ENUM,
         TK_ARROW,
         TK_LE,
         TK_GE,

@@ -6,10 +6,12 @@
 
 /* BNF
 program    = toplevel*
-toplevel   = func | vardec | struct ";"
-type       = "void" | "int" | "char" | ("short" "int"?) | ("long" "long"? "int"?) | struct
+toplevel   = func | vardec | (struct ";") | (enum ";")
+type       = "void" | "int" | "char" | ("short" "int"?) | ("long" "long"? "int"?) | struct | enum
 struct     = ("struct" ident ("{" member* "}")?) | ("struct" ident? "{" member* "}")
 member     = type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";"
+enum       = ("enum" ident ("{" enumval ("," enumval)* "}")?) | ("enum" ident? "{" enumval ("," enumval)* "}")
+enumval    = indent
 vardec     = type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
 varinit    = expr
              | "{" varinit ("," varinit)* "}"
@@ -17,6 +19,8 @@ func       = type "*"* ident "(" funcparam? ")" "{" stmt* "}"
 funcparam  = type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
 stmt       = ";"
              | expr ";"
+             | struct ";"
+             | enum ";"
              | vardec
              | "{" stmt* "}"
              | "if" "(" expr ")" stmt ("else" stmt)?
@@ -98,6 +102,8 @@ void new_scope() {
   s->prev = current_scope;
   s->variables = new_map();
   s->structs = new_map();
+  s->enums = new_map();
+  s->enum_elements = new_map();
   current_scope = s;
 }
 
@@ -128,6 +134,28 @@ int expect_number() {
   int val = token->val;
   token = token->next;
   return val;
+}
+
+Type *find_enum(Ident *id) {
+  Scope *scope = current_scope;
+  while (scope) {
+    Type *t = map_get(scope->enums, id);
+    if (t)
+      return t;
+    scope = scope->prev;
+  }
+  return NULL;
+}
+
+int *find_enum_element(Ident *id) {
+  Scope *scope = current_scope;
+  while (scope) {
+    int *e = map_get(scope->enum_elements, id);
+    if (e)
+      return e;
+    scope = scope->prev;
+  }
+  return NULL;
 }
 
 Type *find_struct(Ident *id) {
@@ -229,6 +257,47 @@ Type *consume_struct() {
   return st;
 }
 
+Type *consume_enum() {
+  static int idx = 0;
+  Token *tok_ident = consume(TK_IDENT);
+  Ident *enum_ident = NULL;
+
+  if (tok_ident) {
+    // named enum
+    enum_ident = tok_ident->ident;
+    if (consume(TK_LBRACE)) {
+      if (map_get(current_scope->enums, enum_ident))
+        error_at(&tok_ident->pos, "duplicated enum identifier");
+    } else {
+      Type *t = find_enum(enum_ident);
+      if (t == NULL)
+        error_at(&tok_ident->pos, "undefined enum identifier");
+      return t;
+    }
+  } else {
+    // unnamed enum
+    expect(TK_LBRACE);
+    enum_ident = calloc(1, sizeof(Ident));
+    enum_ident->name = calloc(20, sizeof(char));
+    sprintf(enum_ident->name, ".enum%d", idx++);
+    enum_ident->len = strlen(enum_ident->name);
+  }
+
+  int val = 0;
+  do {
+    Token *tok = expect(TK_IDENT);
+    if (map_get(current_scope->enum_elements, tok->ident))
+      error_at(&tok->pos, "duplicated identifier for enum element");
+    int *v = calloc(1, sizeof(int));
+    *v = val++;
+    map_push(current_scope->enum_elements, tok->ident, v);
+  } while (consume(TK_COMMA));
+  expect(TK_RBRACE);
+
+  map_push(current_scope->enums, enum_ident, base_type(TYPE_INT));
+  return base_type(TYPE_INT);
+}
+
 Type *consume_type_star(Type *type) {
   while (consume(TK_STAR))
     type = pointer_type(type);
@@ -258,6 +327,9 @@ Type *consume_type() {
 
   if (consume(TK_STRUCT))
     return consume_struct();
+
+  if (consume(TK_ENUM))
+    return consume_enum();
 
   return NULL;
 }
@@ -420,9 +492,10 @@ Vector *vardec(Type *type, Token *name, VariableKind kind) {
 }
 
 void toplevel() {
+  Token *tk = token;
   Type *base = expect_type();
-  if (base->kind == TYPE_STRUCT && consume(TK_SEMICOLON)) {
-    // struct declaration
+  if ((tk->kind == TK_STRUCT || tk->kind == TK_ENUM) && consume(TK_SEMICOLON)) {
+    // type declaration
     return;
   }
   Type *type = consume_type_star(base);
@@ -616,6 +689,7 @@ Node *init_multiple_local_variables(Vector *variables) {
 
 Node *stmt() {
   Type *ty;
+  Token *tk = token;
   if (consume(TK_SEMICOLON)) {
     return NULL;
   } else if (consume(TK_LBRACE)) {
@@ -638,8 +712,8 @@ Node *stmt() {
     }
     return node;
   } else if ((ty = consume_type())) {
-    if (ty->kind == TYPE_STRUCT && consume(TK_SEMICOLON)) {
-      // struct declaration
+    if ((tk->kind == TK_STRUCT || tk->kind == TK_ENUM) && consume(TK_SEMICOLON)) {
+      // type declaration only
       return NULL;
     } else {
       ty = consume_type_star(ty);
@@ -861,6 +935,7 @@ Node *primary() {
 
   Token *tok;
   if ((tok = consume(TK_IDENT))) {
+    int *enum_val;
     if (consume(TK_LPAREN)) { // function call
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_CALL;
@@ -890,6 +965,8 @@ Node *primary() {
 
       expect(TK_RPAREN);
       return node;
+    } else if ((enum_val = find_enum_element(tok->ident))) { // enum value
+      return new_node_num(tok, *enum_val);
     } else { // variable
       Variable *var = find_variable(tok);
       if (!var)

@@ -100,6 +100,7 @@ Token *tokenize(char *src) {
         TK_STRUCT,
         TK_ENUM,
         TK_TYPEDEF,
+        TK_STATIC,
         TK_ARROW,
         TK_LE,
         TK_GE,

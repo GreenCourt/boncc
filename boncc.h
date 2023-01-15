@@ -38,6 +38,7 @@ typedef enum {
   TK_STRUCT,    // struct
   TK_ENUM,      // enum
   TK_TYPEDEF,   // typedef
+  TK_STATIC,    // static
   TK_STR,       // string literal
   TK_IDENT,
   TK_NUM,
@@ -122,6 +123,8 @@ struct Variable {
   int offset;           // only for VK_LOCAL
   char *string_literal; // null terminated, only for VK_STRLIT
   VariableInit *init;   // VK_GLOBAL, VK_LOCAL
+  bool is_static;
+  Ident *internal_ident; // for static local
 };
 
 typedef struct Function Function;
@@ -206,6 +209,7 @@ extern Token *next_token;
 extern Map *functions; // Node*
 extern Map *strings;   // Variable*
 extern Scope *global_scope;
+extern Vector *static_local_variables; // Variable*
 
 bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);

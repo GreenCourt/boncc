@@ -45,8 +45,13 @@ void gen_address(Node *node) {
     return;
   case ND_VAR:
     if (node->variable->kind == VK_LOCAL) {
-      comment(NULL, "gen_address ND_VAR local: %.*s", node->variable->ident->len, node->variable->ident->name);
-      writeline("  lea rax, [rbp-%d]", node->variable->offset);
+      if (node->variable->is_static) {
+        comment(NULL, "gen_address ND_VAR static-local: %.*s", node->variable->ident->len, node->variable->ident->name);
+        writeline("  lea rax, %.*s[rip]", node->variable->internal_ident->len, node->variable->internal_ident->name);
+      } else {
+        comment(NULL, "gen_address ND_VAR local: %.*s", node->variable->ident->len, node->variable->ident->name);
+        writeline("  lea rax, [rbp-%d]", node->variable->offset);
+      }
     } else if (node->variable->kind == VK_GLOBAL) {
       comment(NULL, "gen_address ND_VAR global: %.*s", node->variable->ident->len, node->variable->ident->name);
       writeline("  lea rax, %.*s[rip]", node->variable->ident->len, node->variable->ident->name);
@@ -516,6 +521,18 @@ void gen_toplevel(FILE *output_stream) {
     writeline(".data");
     writeline(".globl %.*s", v->ident->len, v->ident->name);
     writeline("%.*s:", v->ident->len, v->ident->name);
+    gen_global_init(v->init, v->type);
+  }
+
+  // static local variables
+  for (int i = 0; i < static_local_variables->size; i++) {
+    Variable *v = *(Variable **)vector_get(static_local_variables, i);
+    assert(v->kind == VK_LOCAL);
+    assert(v->is_static);
+    assert(v->internal_ident);
+    writeline(".data");
+    writeline(".local %.*s", v->internal_ident->len, v->internal_ident->name);
+    writeline("%.*s:", v->internal_ident->len, v->internal_ident->name);
     gen_global_init(v->init, v->type);
   }
 

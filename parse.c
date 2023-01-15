@@ -13,7 +13,7 @@ member     = type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";
 enum       = ("enum" ident ("{" enumval ("," enumval)* "}")?) | ("enum" ident? "{" enumval ("," enumval)* "}")
 enumval    = indent
 typedef    = "typedef" type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")*)* ";"
-vardec     = type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
+vardec     = "static"? type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
 varinit    = expr
              | "{" varinit ("," varinit)* "}"
 func       = type "*"* ident "(" funcparam? ")" "{" stmt* "}"
@@ -441,20 +441,34 @@ Variable *find_variable(Token *tok) {
   return NULL;
 }
 
-Variable *new_variable(Token *tok, Type *type, VariableKind kind) {
+Variable *new_variable(Token *tok, Type *type, VariableKind kind, bool is_static) {
   Variable *var = calloc(1, sizeof(Variable));
   var->ident = tok->ident;
   var->type = type;
   var->kind = kind;
   var->token = tok;
+  var->is_static = is_static;
   return var;
 }
 
-Variable *new_local_variable(Token *tok, Type *type) {
+Variable *new_local_variable(Token *tok, Type *type, bool is_static) {
   if (map_get(current_scope->variables, tok->ident))
     error_at(&tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, VK_LOCAL);
+  Variable *var = new_variable(tok, type, VK_LOCAL, is_static);
   map_push(current_scope->variables, var->ident, var);
+
+  static int idx = 0;
+  if (is_static) {
+    vector_push(static_local_variables, &var);
+
+    // give internal ident
+    var->internal_ident = calloc(1, sizeof(Ident));
+    var->internal_ident->name = calloc(var->ident->len + 21, sizeof(char));
+    sprintf(var->internal_ident->name, ".static_%d_", idx++);
+    strncpy(var->internal_ident->name + strlen(var->internal_ident->name), var->ident->name, var->ident->len);
+    var->internal_ident->len = strlen(var->internal_ident->name);
+  }
+
   return var;
 }
 
@@ -468,7 +482,7 @@ void set_offset(Variable *var) {
 Variable *new_global(Token *tok, Type *type) {
   if (map_get(global_scope->variables, tok->ident))
     error_at(&tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, VK_GLOBAL);
+  Variable *var = new_variable(tok, type, VK_GLOBAL, false);
   map_push(global_scope->variables, var->ident, var);
   return var;
 }
@@ -493,6 +507,7 @@ Variable *new_string_literal(Token *tok) {
   var->kind = VK_STRLIT;
   var->string_literal = tok->string_literal;
   var->token = tok;
+  var->is_static = true;
 
   // Because of escaped charactors, actual array length is not always equal to (strlen(var->string_literal) + 1).
   int len = strlen(var->string_literal);
@@ -516,6 +531,7 @@ Variable *new_string_literal(Token *tok) {
 void program() {
   functions = new_map();
   strings = new_map();
+  static_local_variables = new_vector(0, sizeof(Variable *));
   assert(current_scope == NULL);
   new_scope();
   global_scope = current_scope;
@@ -523,7 +539,7 @@ void program() {
     toplevel();
 }
 
-Vector *vardec(Type *type, Token *name, VariableKind kind) {
+Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static) {
   Type *base = type;
   while (base->kind == TYPE_ARRAY || base->kind == TYPE_PTR)
     base = base->base;
@@ -538,7 +554,7 @@ Vector *vardec(Type *type, Token *name, VariableKind kind) {
     if (kind == VK_GLOBAL)
       var = new_global(name, type);
     else if (kind == VK_LOCAL)
-      var = new_local_variable(name, type);
+      var = new_local_variable(name, type, is_static);
     else
       assert(false);
 
@@ -565,7 +581,7 @@ Vector *vardec(Type *type, Token *name, VariableKind kind) {
       error_at(&name->pos, "invalid array size");
     }
 
-    if (kind == VK_LOCAL)
+    if (kind == VK_LOCAL && !is_static)
       set_offset(var);
 
     vector_push(variables, &var);
@@ -595,7 +611,7 @@ void toplevel() {
   if (next_token->kind == TK_LPAREN)
     func(type, name);
   else
-    vardec(type, name, VK_GLOBAL);
+    vardec(type, name, VK_GLOBAL, false);
 }
 
 void func(Type *type, Token *tok) {
@@ -635,7 +651,7 @@ void funcparam(Vector *params) {
       ty = pointer_type(ty); // array as a pointer
       expect(TK_RBRACKET);
     }
-    Variable *var = new_local_variable(id, ty);
+    Variable *var = new_local_variable(id, ty, false);
     set_offset(var);
     vector_push(params, &var);
   } while (consume(TK_COMMA));
@@ -780,22 +796,26 @@ Node *init_multiple_local_variables(Vector *variables) {
 }
 
 Node *stmt() {
-  Type *ty;
-  Token *tk = next_token;
-  if (consume(TK_SEMICOLON)) {
+  if (consume(TK_SEMICOLON))
     return NULL;
-  } else if (consume(TK_LBRACE)) {
+
+  if (consume(TK_LBRACE)) {
     new_scope();
     Node *node = stmt_block();
     restore_scope();
     return node;
-  } else if (consume(TK_IF)) {
+  }
+
+  if (consume(TK_IF))
     return stmt_if();
-  } else if (consume(TK_WHILE)) {
+
+  if (consume(TK_WHILE))
     return stmt_while();
-  } else if (consume(TK_FOR)) {
+
+  if (consume(TK_FOR))
     return stmt_for();
-  } else if (consume(TK_RETURN)) {
+
+  if (consume(TK_RETURN)) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_RETURN;
     if (!consume(TK_SEMICOLON)) {
@@ -803,27 +823,35 @@ Node *stmt() {
       expect(TK_SEMICOLON);
     }
     return node;
-  } else if (consume(TK_TYPEDEF)) {
+  }
+
+  if (consume(TK_TYPEDEF)) {
     expect_typedef();
     return NULL;
-  } else if ((ty = consume_type())) {
-    if ((tk->kind == TK_STRUCT || tk->kind == TK_ENUM) && consume(TK_SEMICOLON)) {
-      // type declaration only
-      return NULL;
-    } else if (ty->size < 0) {
-      error_at(&tk->pos, "incomplete type");
-      return NULL;
-    } else {
-      ty = consume_type_star(ty);
-      Token *id = expect(TK_IDENT);
-      Vector *vars = vardec(ty, id, VK_LOCAL);
-      return init_multiple_local_variables(vars);
-    }
-  } else {
-    Node *node = expr();
-    expect(TK_SEMICOLON);
-    return node;
   }
+
+  bool is_static = consume(TK_STATIC) != NULL;
+  Token *tk = next_token;
+  Type *type = is_static ? expect_type() : consume_type();
+
+  if (type) {
+    if ((tk->kind == TK_STRUCT || tk->kind == TK_ENUM) && consume(TK_SEMICOLON)) {
+      // type declaration only (is_static is allowed)
+      return NULL;
+    }
+
+    if (type->size < 0)
+      error_at(&tk->pos, "incomplete type");
+
+    type = consume_type_star(type);
+    Token *id = expect(TK_IDENT);
+    Vector *vars = vardec(type, id, VK_LOCAL, is_static);
+    return is_static ? NULL : init_multiple_local_variables(vars);
+  }
+
+  Node *node = expr();
+  expect(TK_SEMICOLON);
+  return node;
 }
 
 Node *stmt_block() {
@@ -851,7 +879,7 @@ Node *stmt_if() {
   node->condition = expr();
   Token *tok = expect(TK_RPAREN);
 
-  if (consume_type())
+  if (consume(TK_STATIC) || consume_type())
     error_at(&tok->next->pos, "declaration is not allowed here");
 
   new_scope();
@@ -859,7 +887,7 @@ Node *stmt_if() {
   restore_scope();
 
   if ((tok = consume(TK_ELSE))) {
-    if (consume_type())
+    if (consume(TK_STATIC) || consume_type())
       error_at(&tok->next->pos, "declaration is not allowed here");
     node->else_ = stmt();
   }
@@ -875,7 +903,7 @@ Node *stmt_while() {
   node->condition = expr();
   Token *tok = expect(TK_RPAREN);
 
-  if (consume_type())
+  if (consume(TK_STAR) || consume_type())
     error_at(&tok->next->pos, "declaration is not allowed here");
 
   new_scope();
@@ -901,7 +929,7 @@ Node *stmt_for() {
 
       type = consume_type_star(type);
       Token *name = expect(TK_IDENT);
-      Vector *vars = vardec(type, name, VK_LOCAL);
+      Vector *vars = vardec(type, name, VK_LOCAL, false);
       node->init = init_multiple_local_variables(vars);
     } else {
       node->init = expr();
@@ -920,7 +948,7 @@ Node *stmt_for() {
     tok = expect(TK_RPAREN);
   }
 
-  if (consume_type())
+  if (consume(TK_STATIC) || consume_type())
     error_at(&tok->next->pos, "declaration is not allowed here");
 
   node->body = stmt();

@@ -28,6 +28,30 @@ void voidfunc(int a) {
   return;
 }
 
+int static_test1() {
+  static int a = 0;
+  a = a + 1;
+  return a;
+}
+
+int static_test2() {
+  static int a = -2;
+  a = a + 2;
+  return a;
+}
+
+int static_struct() {
+  static struct { int a; } x;
+  x.a = x.a + 3;
+  return x.a;
+}
+
+int static_enum() {
+  static enum { B } d;
+  d = d + 4;
+  return d;
+}
+
 int main() {
   verify(12, add3(1, 5, 6), __FILE__, __LINE__);
   verify(5, ret5(1, 5, 6), __FILE__, __LINE__);
@@ -36,6 +60,23 @@ int main() {
   verify(8, fib(6), __FILE__, __LINE__);
   verify(13, fib(7), __FILE__, __LINE__);
   voidfunc(4);
+
+  verify(1, static_test1(), __FILE__, __LINE__);
+  verify(2, static_test1(), __FILE__, __LINE__);
+  verify(3, static_test1(), __FILE__, __LINE__);
+
+  verify(0, static_test2(), __FILE__, __LINE__);
+  verify(2, static_test2(), __FILE__, __LINE__);
+  verify(4, static_test2(), __FILE__, __LINE__);
+
+  verify(3, static_struct(), __FILE__, __LINE__);
+  verify(6, static_struct(), __FILE__, __LINE__);
+  verify(9, static_struct(), __FILE__, __LINE__);
+
+  verify(4, static_enum(), __FILE__, __LINE__);
+  verify(8, static_enum(), __FILE__, __LINE__);
+  verify(12, static_enum(), __FILE__, __LINE__);
+
   {
     int a;
     a = foo();

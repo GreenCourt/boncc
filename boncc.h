@@ -202,7 +202,7 @@ void *map_get(Map *map, Ident *key);
 void map_push(Map *map, Ident *key, void *val);
 
 extern char *source_file_name;
-extern Token *token;
+extern Token *next_token;
 extern Map *functions; // Node*
 extern Map *strings;   // Variable*
 extern Scope *global_scope;

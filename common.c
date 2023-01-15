@@ -9,7 +9,7 @@
 #include <string.h>
 
 char *source_file_name;
-Token *token;
+Token *next_token;
 Map *functions;
 Map *strings;
 Scope *global_scope;

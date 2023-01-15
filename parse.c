@@ -117,26 +117,26 @@ void restore_scope() {
 }
 
 Token *consume(TokenKind kind) {
-  if (token->kind != kind)
+  if (next_token->kind != kind)
     return NULL;
-  Token *tok = token;
-  token = token->next;
+  Token *tok = next_token;
+  next_token = next_token->next;
   return tok;
 }
 
 Token *expect(TokenKind kind) {
-  if (token->kind != kind)
-    error_at(&token->pos, "'%s' expected but not found", token_text[kind]);
-  Token *tok = token;
-  token = token->next;
+  if (next_token->kind != kind)
+    error_at(&next_token->pos, "'%s' expected but not found", token_text[kind]);
+  Token *tok = next_token;
+  next_token = next_token->next;
   return tok;
 }
 
 int expect_number() {
-  if (token->kind != TK_NUM)
-    error_at(&token->pos, "number expected but not found");
-  int val = token->val;
-  token = token->next;
+  if (next_token->kind != TK_NUM)
+    error_at(&next_token->pos, "number expected but not found");
+  int val = next_token->val;
+  next_token = next_token->next;
   return val;
 }
 
@@ -245,7 +245,7 @@ Type *consume_struct() {
   int align = 0;
 
   while (!consume(TK_RBRACE)) {
-    Token *tok_type = token;
+    Token *tok_type = next_token;
     Type *base = consume_type();
     if (!base)
       error_at(&tok_type->pos, "invalid member type");
@@ -354,8 +354,8 @@ Type *consume_type_star(Type *type) {
 }
 
 Type *consume_type() {
-  if (token->kind == TK_IDENT) {
-    Type *t = find_typedef(token->ident);
+  if (next_token->kind == TK_IDENT) {
+    Type *t = find_typedef(next_token->ident);
     if (t)
       expect(TK_IDENT);
     return t;
@@ -407,7 +407,7 @@ Type *consume_array_brackets(Type *type) {
 Type *expect_type() {
   Type *ty = consume_type();
   if (!ty)
-    error_at(&token->pos, "type expected but not found");
+    error_at(&next_token->pos, "type expected but not found");
   return ty;
 }
 
@@ -428,7 +428,7 @@ void expect_typedef() {
   expect(TK_SEMICOLON);
 }
 
-bool at_eof() { return token->kind == TK_EOF; }
+bool at_eof() { return next_token->kind == TK_EOF; }
 
 Variable *find_variable(Token *tok) {
   Scope *scope = current_scope;
@@ -584,7 +584,7 @@ void toplevel() {
     return;
   }
 
-  Token *tk = token;
+  Token *tk = next_token;
   Type *base = expect_type();
   if ((tk->kind == TK_STRUCT || tk->kind == TK_ENUM) && consume(TK_SEMICOLON)) {
     // type declaration
@@ -592,7 +592,7 @@ void toplevel() {
   }
   Type *type = consume_type_star(base);
   Token *name = expect(TK_IDENT);
-  if (token->kind == TK_LPAREN)
+  if (next_token->kind == TK_LPAREN)
     func(type, name);
   else
     vardec(type, name, VK_GLOBAL);
@@ -625,7 +625,7 @@ void func(Type *type, Token *tok) {
 
 void funcparam(Vector *params) {
   do {
-    Token *tok_type = token;
+    Token *tok_type = next_token;
     Type *ty = consume_type_star(expect_type());
     if (ty->kind == TYPE_VOID)
       error_at(&tok_type->pos, "void type is not allowed");
@@ -781,7 +781,7 @@ Node *init_multiple_local_variables(Vector *variables) {
 
 Node *stmt() {
   Type *ty;
-  Token *tk = token;
+  Token *tk = next_token;
   if (consume(TK_SEMICOLON)) {
     return NULL;
   } else if (consume(TK_LBRACE)) {
@@ -893,7 +893,7 @@ Node *stmt_for() {
 
   new_scope();
   if (!consume(TK_SEMICOLON)) {
-    Token *tok = token;
+    Token *tok = next_token;
     Type *type = consume_type();
     if (type) {
       if (type->size < 0)
@@ -972,7 +972,7 @@ Node *relational() {
 Node *add() {
   Node *node = mul();
   while (true) {
-    Token *tok = token; // for error message
+    Token *tok = next_token; // for error message
     if (consume(TK_PLUS)) {
       node = new_node_add(tok, node, mul());
     } else if (consume(TK_MINUS)) {
@@ -998,7 +998,7 @@ Node *mul() {
 Node *unary() {
   Token *tok;
   if ((tok = consume(TK_SIZEOF))) {
-    Token *keep = token;
+    Token *keep = next_token;
     Token *left_paren = consume(TK_LPAREN);
     Type *type = consume_type();
     if (left_paren && type) {
@@ -1009,7 +1009,7 @@ Node *unary() {
       expect(TK_RPAREN);
     } else {
       // sizeof unary
-      token = keep; // rollback token
+      next_token = keep; // rollback token
       type = unary()->type;
     }
     if (type->kind == TYPE_VOID)
@@ -1087,7 +1087,7 @@ Node *primary() {
   if ((tok = consume(TK_NUM)))
     return new_node_num(tok, tok->val);
 
-  error_at(&token->pos, "primary expected but not found", token->token_length, token->pos);
+  error_at(&next_token->pos, "primary expected but not found", next_token->token_length, next_token->pos);
   return NULL;
 }
 

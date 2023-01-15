@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
 
   char *source_code = read_file(source_file_name);
 
-  token = tokenize(source_code);
+  next_token = tokenize(source_code);
   program();
 
   FILE *ostream = strcmp(outpath, "-") == 0 ? stdout : fopen(outpath, "w");

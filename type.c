@@ -21,6 +21,8 @@ char *type_text(TypeKind kind) {
     return "array";
   case TYPE_STRUCT:
     return "struct";
+  case TYPE_ENUM:
+    return "enum";
   default:
     assert(false);
     return NULL;
@@ -71,12 +73,22 @@ Type *struct_type(Ident *ident) {
   return t;
 }
 
+Type *enum_type(Ident *ident) {
+  assert(ident != NULL);
+  Type *t = calloc(1, sizeof(Type));
+  t->kind = TYPE_ENUM;
+  t->ident = ident;
+  t->size = -1;
+  return t;
+}
+
 bool is_integer(Type *type) {
   switch (type->kind) {
   case TYPE_INT:
   case TYPE_CHAR:
   case TYPE_SHORT:
   case TYPE_LONG:
+  case TYPE_ENUM:
     return true;
   default:
     return false;

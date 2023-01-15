@@ -83,6 +83,7 @@ typedef enum { TYPE_VOID,
                TYPE_PTR,
                TYPE_ARRAY,
                TYPE_STRUCT,
+               TYPE_ENUM,
                TYPE_INT,
                TYPE_CHAR,
                TYPE_SHORT,
@@ -220,4 +221,5 @@ Type *base_type(TypeKind kind);
 Type *pointer_type(Type *base);
 Type *array_type(Type *base, int len);
 Type *struct_type(Ident *ident);
+Type *enum_type(Ident *ident);
 bool is_integer(Type *type);

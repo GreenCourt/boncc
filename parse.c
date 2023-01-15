@@ -188,7 +188,6 @@ Type *consume_struct() {
   Type *st = NULL;
 
   if (struct_name) {
-    assert(struct_name->kind == TK_IDENT);
     if (consume(TK_LBRACE)) {
       // define struct
       // struct can be defined only for the current-scope
@@ -279,29 +278,45 @@ Type *consume_struct() {
 
 Type *consume_enum() {
   static int idx = 0;
-  Token *tok_ident = consume(TK_IDENT);
-  Ident *enum_ident = NULL;
+  Token *enum_name = consume(TK_IDENT);
+  Type *et = NULL;
 
-  if (tok_ident) {
+  if (enum_name) {
     // named enum
-    enum_ident = tok_ident->ident;
     if (consume(TK_LBRACE)) {
-      if (map_get(current_scope->enums, enum_ident))
-        error_at(&tok_ident->pos, "duplicated enum identifier");
+      // define enum
+      // enum can be defined only for the current-scope
+      et = map_get(current_scope->enums, enum_name->ident);
+      if (et && et->size > 0)
+        error_at(&enum_name->pos, "duplicated enum identifier");
+      if (et == NULL) {
+        et = enum_type(enum_name->ident);
+        map_push(current_scope->enums, et->ident, et);
+      }
     } else {
-      Type *t = find_enum(enum_ident);
-      if (t == NULL)
-        error_at(&tok_ident->pos, "undefined enum identifier");
-      return t;
+      // declare enum
+      // multipe time declarmation is allowed
+      et = find_enum(enum_name->ident);
+      if (et == NULL) {
+        et = enum_type(enum_name->ident);
+        map_push(current_scope->enums, et->ident, et);
+      }
+      return et;
     }
   } else {
     // unnamed enum
     expect(TK_LBRACE);
-    enum_ident = calloc(1, sizeof(Ident));
+    Ident *enum_ident = calloc(1, sizeof(Ident));
     enum_ident->name = calloc(20, sizeof(char));
     sprintf(enum_ident->name, ".enum%d", idx++);
     enum_ident->len = strlen(enum_ident->name);
+
+    et = enum_type(enum_ident);
+    map_push(current_scope->enums, et->ident, et);
   }
+
+  assert(et != NULL);
+  et->size = base_type(TYPE_INT)->size;
 
   int val = 0;
   do {
@@ -314,8 +329,7 @@ Type *consume_enum() {
   } while (consume(TK_COMMA));
   expect(TK_RBRACE);
 
-  map_push(current_scope->enums, enum_ident, base_type(TYPE_INT));
-  return base_type(TYPE_INT);
+  return et;
 }
 
 Type *consume_type_star(Type *type) {

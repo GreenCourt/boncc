@@ -294,6 +294,7 @@ void gen_global_init(VariableInit *init, Type *type) {
       writeline("  .quad %d", val);
       break;
     case TYPE_INT:
+    case TYPE_ENUM:
       writeline("  .long %d", val);
       break;
     case TYPE_SHORT:

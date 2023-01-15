@@ -81,5 +81,17 @@ int main() {
     verify(1, X1, __FILE__, __LINE__);
     verify(1, a, __FILE__, __LINE__);
   }
+  {
+    // forward declaration
+    enum E;
+    enum E { A,
+             B };
+    enum E a;
+    enum E; // declare twice
+    verify(4, sizeof(enum E), __FILE__, __LINE__);
+    verify(4, sizeof(a), __FILE__, __LINE__);
+    verify(4, sizeof(A), __FILE__, __LINE__);
+    verify(4, sizeof(B), __FILE__, __LINE__);
+  }
   return 0;
 }

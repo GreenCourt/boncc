@@ -185,31 +185,43 @@ Type *consume_struct() {
   static int idx = 0;
 
   Token *struct_name = consume(TK_IDENT);
-  Ident *struct_ident = NULL;
+  Type *st = NULL;
 
   if (struct_name) {
     assert(struct_name->kind == TK_IDENT);
-    struct_ident = struct_name->ident;
     if (consume(TK_LBRACE)) {
-      if (map_get(current_scope->structs, struct_ident))
+      // define struct
+      // struct can be defined only for the current-scope
+      st = map_get(current_scope->structs, struct_name->ident);
+      if (st && st->size > 0)
         error_at(&struct_name->pos, "duplicated struct identifier");
+      if (st == NULL) {
+        st = struct_type(struct_name->ident);
+        map_push(current_scope->structs, st->ident, st);
+      }
     } else {
-      Type *t = find_struct(struct_ident);
-      if (t == NULL)
-        error_at(&struct_name->pos, "undefined struct identifier");
-      return t;
+      // declare struct
+      // multipe time declarmation is allowed
+      st = find_struct(struct_name->ident);
+      if (st == NULL) {
+        st = struct_type(struct_name->ident);
+        map_push(current_scope->structs, st->ident, st);
+      }
+      return st;
     }
   } else {
     // unnamed struct
     expect(TK_LBRACE);
-    struct_ident = calloc(1, sizeof(Ident));
+    Ident *struct_ident = calloc(1, sizeof(Ident));
     struct_ident->name = calloc(20, sizeof(char));
     sprintf(struct_ident->name, ".struct%d", idx++);
     struct_ident->len = strlen(struct_ident->name);
+
+    st = struct_type(struct_ident);
+    map_push(current_scope->structs, st->ident, st);
   }
 
-  Type *st = struct_type(struct_ident);
-  map_push(current_scope->structs, st->ident, st);
+  assert(st != NULL);
 
   Member head;
   head.next = NULL;
@@ -222,10 +234,15 @@ Type *consume_struct() {
     Token *tok_type = token;
     Type *base = consume_type();
     if (!base)
-      error_at(&token->pos, "invalid member type");
+      error_at(&tok_type->pos, "invalid member type");
 
     do {
       Type *type = consume_type_star(base);
+
+      // struct S { struct S* p; }; is allowed
+      bool is_self_pointer = type->kind == TYPE_PTR && base == st;
+      if (!is_self_pointer && base->size < 0)
+        error_at(&tok_type->pos, "incomplete type");
 
       if (type->kind == TYPE_VOID)
         error_at(&tok_type->pos, "void type is not allowed");
@@ -732,6 +749,9 @@ Node *stmt() {
     if ((tk->kind == TK_STRUCT || tk->kind == TK_ENUM) && consume(TK_SEMICOLON)) {
       // type declaration only
       return NULL;
+    } else if (ty->size < 0) {
+      error_at(&tk->pos, "incomplete type");
+      return NULL;
     } else {
       ty = consume_type_star(ty);
       Token *id = expect(TK_IDENT);
@@ -771,7 +791,7 @@ Node *stmt_if() {
   Token *tok = expect(TK_RPAREN);
 
   if (consume_type())
-    error_at(&tok->next->pos, "vardec is not allowed here");
+    error_at(&tok->next->pos, "declaration is not allowed here");
 
   new_scope();
   node->body = stmt();
@@ -779,7 +799,7 @@ Node *stmt_if() {
 
   if ((tok = consume(TK_ELSE))) {
     if (consume_type())
-      error_at(&tok->next->pos, "vardec is not allowed here");
+      error_at(&tok->next->pos, "declaration is not allowed here");
     node->else_ = stmt();
   }
 
@@ -795,7 +815,7 @@ Node *stmt_while() {
   Token *tok = expect(TK_RPAREN);
 
   if (consume_type())
-    error_at(&tok->next->pos, "vardec is not allowed here");
+    error_at(&tok->next->pos, "declaration is not allowed here");
 
   new_scope();
   node->body = stmt();
@@ -812,8 +832,12 @@ Node *stmt_for() {
 
   new_scope();
   if (!consume(TK_SEMICOLON)) {
+    Token *tok = token;
     Type *type = consume_type();
     if (type) {
+      if (type->size < 0)
+        error_at(&tok->pos, "incomplete type");
+
       type = consume_type_star(type);
       Token *name = expect(TK_IDENT);
       Vector *vars = vardec(type, name, VK_LOCAL);
@@ -836,7 +860,7 @@ Node *stmt_for() {
   }
 
   if (consume_type())
-    error_at(&tok->next->pos, "vardec is not allowed here");
+    error_at(&tok->next->pos, "declaration is not allowed here");
 
   node->body = stmt();
   restore_scope();
@@ -929,6 +953,8 @@ Node *unary() {
     }
     if (type->kind == TYPE_VOID)
       error_at(&tok->pos, "invalud sizeof operation for void type");
+    if (type->size < 0)
+      error_at(&tok->pos, "invalud sizeof operation for incomplete type");
     return new_node_long(tok, type->size);
   }
 

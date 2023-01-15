@@ -122,5 +122,17 @@ int main() {
     x.p = &x;
     verify(12, x.p->a, __FILE__, __LINE__);
   }
+  {
+    // forward declaration
+    struct S;
+    struct S {
+      short a;
+      int b;
+    };
+    struct S a;
+    struct S; // declare twice
+    verify(8, sizeof(struct S), __FILE__, __LINE__);
+    verify(8, sizeof(a), __FILE__, __LINE__);
+  }
   return 0;
 }

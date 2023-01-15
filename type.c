@@ -82,7 +82,28 @@ Type *enum_type(Ident *ident) {
   return t;
 }
 
+bool same_type(Type *a, Type *b) {
+  assert(a);
+  assert(b);
+  if (a == b)
+    return true;
+  while ((a->kind == TYPE_ARRAY || a->kind == TYPE_PTR) && (b->kind == TYPE_ARRAY || b->kind == TYPE_PTR)) {
+    if (a->kind != b->kind)
+      return false;
+    a = a->base;
+    b = b->base;
+  }
+  if (a->kind != b->kind)
+    return false;
+
+  if (a->kind == TYPE_ENUM || a->kind == TYPE_STRUCT)
+    return same_ident(a->ident, b->ident);
+
+  return true;
+}
+
 bool is_integer(Type *type) {
+  assert(type);
   switch (type->kind) {
   case TYPE_INT:
   case TYPE_CHAR:

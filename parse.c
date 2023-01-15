@@ -6,12 +6,13 @@
 
 /* BNF
 program    = toplevel*
-toplevel   = func | vardec | (struct ";") | (enum ";")
+toplevel   = func | vardec | (struct ";") | (enum ";") | typedef
 type       = "void" | "int" | "char" | ("short" "int"?) | ("long" "long"? "int"?) | struct | enum
 struct     = ("struct" ident ("{" member* "}")?) | ("struct" ident? "{" member* "}")
 member     = type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";"
 enum       = ("enum" ident ("{" enumval ("," enumval)* "}")?) | ("enum" ident? "{" enumval ("," enumval)* "}")
 enumval    = indent
+typedef    = "typedef" type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")*)* ";"
 vardec     = type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
 varinit    = expr
              | "{" varinit ("," varinit)* "}"
@@ -21,6 +22,7 @@ stmt       = ";"
              | expr ";"
              | struct ";"
              | enum ";"
+             | typedef
              | vardec
              | "{" stmt* "}"
              | "if" "(" expr ")" stmt ("else" stmt)?
@@ -90,6 +92,7 @@ Node *stmt_while();
 Node *stmt_for();
 Node *stmt_block();
 
+void expect_typedef();
 Type *consume_type();
 Type *consume_type_star(Type *type);
 Type *consume_array_brackets(Type *type);
@@ -104,6 +107,7 @@ void new_scope() {
   s->structs = new_map();
   s->enums = new_map();
   s->enum_elements = new_map();
+  s->typedefs = new_map();
   current_scope = s;
 }
 
@@ -134,6 +138,17 @@ int expect_number() {
   int val = token->val;
   token = token->next;
   return val;
+}
+
+Type *find_typedef(Ident *id) {
+  Scope *scope = current_scope;
+  while (scope) {
+    Type *t = map_get(scope->typedefs, id);
+    if (t)
+      return t;
+    scope = scope->prev;
+  }
+  return NULL;
 }
 
 Type *find_enum(Ident *id) {
@@ -239,7 +254,7 @@ Type *consume_struct() {
       Type *type = consume_type_star(base);
 
       // struct S { struct S* p; }; is allowed
-      bool is_self_pointer = type->kind == TYPE_PTR && base == st;
+      bool is_self_pointer = type->kind == TYPE_PTR && same_type(base, st);
       if (!is_self_pointer && base->size < 0)
         error_at(&tok_type->pos, "incomplete type");
 
@@ -339,6 +354,13 @@ Type *consume_type_star(Type *type) {
 }
 
 Type *consume_type() {
+  if (token->kind == TK_IDENT) {
+    Type *t = find_typedef(token->ident);
+    if (t)
+      expect(TK_IDENT);
+    return t;
+  }
+
   if (consume(TK_VOID))
     return base_type(TYPE_VOID);
 
@@ -387,6 +409,23 @@ Type *expect_type() {
   if (!ty)
     error_at(&token->pos, "type expected but not found");
   return ty;
+}
+
+void expect_typedef() {
+  Type *base = expect_type();
+  do {
+    Type *type = consume_type_star(base);
+    Token *name = expect(TK_IDENT);
+    type = consume_array_brackets(type);
+    Type *pre = map_get(current_scope->typedefs, name->ident);
+
+    // multiple typedef for same type is allowed
+    if (pre && !same_type(type, pre))
+      error_at(&name->pos, "duplicated typedef identifier");
+    if (!pre)
+      map_push(current_scope->typedefs, name->ident, type);
+  } while (consume(TK_COMMA));
+  expect(TK_SEMICOLON);
 }
 
 bool at_eof() { return token->kind == TK_EOF; }
@@ -540,6 +579,11 @@ Vector *vardec(Type *type, Token *name, VariableKind kind) {
 }
 
 void toplevel() {
+  if (consume(TK_TYPEDEF)) {
+    expect_typedef();
+    return;
+  }
+
   Token *tk = token;
   Type *base = expect_type();
   if ((tk->kind == TK_STRUCT || tk->kind == TK_ENUM) && consume(TK_SEMICOLON)) {
@@ -759,6 +803,9 @@ Node *stmt() {
       expect(TK_SEMICOLON);
     }
     return node;
+  } else if (consume(TK_TYPEDEF)) {
+    expect_typedef();
+    return NULL;
   } else if ((ty = consume_type())) {
     if ((tk->kind == TK_STRUCT || tk->kind == TK_ENUM) && consume(TK_SEMICOLON)) {
       // type declaration only

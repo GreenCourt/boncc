@@ -37,6 +37,7 @@ typedef enum {
   TK_SIZEOF,    // sizeof
   TK_STRUCT,    // struct
   TK_ENUM,      // enum
+  TK_TYPEDEF,   // typedef
   TK_STR,       // string literal
   TK_IDENT,
   TK_NUM,
@@ -192,6 +193,7 @@ struct Scope {
   Map *structs;       // Type*
   Map *enums;         // Type*
   Map *enum_elements; // int*
+  Map *typedefs;      // Type*
 };
 
 Map *new_map();
@@ -222,4 +224,5 @@ Type *pointer_type(Type *base);
 Type *array_type(Type *base, int len);
 Type *struct_type(Ident *ident);
 Type *enum_type(Ident *ident);
+bool same_type(Type *a, Type *b);
 bool is_integer(Type *type);

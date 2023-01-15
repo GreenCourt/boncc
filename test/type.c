@@ -1,6 +1,15 @@
+typedef enum global_enum typedef_global_enum;
 enum global_enum { X0,
                    X1,
                    X2 } g = X2;
+
+typedef enum { A,
+               B,
+               C } typedef_global_unnamed_enum;
+typedef struct {
+  short a;
+  int b;
+} typedef_global_unnamed_struct;
 
 int main() {
   verify(4, sizeof(int), __FILE__, __LINE__);
@@ -15,12 +24,23 @@ int main() {
   verify(32, sizeof(char *[4]), __FILE__, __LINE__);
   verify(48, sizeof(int *[3][2]), __FILE__, __LINE__);
 
+  verify(4, sizeof(typedef_global_enum), __FILE__, __LINE__);
   verify(4, sizeof(enum global_enum), __FILE__, __LINE__);
   verify(4, sizeof(g), __FILE__, __LINE__);
   verify(2, g, __FILE__, __LINE__);
   verify(4, sizeof(X0), __FILE__, __LINE__);
   verify(4, sizeof(X1), __FILE__, __LINE__);
   verify(4, sizeof(X2), __FILE__, __LINE__);
+
+  verify(4, sizeof(typedef_global_unnamed_enum), __FILE__, __LINE__);
+  verify(4, sizeof(A), __FILE__, __LINE__);
+  verify(4, sizeof(B), __FILE__, __LINE__);
+  verify(4, sizeof(C), __FILE__, __LINE__);
+  verify(0, A, __FILE__, __LINE__);
+  verify(1, B, __FILE__, __LINE__);
+  verify(2, C, __FILE__, __LINE__);
+
+  verify(8, sizeof(typedef_global_unnamed_struct), __FILE__, __LINE__);
 
   {
     // named enum
@@ -92,6 +112,95 @@ int main() {
     verify(4, sizeof(a), __FILE__, __LINE__);
     verify(4, sizeof(A), __FILE__, __LINE__);
     verify(4, sizeof(B), __FILE__, __LINE__);
+  }
+  {
+    typedef int T;
+    T x;
+    verify(4, sizeof(T), __FILE__, __LINE__);
+    verify(4, sizeof(x), __FILE__, __LINE__);
+  }
+  {
+    typedef char T;
+    T x;
+    typedef T S;
+    S y;
+    verify(1, sizeof(T), __FILE__, __LINE__);
+    verify(1, sizeof(x), __FILE__, __LINE__);
+    verify(1, sizeof(S), __FILE__, __LINE__);
+    verify(1, sizeof(y), __FILE__, __LINE__);
+  }
+  {
+    typedef int *int_p, I, int_array3[3];
+    verify(8, sizeof(int_p), __FILE__, __LINE__);
+    verify(4, sizeof(I), __FILE__, __LINE__);
+    verify(12, sizeof(int_array3), __FILE__, __LINE__);
+  }
+  {
+    typedef char *char_p, C, char_array3[3];
+    verify(8, sizeof(char_p), __FILE__, __LINE__);
+    verify(1, sizeof(C), __FILE__, __LINE__);
+    verify(3, sizeof(char_array3), __FILE__, __LINE__);
+  }
+  {
+    // typdedef struct
+    typedef struct S S;
+    struct S {
+      int a;
+      char b;
+    };
+    typedef struct S S; // twice
+    S x;
+    verify(8, sizeof(S), __FILE__, __LINE__);
+    verify(8, sizeof(struct S), __FILE__, __LINE__);
+    verify(8, sizeof(x), __FILE__, __LINE__);
+  }
+  {
+    // typdedef and struct definition at same time
+    typedef struct S {
+      int a;
+    } S;
+    S x;
+    verify(4, sizeof(S), __FILE__, __LINE__);
+    verify(4, sizeof(struct S), __FILE__, __LINE__);
+    verify(4, sizeof(x), __FILE__, __LINE__);
+  }
+  {
+    // typdedef enum
+    typedef enum T T;
+    enum T {
+      A,
+      B,
+      C
+    };
+    typedef enum T T; // twice
+    T x;
+    verify(4, sizeof(T), __FILE__, __LINE__);
+    verify(4, sizeof(enum T), __FILE__, __LINE__);
+    verify(4, sizeof(x), __FILE__, __LINE__);
+    verify(4, sizeof(A), __FILE__, __LINE__);
+    verify(4, sizeof(B), __FILE__, __LINE__);
+    verify(4, sizeof(C), __FILE__, __LINE__);
+    verify(0, A, __FILE__, __LINE__);
+    verify(1, B, __FILE__, __LINE__);
+    verify(2, C, __FILE__, __LINE__);
+  }
+  {
+    // typdedef and enum definition at same time
+    typedef enum T {
+      A,
+      B,
+      C
+    } T;
+    T x;
+    verify(4, sizeof(T), __FILE__, __LINE__);
+    verify(4, sizeof(enum T), __FILE__, __LINE__);
+    verify(4, sizeof(x), __FILE__, __LINE__);
+    verify(4, sizeof(A), __FILE__, __LINE__);
+    verify(4, sizeof(B), __FILE__, __LINE__);
+    verify(4, sizeof(C), __FILE__, __LINE__);
+    verify(0, A, __FILE__, __LINE__);
+    verify(1, B, __FILE__, __LINE__);
+    verify(2, C, __FILE__, __LINE__);
   }
   return 0;
 }

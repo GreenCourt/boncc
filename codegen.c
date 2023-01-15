@@ -282,19 +282,29 @@ void gen_global_init(VariableInit *init, Type *type) {
     } else {
       error("unsupported initalization of a global pointer.");
     }
-  } else if (type->kind == TYPE_INT || type->kind == TYPE_CHAR) {
+  } else if (is_integer(type)) {
     while (init->vec) { // for non-array primitive types, only the first element in the brace will be used
       assert(init->vec->size > 0);
       init = *(VariableInit **)vector_get(init->vec, 0);
     }
     assert(init->expr);
     int val = eval(init->expr);
-    if (type->kind == TYPE_INT) {
+    switch (type->kind) {
+    case TYPE_LONG:
+      writeline("  .quad %d", val);
+      break;
+    case TYPE_INT:
       writeline("  .long %d", val);
-    } else if (type->kind == TYPE_CHAR) {
+      break;
+    case TYPE_SHORT:
+      writeline("  .value %d", val);
+      break;
+    case TYPE_CHAR:
       writeline("  .byte %d", val);
-    } else
+      break;
+    default:
       assert(false);
+    }
   } else
     assert(false);
 }

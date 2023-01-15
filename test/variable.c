@@ -12,6 +12,10 @@ char global_3darray4[1][2][3] = {1, 2, 3, 4, 5};
 int global_array_size_assumption[] = {1, 2, 3};
 int global_2darray_size_assumption[][2] = {{1, 2}, {3}};
 int *global_int_pointer;
+long global_long = 2;
+long global_long_array[1][2][3] = {1, 2, 3, 4, 5};
+short global_short = 3;
+short global_short_array[1][2][3] = {1, 2, 3, 4, 5};
 
 int main() {
   // global varinit
@@ -95,11 +99,31 @@ int main() {
   verify(5, global_3darray4[0][1][1], __FILE__, __LINE__);
   verify(0, global_3darray4[0][1][2], __FILE__, __LINE__);
 
+  verify(8, sizeof(global_long), __FILE__, __LINE__);
+  verify(2, global_long, __FILE__, __LINE__);
+
+  verify(2, sizeof(global_short), __FILE__, __LINE__);
+  verify(3, global_short, __FILE__, __LINE__);
+
+  verify(48, sizeof(global_long_array), __FILE__, __LINE__);
+  verify(1, global_long_array[0][0][0], __FILE__, __LINE__);
+  verify(2, global_long_array[0][0][1], __FILE__, __LINE__);
+  verify(3, global_long_array[0][0][2], __FILE__, __LINE__);
+  verify(4, global_long_array[0][1][0], __FILE__, __LINE__);
+  verify(5, global_long_array[0][1][1], __FILE__, __LINE__);
+  verify(0, global_long_array[0][1][2], __FILE__, __LINE__);
+
+  verify(12, sizeof(global_short_array), __FILE__, __LINE__);
+  verify(1, global_short_array[0][0][0], __FILE__, __LINE__);
+  verify(2, global_short_array[0][0][1], __FILE__, __LINE__);
+  verify(3, global_short_array[0][0][2], __FILE__, __LINE__);
+  verify(4, global_short_array[0][1][0], __FILE__, __LINE__);
+  verify(5, global_short_array[0][1][1], __FILE__, __LINE__);
+  verify(0, global_short_array[0][1][2], __FILE__, __LINE__);
+
   {
-    int a;
-    a = 3;
-    int b;
-    b = 5 * 6 - 8;
+    short a = 3;
+    long b = 5 * 6 - 8;
     verify(14, a + b / 2, __FILE__, __LINE__);
   }
   { // block scope
@@ -334,6 +358,26 @@ int main() {
   {
     char x[1][2][3] = {1, 2, 3, 4, 5};
     verify(6, sizeof(x), __FILE__, __LINE__);
+    verify(1, x[0][0][0], __FILE__, __LINE__);
+    verify(2, x[0][0][1], __FILE__, __LINE__);
+    verify(3, x[0][0][2], __FILE__, __LINE__);
+    verify(4, x[0][1][0], __FILE__, __LINE__);
+    verify(5, x[0][1][1], __FILE__, __LINE__);
+    verify(0, x[0][1][2], __FILE__, __LINE__);
+  }
+  {
+    long x[1][2][3] = {1, 2, 3, 4, 5};
+    verify(48, sizeof(x), __FILE__, __LINE__);
+    verify(1, x[0][0][0], __FILE__, __LINE__);
+    verify(2, x[0][0][1], __FILE__, __LINE__);
+    verify(3, x[0][0][2], __FILE__, __LINE__);
+    verify(4, x[0][1][0], __FILE__, __LINE__);
+    verify(5, x[0][1][1], __FILE__, __LINE__);
+    verify(0, x[0][1][2], __FILE__, __LINE__);
+  }
+  {
+    short x[1][2][3] = {1, 2, 3, 4, 5};
+    verify(12, sizeof(x), __FILE__, __LINE__);
     verify(1, x[0][0][0], __FILE__, __LINE__);
     verify(2, x[0][0][1], __FILE__, __LINE__);
     verify(3, x[0][0][2], __FILE__, __LINE__);

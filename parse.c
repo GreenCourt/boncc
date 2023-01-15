@@ -675,7 +675,7 @@ Node *init_local_variable(Variable *var, VariableInit *init, Type *type, int arr
     } else
       assert(false);
     return node;
-  } else if (type->kind == TYPE_PTR || type->kind == TYPE_INT || type->kind == TYPE_CHAR) {
+  } else if (is_integer(type) || type->kind == TYPE_PTR) {
     while (init->vec) { // for non-array primitive types, only the first element in the brace will be used
       assert(init->vec->size > 0);
       init = *(VariableInit **)vector_get(init->vec, 0);

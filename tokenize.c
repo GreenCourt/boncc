@@ -91,6 +91,8 @@ Token *tokenize(char *src) {
         TK_ELSE,
         TK_WHILE,
         TK_FOR,
+        TK_BREAK,
+        TK_CONTINUE,
         TK_VOID,
         TK_INT,
         TK_CHAR,

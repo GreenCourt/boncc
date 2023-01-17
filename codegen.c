@@ -6,7 +6,6 @@
 #include <string.h>
 
 static FILE *ostream;
-static int label = 0;
 static const char *reg_args1[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
 static const char *reg_args2[] = {"di", "si", "dx", "cx", "r8w", "r9w"};
 static const char *reg_args4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
@@ -111,53 +110,47 @@ void store(Type *type) {
 void gen_if(Node *node) {
   gen(node->condition);
   writeline("  cmp rax, 0");
-
-  int l = label++;
-
   if (node->else_) {
-    writeline("  je .Lelse%d", l);
+    writeline("  je .Lelse%d", node->label_index);
     gen(node->body);
-    writeline("  jmp .Lend%d", l);
-    writeline(".Lelse%d:", l);
+    writeline("  jmp .Lend%d", node->label_index);
+    writeline(".Lelse%d:", node->label_index);
     gen(node->else_);
-    writeline(".Lend%d:", l);
+    writeline(".Lend%d:", node->label_index);
   } else {
-    writeline("  je .Lend%d", l);
+    writeline("  je .Lend%d", node->label_index);
     gen(node->body);
-    writeline(".Lend%d:", l);
+    writeline(".Lend%d:", node->label_index);
   }
 }
 
 void gen_while(Node *node) {
-  int l = label++;
-  writeline(".Lwhile%d:", l);
-
+  writeline(".Lcontinue%d:", node->label_index);
   gen(node->condition);
   writeline("  cmp rax, 0");
-  writeline("  je .Lend%d", l);
+  writeline("  je .Lend%d", node->label_index);
 
   gen(node->body);
-  writeline("  jmp .Lwhile%d", l);
-  writeline(".Lend%d:", l);
+  writeline("  jmp .Lcontinue%d", node->label_index);
+  writeline(".Lend%d:", node->label_index);
 }
 
 void gen_for(Node *node) {
-  int l = label++;
-
   if (node->init)
     gen(node->init);
 
-  writeline(".Lfor%d:", l);
+  writeline(".Lfor%d:", node->label_index);
   if (node->condition) {
     gen(node->condition);
     writeline("  cmp rax, 0");
-    writeline("  je .Lend%d", l);
+    writeline("  je .Lend%d", node->label_index);
   }
   gen(node->body);
+  writeline(".Lcontinue%d:", node->label_index);
   if (node->update)
     gen(node->update);
-  writeline("  jmp .Lfor%d", l);
-  writeline(".Lend%d:", l);
+  writeline("  jmp .Lfor%d", node->label_index);
+  writeline(".Lend%d:", node->label_index);
 }
 
 void gen_block(Node *node) {
@@ -184,19 +177,20 @@ void gen_call(Node *node) {
 
   // align RSP to 16bytes (ABI requirements)
   comment(NULL, "RSP alignment for call");
-  int l = label++;
+  static int l = -1;
+  l++;
   writeline("  mov rax, rsp");
   writeline("  and rax, 15"); // rax % 16 == rax & 0xF
   writeline("  jnz .Lcall%d", l);
   writeline("  mov al, 0");
   writeline("  call %.*s", node->func->ident->len, node->func->ident->name);
-  writeline("  jmp .Lend%d", l);
+  writeline("  jmp .Lend_call%d", l);
   writeline(".Lcall%d:", l);
   writeline("  sub rsp, 8");
   writeline("  mov al, 0");
   writeline("  call %.*s", node->func->ident->len, node->func->ident->name);
   writeline("  add rsp, 8");
-  writeline(".Lend%d:", l);
+  writeline(".Lend_call%d:", l);
 }
 
 void gen_global_init(VariableInit *init, Type *type) {
@@ -367,15 +361,15 @@ void gen(Node *node) {
     gen_block(node);
     return;
   case ND_IF:
-    comment(node->token, "ND_IF");
+    comment(node->token, "ND_IF %d", node->label_index);
     gen_if(node);
     return;
   case ND_WHILE:
-    comment(node->token, "ND_WHILE");
+    comment(node->token, "ND_WHILE %d", node->label_index);
     gen_while(node);
     return;
   case ND_FOR:
-    comment(node->token, "ND_FOR");
+    comment(node->token, "ND_FOR %d", node->label_index);
     gen_for(node);
     return;
   case ND_RETURN:
@@ -385,6 +379,14 @@ void gen(Node *node) {
     writeline("  mov rsp, rbp");
     writeline("  pop rbp");
     writeline("  ret");
+    return;
+  case ND_CONTINUE:
+    comment(node->token, "ND_CONTINUE");
+    writeline("  jmp .Lcontinue%d", node->label_index);
+    return;
+  case ND_BREAK:
+    comment(node->token, "ND_BREAK");
+    writeline("  jmp .Lend%d", node->label_index);
     return;
   case ND_NUM:
     comment(node->token, "ND_NUM");
@@ -403,16 +405,15 @@ void gen(Node *node) {
     store(node->type);
     return;
   case ND_COND:
-    comment(node->token, "ND_COND");
+    comment(node->token, "ND_COND %d", node->label_index);
     gen(node->condition);
-    int l = label++;
     writeline("  cmp rax, 0");
-    writeline("  je .Lcond_rhs%d", l);
+    writeline("  je .Lcond_rhs%d", node->label_index);
     gen(node->lhs);
-    writeline("  jmp .Lend%d", l);
-    writeline(".Lcond_rhs%d:", l);
+    writeline("  jmp .Lend%d", node->label_index);
+    writeline(".Lcond_rhs%d:", node->label_index);
     gen(node->rhs);
-    writeline(".Lend%d:", l);
+    writeline(".Lend%d:", node->label_index);
     return;
   case ND_ADDR:
     comment(node->token, "ND_ADDR");

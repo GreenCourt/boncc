@@ -153,10 +153,11 @@ Node *new_node_assign(Token *tok, Node *lhs, Node *rhs) {
   return node;
 }
 
-Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs) {
+Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int label_index) {
   Node *node = new_node(ND_COND, lhs, rhs, lhs->type);
   node->condition = cond;
   node->token = tok;
+  node->label_index = label_index;
   return node;
 }
 

@@ -29,6 +29,8 @@ stmt        = ";"
               | "while" "(" expr ")" stmt
               | "for" "(" (expr | vardec)? ";" expr? ";" expr? ")" stmt
               | "return" expr? ";"
+              | "break" ";"
+              | "continue" ";"
 expr        = assign
 assign      = condtional ("=" assign)?
 conditional = equality ("?" expr ":" conditional)?
@@ -66,7 +68,7 @@ Node *new_node_le(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_addr(Token *tok, Node *operand);
 Node *new_node_deref(Token *tok, Node *operand);
 Node *new_node_assign(Token *tok, Node *lhs, Node *rhs);
-Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs);
+Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int label_index);
 Node *new_node_member(Token *tok, Node *x, Member *y);
 Node *new_node_var(Token *tok, Variable *var);
 Node *new_node_array_set_expr(Variable *var, int idx, Node *expr);
@@ -102,6 +104,9 @@ Type *consume_array_brackets(Type *type);
 
 static Scope *current_scope = NULL;
 static int local_variable_offset;
+static int label_index = 0;
+static Vector *continue_label; // stack of int
+static Vector *break_label;    // stack of int
 
 void new_scope() {
   Scope *s = calloc(1, sizeof(Scope));
@@ -535,6 +540,8 @@ void program() {
   functions = new_map();
   strings = new_map();
   static_local_variables = new_vector(0, sizeof(Variable *));
+  break_label = new_vector(0, sizeof(int));
+  continue_label = new_vector(0, sizeof(int));
   assert(current_scope == NULL);
   new_scope();
   global_scope = current_scope;
@@ -828,6 +835,29 @@ Node *stmt() {
     return node;
   }
 
+  Token *tok = NULL;
+  if ((tok = consume(TK_CONTINUE))) {
+    if (continue_label->size == 0)
+      error_at(&tok->pos, "invalid continue");
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_CONTINUE;
+    node->label_index = vector_lasti(continue_label);
+    node->token = tok;
+    expect(TK_SEMICOLON);
+    return node;
+  }
+
+  if ((tok = consume(TK_BREAK))) {
+    if (break_label->size == 0)
+      error_at(&tok->pos, "invalid break");
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_BREAK;
+    node->label_index = vector_lasti(break_label);
+    node->token = tok;
+    expect(TK_SEMICOLON);
+    return node;
+  }
+
   if (consume(TK_TYPEDEF)) {
     expect_typedef();
     return NULL;
@@ -858,12 +888,14 @@ Node *stmt() {
 }
 
 Node *stmt_block() {
-  if (consume(TK_RBRACE))
+  Token *tok;
+  if ((tok = consume(TK_RBRACE)))
     return NULL;
 
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_BLOCK;
   node->blk_stmts = new_vector(0, sizeof(Node *));
+  node->token = tok;
 
   do {
     Node *s = stmt();
@@ -877,6 +909,7 @@ Node *stmt_block() {
 Node *stmt_if() {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_IF;
+  node->label_index = label_index++;
 
   expect(TK_LPAREN);
   node->condition = expr();
@@ -901,6 +934,9 @@ Node *stmt_if() {
 Node *stmt_while() {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_WHILE;
+  node->label_index = label_index++;
+  vector_pushi(continue_label, node->label_index);
+  vector_pushi(break_label, node->label_index);
 
   expect(TK_LPAREN);
   node->condition = expr();
@@ -913,12 +949,18 @@ Node *stmt_while() {
   node->body = stmt();
   restore_scope();
 
+  vector_pop(continue_label);
+  vector_pop(break_label);
+
   return node;
 }
 
 Node *stmt_for() {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_FOR;
+  node->label_index = label_index++;
+  vector_pushi(continue_label, node->label_index);
+  vector_pushi(break_label, node->label_index);
 
   expect(TK_LPAREN);
 
@@ -957,6 +999,9 @@ Node *stmt_for() {
   node->body = stmt();
   restore_scope();
 
+  vector_pop(continue_label);
+  vector_pop(break_label);
+
   return node;
 }
 
@@ -977,7 +1022,7 @@ Node *conditional() {
     return node;
   Node *lhs = expr();
   expect(TK_COLON);
-  return new_node_conditional(tok, node, lhs, conditional());
+  return new_node_conditional(tok, node, lhs, conditional(), label_index++);
 }
 
 Node *equality() {

@@ -46,6 +46,8 @@ const char *token_text[] = {
     "else",
     "while",
     "for",
+    "break",
+    "continue",
     "void",
     "int",
     "char",

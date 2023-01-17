@@ -74,5 +74,22 @@ int main() {
   {
       // empty block
   }; // empty statement
+  {
+    // break, continue
+    int outer = 0;
+    for (int i = 0; i <= 10; i = i + 1) {
+      int s = 0;
+      for (int j = 0; j < 100; j = j + 1) {
+        s = s + j;
+        if (j == 10)
+          break;
+      }
+      verify(55, s, __FILE__, __LINE__);
+      if (i == 5)
+        continue;
+      outer = outer + i;
+    }
+    verify(50, outer, __FILE__, __LINE__);
+  }
   return 0;
 }

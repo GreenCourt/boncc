@@ -31,6 +31,8 @@ typedef enum {
   TK_ELSE,      // else
   TK_WHILE,     // while
   TK_FOR,       // for
+  TK_BREAK,     // break
+  TK_CONTINUE,  // continue
   TK_VOID,      // void
   TK_INT,       // int
   TK_CHAR,      // char
@@ -138,28 +140,30 @@ struct Function {
 };
 
 typedef enum {
-  ND_ADD,    // +
-  ND_SUB,    // -
-  ND_MUL,    // *
-  ND_DIV,    // /
-  ND_EQ,     // ==
-  ND_NE,     // !=
-  ND_LT,     // <
-  ND_LE,     // <=
-  ND_ASSIGN, // =
-  ND_COND,   // ?:
-  ND_VAR,    // variable
-  ND_NUM,    // integer
-  ND_RETURN, // return
-  ND_IF,     // if
-  ND_WHILE,  // while
-  ND_FOR,    // for
-  ND_BLOCK,  // {...}
-  ND_CALL,   // call function
-  ND_FUNC,   // function
-  ND_ADDR,   // &val
-  ND_DEREF,  // *ptr
-  ND_MEMBER, // struct member access
+  ND_ADD,      // +
+  ND_SUB,      // -
+  ND_MUL,      // *
+  ND_DIV,      // /
+  ND_EQ,       // ==
+  ND_NE,       // !=
+  ND_LT,       // <
+  ND_LE,       // <=
+  ND_ASSIGN,   // =
+  ND_COND,     // ?:
+  ND_VAR,      // variable
+  ND_NUM,      // integer
+  ND_RETURN,   // return
+  ND_IF,       // if
+  ND_WHILE,    // while
+  ND_FOR,      // for
+  ND_BREAK,    // break
+  ND_CONTINUE, // continue
+  ND_BLOCK,    // {...}
+  ND_CALL,     // call function
+  ND_FUNC,     // function
+  ND_ADDR,     // &val
+  ND_DEREF,    // *ptr
+  ND_MEMBER,   // struct member access
 } NodeKind;
 
 typedef struct Node Node;
@@ -172,6 +176,8 @@ struct Node {
   long long val;      // only for ND_NUM
   Variable *variable; // only for ND_VAR
   Type *type;
+
+  int label_index;
 
   // if(condition) body else else_
   // while(condition) body

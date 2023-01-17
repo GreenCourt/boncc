@@ -153,6 +153,13 @@ Node *new_node_assign(Token *tok, Node *lhs, Node *rhs) {
   return node;
 }
 
+Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs) {
+  Node *node = new_node(ND_COND, lhs, rhs, lhs->type);
+  node->condition = cond;
+  node->token = tok;
+  return node;
+}
+
 Node *new_node_member(Token *tok, Node *x, Member *y) {
   // struct member access (x.y)
   assert(x->type->kind == TYPE_STRUCT);

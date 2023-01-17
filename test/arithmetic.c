@@ -24,5 +24,8 @@ int main() {
   verify(0, -3 >= 2, __FILE__, __LINE__);
   verify(1, 2 >= 2, __FILE__, __LINE__);
   verify(1, 2 >= 1, __FILE__, __LINE__);
+  verify(1, 12 ? 1 : 2, __FILE__, __LINE__);
+  verify(1, 8 - 4 ? 1 : 2, __FILE__, __LINE__);
+  verify(2, 8 - 8 ? 1 : 2, __FILE__, __LINE__);
   return 0;
 }

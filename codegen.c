@@ -402,6 +402,18 @@ void gen(Node *node) {
     gen(node->rhs);
     store(node->type);
     return;
+  case ND_COND:
+    comment(node->token, "ND_COND");
+    gen(node->condition);
+    int l = label++;
+    writeline("  cmp rax, 0");
+    writeline("  je .Lcond_rhs%d", l);
+    gen(node->lhs);
+    writeline("  jmp .Lend%d", l);
+    writeline(".Lcond_rhs%d:", l);
+    gen(node->rhs);
+    writeline(".Lend%d:", l);
+    return;
   case ND_ADDR:
     comment(node->token, "ND_ADDR");
     gen_address(node->lhs);

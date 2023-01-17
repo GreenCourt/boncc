@@ -121,6 +121,8 @@ Token *tokenize(char *src) {
         TK_LT,
         TK_GT,
         TK_ASSIGN,
+        TK_QUESTION,
+        TK_COLON,
         TK_SEMICOLON,
         TK_COMMA};
 

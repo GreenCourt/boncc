@@ -20,6 +20,8 @@ typedef enum {
   TK_RBRACE,    // }
   TK_LBRACKET,  // [
   TK_RBRACKET,  // ]
+  TK_QUESTION,  // ?
+  TK_COLON,     // :
   TK_SEMICOLON, // ;
   TK_COMMA,     // ,
   TK_DOT,       // .
@@ -145,6 +147,7 @@ typedef enum {
   ND_LT,     // <
   ND_LE,     // <=
   ND_ASSIGN, // =
+  ND_COND,   // ?:
   ND_VAR,    // variable
   ND_NUM,    // integer
   ND_RETURN, // return
@@ -173,6 +176,7 @@ struct Node {
   // if(condition) body else else_
   // while(condition) body
   // for(init; condition; update) body
+  // condition ? lhs : rhs
   Node *condition;
   Node *body;
   Node *else_;

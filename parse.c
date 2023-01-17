@@ -5,50 +5,51 @@
 #include <string.h>
 
 /* BNF
-program    = toplevel*
-toplevel   = func | vardec | (struct ";") | (enum ";") | typedef
-type       = "void" | "int" | "char" | ("short" "int"?) | ("long" "long"? "int"?) | struct | enum
-struct     = ("struct" ident ("{" member* "}")?) | ("struct" ident? "{" member* "}")
-member     = type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";"
-enum       = ("enum" ident ("{" enumval ("," enumval)* "}")?) | ("enum" ident? "{" enumval ("," enumval)* "}")
-enumval    = indent
-typedef    = "typedef" type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")*)* ";"
-vardec     = "static"? type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
-varinit    = expr
-             | "{" varinit ("," varinit)* "}"
-func       = type "*"* ident "(" funcparam? ")" "{" stmt* "}"
-funcparam  = type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
-stmt       = ";"
-             | expr ";"
-             | struct ";"
-             | enum ";"
-             | typedef
-             | vardec
-             | "{" stmt* "}"
-             | "if" "(" expr ")" stmt ("else" stmt)?
-             | "while" "(" expr ")" stmt
-             | "for" "(" (expr | vardec)? ";" expr? ";" expr? ")" stmt
-             | "return" expr? ";"
-expr       = assign
-assign     = equality ("=" assign)?
-equality   = relational ("==" relational | "!=" relational)*
-relational = add ("<" add | "<=" add | ">" add | ">=" add)*
-add        = mul ("+" mul | "-" mul)*
-mul        = unary ("*" unary | "/" unary)*
-unary      = postfix
-             | ("sizeof" unary)
-             | ("sizeof" "(" type ")")
-             | ("+" unary)
-             | ("-" unary)
-             | ("*" unary)
-             | ("&" unary)
-postfix    = primary tail*
-tail       =  ("[" expr "]") | ("." ident) | ("->" ident)
-primary    = "(" expr ")"
-             | ident ("(" (expr ("," expr)*)? ")")?
-             | ident
-             | num
-             | str
+program     = toplevel*
+toplevel    = func | vardec | (struct ";") | (enum ";") | typedef
+type        = "void" | "int" | "char" | ("short" "int"?) | ("long" "long"? "int"?) | struct | enum
+struct      = ("struct" ident ("{" member* "}")?) | ("struct" ident? "{" member* "}")
+member      = type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";"
+enum        = ("enum" ident ("{" enumval ("," enumval)* "}")?) | ("enum" ident? "{" enumval ("," enumval)* "}")
+enumval     = indent
+typedef     = "typedef" type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")*)* ";"
+vardec      = "static"? type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
+varinit     = expr
+              | "{" varinit ("," varinit)* "}"
+func        = type "*"* ident "(" funcparam? ")" "{" stmt* "}"
+funcparam   = type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
+stmt        = ";"
+              | expr ";"
+              | struct ";"
+              | enum ";"
+              | typedef
+              | vardec
+              | "{" stmt* "}"
+              | "if" "(" expr ")" stmt ("else" stmt)?
+              | "while" "(" expr ")" stmt
+              | "for" "(" (expr | vardec)? ";" expr? ";" expr? ")" stmt
+              | "return" expr? ";"
+expr        = assign
+assign      = condtional ("=" assign)?
+conditional = equality ("?" expr ":" conditional)?
+equality    = relational ("==" relational | "!=" relational)*
+relational  = add ("<" add | "<=" add | ">" add | ">=" add)*
+add         = mul ("+" mul | "-" mul)*
+mul         = unary ("*" unary | "/" unary)*
+unary       = postfix
+              | ("sizeof" unary)
+              | ("sizeof" "(" type ")")
+              | ("+" unary)
+              | ("-" unary)
+              | ("*" unary)
+              | ("&" unary)
+postfix     = primary tail*
+tail        =  ("[" expr "]") | ("." ident) | ("->" ident)
+primary     = "(" expr ")"
+              | ident ("(" (expr ("," expr)*)? ")")?
+              | ident
+              | num
+              | str
 */
 
 // node.c -->
@@ -65,6 +66,7 @@ Node *new_node_le(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_addr(Token *tok, Node *operand);
 Node *new_node_deref(Token *tok, Node *operand);
 Node *new_node_assign(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs);
 Node *new_node_member(Token *tok, Node *x, Member *y);
 Node *new_node_var(Token *tok, Variable *var);
 Node *new_node_array_set_expr(Variable *var, int idx, Node *expr);
@@ -79,6 +81,7 @@ VariableInit *varinit();
 Node *stmt();
 Node *expr();
 Node *assign();
+Node *conditional();
 Node *equality();
 Node *relational();
 Node *add();
@@ -960,11 +963,21 @@ Node *stmt_for() {
 Node *expr() { return assign(); }
 
 Node *assign() {
-  Node *node = equality();
+  Node *node = conditional();
   Token *tok = consume(TK_ASSIGN);
   if (tok)
     node = new_node_assign(tok, node, assign());
   return node;
+}
+
+Node *conditional() {
+  Node *node = equality();
+  Token *tok = consume(TK_QUESTION);
+  if (!tok)
+    return node;
+  Node *lhs = expr();
+  expect(TK_COLON);
+  return new_node_conditional(tok, node, lhs, conditional());
 }
 
 Node *equality() {

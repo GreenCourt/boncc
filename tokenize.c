@@ -145,6 +145,65 @@ Token *tokenize(char *src) {
     if (cont)
       continue;
 
+    if (*p.pos == '\'') { // character literal
+      advance(&p, 1);
+      if (*p.pos == '\'')
+        error_at(&p, "invalid character literal");
+
+      if (*p.pos == '\\') {
+        char val = -1;
+        switch (*(p.pos + 1)) {
+        case 'a':
+          val = '\a';
+          break;
+        case 'b':
+          val = '\b';
+          break;
+        case 'n':
+          val = '\n';
+          break;
+        case 'r':
+          val = '\r';
+          break;
+        case 'f':
+          val = '\f';
+          break;
+        case 't':
+          val = '\t';
+          break;
+        case 'v':
+          val = '\v';
+          break;
+        case '\\':
+          val = '\\';
+          break;
+        case '?':
+          val = '\?';
+          break;
+        case '\'':
+          val = '\'';
+          break;
+        case '0':
+          val = '\0';
+          break;
+        default:
+          error_at(&p, "unsupported escaped literal");
+        }
+        new_token(TK_CHARLIT, &tail, &p, 2);
+        tail->val = val;
+        advance(&p, 1);
+        continue;
+      }
+
+      if (*(p.pos + 1) != '\'')
+        error_at(&p, "invalid character literal");
+
+      new_token(TK_CHARLIT, &tail, &p, 1);
+      tail->val = *(tail->pos.pos);
+      advance(&p, 1);
+      continue;
+    }
+
     if (*p.pos == '"') { // string literal
       advance(&p, 1);
       char *q = p.pos;

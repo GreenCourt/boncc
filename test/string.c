@@ -3,6 +3,14 @@ char *global_char_ptr = "abc";
 char *global_array_of_char_ptr[] = {"abc", "def", "ghi"};
 
 int main() {
+  verify(97, 'a', __FILE__, __LINE__);
+  verify(98, 'b', __FILE__, __LINE__);
+  verify(99, 'c', __FILE__, __LINE__);
+  verify(10, '\n', __FILE__, __LINE__);
+  verify(0, '\0', __FILE__, __LINE__);
+  verify(92, '\\', __FILE__, __LINE__);
+  verify(39, '\'', __FILE__, __LINE__);
+
   verify(5, sizeof("a\nb\n"), __FILE__, __LINE__);
   verify(6, sizeof("a\\\nb\n"), __FILE__, __LINE__);
   verify(4, sizeof("ab\0"), __FILE__, __LINE__);

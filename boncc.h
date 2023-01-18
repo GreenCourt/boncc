@@ -48,6 +48,7 @@ typedef enum {
   TK_TYPEDEF,   // typedef
   TK_STATIC,    // static
   TK_STR,       // string literal
+  TK_CHARLIT,   // charactor literal
   TK_IDENT,
   TK_NUM,
   TK_EOF,

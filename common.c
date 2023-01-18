@@ -63,6 +63,7 @@ const char *token_text[] = {
     "typedef",
     "static",
     "str",
+    "charlit",
     "identifier",
     "number",
 };

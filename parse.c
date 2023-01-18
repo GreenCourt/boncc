@@ -5,8 +5,8 @@
 #include <string.h>
 
 /* BNF
-program     = toplevel*
-toplevel    = func | vardec | (struct ";") | (enum ";") | typedef
+program     = declaration*
+declaration = func | vardec | (struct ";") | (enum ";") | typedef
 type        = "void" | "int" | "char" | ("short" "int"?) | ("long" "long"? "int"?) | struct | enum
 struct      = ("struct" ident ("{" member* "}")?) | ("struct" ident? "{" member* "}")
 member      = type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";"
@@ -20,11 +20,7 @@ func        = type "*"* ident "(" funcparam? ")" "{" stmt* "}"
 funcparam   = type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
 stmt        = ";"
               | expr ";"
-              | struct ";"
-              | enum ";"
-              | typedef
-              | vardec
-              | "{" stmt* "}"
+              | "{" (declaration | stmt)* "}"
               | "if" "(" expr ")" stmt ("else" stmt)?
               | "while" "(" expr ")" stmt
               | "for" "(" (expr | vardec)? ";" expr? ";" expr? ")" stmt
@@ -55,6 +51,7 @@ primary     = "(" expr ")"
 */
 
 // node.c -->
+Node *new_node_nop();
 Node *new_node_num(Token *tok, int val);
 Node *new_node_long(Token *tok, long long val);
 Node *new_node_mul(Token *tok, Node *lhs, Node *rhs);
@@ -76,7 +73,7 @@ Node *new_node_array_set_val(Variable *var, int idx, int val);
 // <-- node.c
 
 void program();
-void toplevel();
+Node *declaration();
 void func(Type *type, Token *name);
 void funcparam(Vector *params);
 VariableInit *varinit();
@@ -101,6 +98,7 @@ void expect_typedef();
 Type *consume_type();
 Type *consume_type_star(Type *type);
 Type *consume_array_brackets(Type *type);
+Node *init_multiple_local_variables(Vector *variables);
 
 static Scope *current_scope = NULL;
 static int local_variable_offset;
@@ -223,7 +221,7 @@ Type *consume_struct() {
       }
     } else {
       // declare struct
-      // multipe time declarmation is allowed
+      // multipe time declaration is allowed
       st = find_struct(struct_name->ident);
       if (st == NULL) {
         st = struct_type(struct_name->ident);
@@ -318,7 +316,7 @@ Type *consume_enum() {
       }
     } else {
       // declare enum
-      // multipe time declarmation is allowed
+      // multipe time declaration is allowed
       et = find_enum(enum_name->ident);
       if (et == NULL) {
         et = enum_type(enum_name->ident);
@@ -546,7 +544,7 @@ void program() {
   new_scope();
   global_scope = current_scope;
   while (!at_eof())
-    toplevel();
+    declaration();
 }
 
 Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static) {
@@ -604,26 +602,6 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static) {
   return variables;
 }
 
-void toplevel() {
-  if (consume(TK_TYPEDEF)) {
-    expect_typedef();
-    return;
-  }
-
-  Token *tk = next_token;
-  Type *base = expect_type();
-  if ((tk->kind == TK_STRUCT || tk->kind == TK_ENUM) && consume(TK_SEMICOLON)) {
-    // type declaration
-    return;
-  }
-  Type *type = consume_type_star(base);
-  Token *name = expect(TK_IDENT);
-  if (next_token->kind == TK_LPAREN)
-    func(type, name);
-  else
-    vardec(type, name, VK_GLOBAL, false);
-}
-
 void func(Type *type, Token *tok) {
   Node *node = calloc(1, sizeof(Node));
   map_push(functions, tok->ident, node);
@@ -665,6 +643,53 @@ void funcparam(Vector *params) {
     set_offset(var);
     vector_push(params, &var);
   } while (consume(TK_COMMA));
+}
+
+Node *declaration() {
+  if (consume(TK_TYPEDEF)) {
+    expect_typedef();
+    return new_node_nop();
+  }
+
+  Token *tok_static = consume(TK_STATIC);
+  bool is_static = tok_static != NULL;
+  Token *tk = next_token;
+  Type *type = consume_type();
+  if (type == NULL) {
+    if (tok_static)
+      error_at(&tok_static->pos, "invalid static");
+    return NULL;
+  }
+
+  if ((type->kind == TYPE_STRUCT || type->kind == TYPE_ENUM) && consume(TK_SEMICOLON)) {
+    // type declaration only (is_static is allowed)
+    return new_node_nop();
+  }
+
+  if (type->size < 0)
+    error_at(&tk->pos, "incomplete type");
+
+  type = consume_type_star(type);
+
+  Token *id = expect(TK_IDENT);
+
+  if (next_token->kind == TK_LPAREN) {
+    if (current_scope != global_scope)
+      error_at(&id->pos, "function declaration is only allowed in global scope");
+    func(type, id);
+    return NULL;
+  }
+
+  VariableKind kind = current_scope == global_scope ? VK_GLOBAL : VK_LOCAL;
+  Vector *vars = vardec(type, id, kind, is_static);
+  if (kind == VK_GLOBAL)
+    return NULL;
+  if (is_static)
+    return new_node_nop();
+  Node *node = init_multiple_local_variables(vars);
+  if (node == NULL)
+    node = new_node_nop();
+  return node;
 }
 
 VariableInit *varinit() {
@@ -858,30 +883,6 @@ Node *stmt() {
     return node;
   }
 
-  if (consume(TK_TYPEDEF)) {
-    expect_typedef();
-    return NULL;
-  }
-
-  bool is_static = consume(TK_STATIC) != NULL;
-  Token *tk = next_token;
-  Type *type = is_static ? expect_type() : consume_type();
-
-  if (type) {
-    if ((tk->kind == TK_STRUCT || tk->kind == TK_ENUM) && consume(TK_SEMICOLON)) {
-      // type declaration only (is_static is allowed)
-      return NULL;
-    }
-
-    if (type->size < 0)
-      error_at(&tk->pos, "incomplete type");
-
-    type = consume_type_star(type);
-    Token *id = expect(TK_IDENT);
-    Vector *vars = vardec(type, id, VK_LOCAL, is_static);
-    return is_static ? NULL : init_multiple_local_variables(vars);
-  }
-
   Node *node = expr();
   expect(TK_SEMICOLON);
   return node;
@@ -898,9 +899,13 @@ Node *stmt_block() {
   node->token = tok;
 
   do {
-    Node *s = stmt();
-    if (s)
+    Node *s;
+    if ((s = declaration())) {
+      if (s->kind != ND_NOP)
+        vector_push(node->blk_stmts, &s);
+    } else if ((s = stmt())) {
       vector_push(node->blk_stmts, &s);
+    }
   } while (!consume(TK_RBRACE));
 
   return node;
@@ -915,18 +920,12 @@ Node *stmt_if() {
   node->condition = expr();
   Token *tok = expect(TK_RPAREN);
 
-  if (consume(TK_STATIC) || consume_type())
-    error_at(&tok->next->pos, "declaration is not allowed here");
-
   new_scope();
   node->body = stmt();
   restore_scope();
 
-  if ((tok = consume(TK_ELSE))) {
-    if (consume(TK_STATIC) || consume_type())
-      error_at(&tok->next->pos, "declaration is not allowed here");
+  if ((tok = consume(TK_ELSE)))
     node->else_ = stmt();
-  }
 
   return node;
 }
@@ -940,10 +939,7 @@ Node *stmt_while() {
 
   expect(TK_LPAREN);
   node->condition = expr();
-  Token *tok = expect(TK_RPAREN);
-
-  if (consume(TK_STAR) || consume_type())
-    error_at(&tok->next->pos, "declaration is not allowed here");
+  expect(TK_RPAREN);
 
   new_scope();
   node->body = stmt();
@@ -992,9 +988,6 @@ Node *stmt_for() {
     node->update = expr();
     tok = expect(TK_RPAREN);
   }
-
-  if (consume(TK_STATIC) || consume_type())
-    error_at(&tok->next->pos, "declaration is not allowed here");
 
   node->body = stmt();
   restore_scope();

@@ -2,6 +2,12 @@
 #include <assert.h>
 #include <stdlib.h>
 
+Node *new_node_nop() {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_NOP;
+  return node;
+}
+
 Node *new_node_num(Token *tok, int val) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_NUM;

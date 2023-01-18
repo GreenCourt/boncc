@@ -164,6 +164,7 @@ typedef enum {
   ND_ADDR,     // &val
   ND_DEREF,    // *ptr
   ND_MEMBER,   // struct member access
+  ND_NOP,      // dummy node only used in parse.c
 } NodeKind;
 
 typedef struct Node Node;
@@ -230,7 +231,7 @@ bool same_ident(Ident *a, Ident *b);
 
 Token *tokenize(char *p);
 void program();
-void gen_toplevel();
+void generate_code();
 
 char *type_text(TypeKind kind);
 Type *base_type(TypeKind kind);

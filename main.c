@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
   program();
 
   FILE *ostream = strcmp(outpath, "-") == 0 ? stdout : fopen(outpath, "w");
-  gen_toplevel(ostream);
+  generate_code(ostream);
   if (ostream != stdout)
     fclose(ostream);
   return 0;

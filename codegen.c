@@ -512,11 +512,12 @@ void gen(Node *node) {
     writeline("  movzb rax, al");
     break;
   default:
+    assert(false);
     break;
   }
 }
 
-void gen_toplevel(FILE *output_stream) {
+void generate_code(FILE *output_stream) {
   assert(output_stream);
   ostream = output_stream;
   writeline(".intel_syntax noprefix");

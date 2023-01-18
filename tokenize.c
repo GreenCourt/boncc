@@ -89,6 +89,7 @@ Token *tokenize(char *src) {
         TK_RETURN,
         TK_IF,
         TK_ELSE,
+        TK_DO,
         TK_WHILE,
         TK_FOR,
         TK_SWITCH,

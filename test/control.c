@@ -181,5 +181,38 @@ int main() {
     verify(2, x, __FILE__, __LINE__);
     verify(3, y, __FILE__, __LINE__);
   }
+  {
+    int x = 0;
+    do {
+      x = x + 1;
+      if (x == 10)
+        continue;
+    } while (x < 10);
+    verify(10, x, __FILE__, __LINE__);
+  }
+  {
+    int x = 0;
+    int y = 0;
+    do {
+      x = x + 1;
+      if (x == 2)
+        continue;
+      y = y + 3;
+    } while (x < 10);
+    verify(10, x, __FILE__, __LINE__);
+    verify(27, y, __FILE__, __LINE__);
+  }
+  {
+    int x = 0;
+    int y = 0;
+    do {
+      x = x + 1;
+      if (x == 5)
+        break;
+      y = y + 3;
+    } while (x < 10);
+    verify(5, x, __FILE__, __LINE__);
+    verify(12, y, __FILE__, __LINE__);
+  }
   return 0;
 }

@@ -29,6 +29,7 @@ typedef enum {
   TK_RETURN,    // return
   TK_IF,        // if
   TK_ELSE,      // else
+  TK_DO,        // do
   TK_WHILE,     // while
   TK_FOR,       // for
   TK_SWITCH,    // switch
@@ -157,6 +158,7 @@ typedef enum {
   ND_NUM,      // integer
   ND_RETURN,   // return
   ND_IF,       // if
+  ND_DO,       // do-while
   ND_WHILE,    // while
   ND_FOR,      // for
   ND_SWITCH,   // switch
@@ -187,6 +189,7 @@ struct Node {
   int label_index;
 
   // if(condition) body else else_
+  // do body while(condition)
   // while(condition) body
   // for(init; condition; update) body
   // condition ? lhs : rhs

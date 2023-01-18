@@ -124,6 +124,16 @@ void gen_if(Node *node) {
   }
 }
 
+void gen_do(Node *node) {
+  writeline(".Ldo%d:", node->label_index);
+  gen(node->body);
+  writeline(".Lcontinue%d:", node->label_index);
+  gen(node->condition);
+  writeline("  cmp rax, 0");
+  writeline("  jne .Ldo%d", node->label_index);
+  writeline(".Lend%d:", node->label_index);
+}
+
 void gen_while(Node *node) {
   writeline(".Lcontinue%d:", node->label_index);
   gen(node->condition);
@@ -382,6 +392,10 @@ void gen(Node *node) {
   case ND_IF:
     comment(node->token, "ND_IF %d", node->label_index);
     gen_if(node);
+    return;
+  case ND_DO:
+    comment(node->token, "ND_DO %d", node->label_index);
+    gen_do(node);
     return;
   case ND_WHILE:
     comment(node->token, "ND_WHILE %d", node->label_index);

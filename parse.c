@@ -22,6 +22,7 @@ stmt        = ";"
               | expr ";"
               | "{" (declaration | stmt)* "}"
               | "if" "(" expr ")" stmt ("else" stmt)?
+              | "do" stmt "while" "(" expr ")" ";"
               | "while" "(" expr ")" stmt
               | "for" "(" (expr | vardec)? ";" expr? ";" expr? ")" stmt
               | "return" expr? ";"
@@ -94,6 +95,7 @@ Node *unary();
 Node *postfix();
 
 Node *stmt_if();
+Node *stmt_do();
 Node *stmt_while();
 Node *stmt_for();
 Node *stmt_switch();
@@ -853,6 +855,9 @@ Node *stmt() {
   if (consume(TK_IF))
     return stmt_if();
 
+  if (consume(TK_DO))
+    return stmt_do();
+
   if (consume(TK_WHILE))
     return stmt_while();
 
@@ -979,6 +984,29 @@ Node *stmt_if() {
 
   if ((tok = consume(TK_ELSE)))
     node->else_ = stmt();
+
+  return node;
+}
+
+Node *stmt_do() {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_DO;
+  node->label_index = label_index++;
+  vector_pushi(continue_label, node->label_index);
+  vector_pushi(break_label, node->label_index);
+
+  new_scope();
+  node->body = stmt();
+  restore_scope();
+
+  expect(TK_WHILE);
+  expect(TK_LPAREN);
+  node->condition = expr();
+  expect(TK_RPAREN);
+  expect(TK_SEMICOLON);
+
+  vector_pop(continue_label);
+  vector_pop(break_label);
 
   return node;
 }

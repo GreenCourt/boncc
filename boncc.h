@@ -6,6 +6,7 @@ typedef enum {
   TK_MINUS,     // -
   TK_STAR,      // *
   TK_SLASH,     // /
+  TK_PERCENT,   // %
   TK_AMP,       // &
   TK_INC,       // ++
   TK_DEC,       // --
@@ -153,6 +154,7 @@ typedef enum {
   ND_SUB,      // -
   ND_MUL,      // *
   ND_DIV,      // /
+  ND_MOD,      // %
   ND_EQ,       // ==
   ND_NE,       // !=
   ND_LT,       // <

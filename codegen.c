@@ -516,6 +516,17 @@ void gen(Node *node) {
     writeline("  cqo");
     writeline("  idiv rdi");
     break;
+  case ND_MOD:
+    comment(node->token, "ND_MOD");
+    gen(node->lhs);
+    writeline("  push rax");
+    gen(node->rhs);
+    writeline("  mov rdi, rax");
+    writeline("  pop rax");
+    writeline("  cqo");
+    writeline("  idiv rdi");
+    writeline("  mov rax, rdx");
+    break;
   case ND_EQ:
     comment(node->token, "ND_EQ");
     gen(node->lhs);

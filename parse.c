@@ -37,7 +37,7 @@ conditional = equality ("?" expr ":" conditional)?
 equality    = relational ("==" relational | "!=" relational)*
 relational  = add ("<" add | "<=" add | ">" add | ">=" add)*
 add         = mul ("+" mul | "-" mul)*
-mul         = unary ("*" unary | "/" unary)*
+mul         = unary ("*" unary | "/" unary | "%" unary)*
 unary       = postfix
               | ("sizeof" unary)
               | ("sizeof" "(" type ")")
@@ -62,6 +62,7 @@ Node *new_node_num(Token *tok, int val);
 Node *new_node_long(Token *tok, long long val);
 Node *new_node_mul(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_div(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_mod(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_add(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_sub(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_eq(Token *tok, Node *lhs, Node *rhs);
@@ -1172,11 +1173,13 @@ Node *add() {
 Node *mul() {
   Node *node = unary();
   while (true) {
-    Token *tok;
-    if ((tok = consume(TK_STAR)))
+    Token *tok = next_token;
+    if (consume(TK_STAR))
       node = new_node_mul(tok, node, unary());
-    else if ((tok = consume(TK_SLASH)))
+    else if (consume(TK_SLASH))
       node = new_node_div(tok, node, unary());
+    else if (consume(TK_PERCENT))
+      node = new_node_mod(tok, node, unary());
     else
       return node;
   }

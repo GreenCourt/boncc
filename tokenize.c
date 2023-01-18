@@ -121,6 +121,7 @@ Token *tokenize(char *src) {
         TK_MINUS,
         TK_STAR,
         TK_SLASH,
+        TK_PERCENT,
         TK_AMP,
         TK_LPAREN,
         TK_RPAREN,

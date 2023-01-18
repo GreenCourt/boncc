@@ -55,6 +55,16 @@ Node *new_node_div(Token *tok, Node *lhs, Node *rhs) {
   return node;
 }
 
+Node *new_node_mod(Token *tok, Node *lhs, Node *rhs) {
+  bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
+  bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+  if (left_is_ptr || right_is_ptr)
+    error_at(&tok->pos, "invalid operands to binary % operator");
+  Node *node = new_node(ND_MOD, lhs, rhs, base_type(TYPE_INT));
+  node->token = tok;
+  return node;
+}
+
 Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;

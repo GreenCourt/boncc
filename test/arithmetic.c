@@ -10,8 +10,8 @@ int main() {
   verify(24, -2 * (+9 - 6) + 30, __FILE__, __LINE__);
   verify(36, +2 * (+9 - 6) + 30, __FILE__, __LINE__);
   verify(12, +2 * +6, __FILE__, __LINE__);
-  verify(10, --10, __FILE__, __LINE__);
-  verify(10, --+10, __FILE__, __LINE__);
+  verify(10, -(-10), __FILE__, __LINE__);
+  verify(10, -(-+10), __FILE__, __LINE__);
   verify(1, -3 < 2, __FILE__, __LINE__);
   verify(0, 2 < 1, __FILE__, __LINE__);
   verify(0, -3 > 2, __FILE__, __LINE__);
@@ -27,6 +27,11 @@ int main() {
   verify(1, 12 ? 1 : 2, __FILE__, __LINE__);
   verify(1, 8 - 4 ? 1 : 2, __FILE__, __LINE__);
   verify(2, 8 - 8 ? 1 : 2, __FILE__, __LINE__);
+  verify(0, 12 % 4, __FILE__, __LINE__);
+  verify(0, 9 % 3, __FILE__, __LINE__);
+  verify(3, 7 % 4, __FILE__, __LINE__);
+  verify(-4, -9 % 5, __FILE__, __LINE__);
+  verify(3, 7 % -4, __FILE__, __LINE__);
   {
     int x = 0;
     int y;

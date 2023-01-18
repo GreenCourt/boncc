@@ -91,5 +91,95 @@ int main() {
     }
     verify(50, outer, __FILE__, __LINE__);
   }
+  {
+    int x = 2;
+    switch (x)
+    case 2:
+      x = 3;
+    verify(3, x, __FILE__, __LINE__);
+  }
+  {
+    int x = 2;
+    switch (x)
+    case 2: {
+      x = 3;
+      x = x + 1;
+    }
+      verify(4, x, __FILE__, __LINE__);
+  }
+  {
+    int x = 2;
+    int y = 4;
+    switch (x) {
+    case 2:
+      switch (y) {
+      case 4:
+        y = 3;
+      }
+    case 3:
+      x = 4;
+    }
+    verify(4, x, __FILE__, __LINE__);
+    verify(3, y, __FILE__, __LINE__);
+  }
+  {
+    int x = 2;
+    int y = 3;
+    switch (x) {
+      {
+      case 2:
+        if (y == 3) {
+          x = 0;
+        }
+      }
+      x = 1;
+    case 4:
+      y = 6;
+    }
+    verify(1, x, __FILE__, __LINE__);
+    verify(6, y, __FILE__, __LINE__);
+  }
+  {
+    int x = 2;
+    int y = 3;
+    int z = 4;
+    switch (x) {
+    default:
+      z = 2;
+    case 1:
+      z = 3;
+      {
+      case 2:
+        if (y == 3) {
+          x = 0;
+        }
+      }
+      x = 1;
+    case 4:
+      y = 6;
+    }
+    verify(1, x, __FILE__, __LINE__);
+    verify(6, y, __FILE__, __LINE__);
+    verify(4, z, __FILE__, __LINE__);
+  }
+  {
+    int x = 2;
+    int y = 0;
+    int z = 4;
+    switch (x) {
+    case 4 - 2:
+      y = 3;
+      break;
+    case 3:
+      y = 4;
+      break;
+    default:
+      y = 5;
+      x = 4;
+      break;
+    }
+    verify(2, x, __FILE__, __LINE__);
+    verify(3, y, __FILE__, __LINE__);
+  }
   return 0;
 }

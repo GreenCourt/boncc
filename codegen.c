@@ -153,6 +153,25 @@ void gen_for(Node *node) {
   writeline(".Lend%d:", node->label_index);
 }
 
+void gen_switch(Node *node) {
+  gen(node->condition);
+
+  Node *c = node->next_case;
+  while (c) {
+    assert(c->condition);
+    assert(c->condition->kind == ND_NUM);
+    writeline("  cmp rax, %ld", c->condition->val);
+    writeline("  je .Lcase%d", c->label_index);
+    c = c->next_case;
+  }
+  if (node->default_)
+    writeline("  jmp .Ldefault%d", node->default_->label_index);
+  else
+    writeline("  jmp .Lend%d", node->label_index);
+  gen(node->body);
+  writeline(".Lend%d:", node->label_index);
+}
+
 void gen_block(Node *node) {
   int sz = node->blk_stmts->size;
   for (int i = 0; i < sz; ++i) {
@@ -371,6 +390,20 @@ void gen(Node *node) {
   case ND_FOR:
     comment(node->token, "ND_FOR %d", node->label_index);
     gen_for(node);
+    return;
+  case ND_SWITCH:
+    comment(node->token, "ND_SWITCH %d", node->label_index);
+    gen_switch(node);
+    return;
+  case ND_CASE:
+    comment(node->token, "ND_CASE %d", node->label_index);
+    writeline(".Lcase%d:", node->label_index);
+    gen(node->body);
+    return;
+  case ND_DEFAULT:
+    writeline(".Ldefault%d:", node->label_index);
+    comment(node->token, "ND_DEFAULT %d", node->label_index);
+    gen(node->body);
     return;
   case ND_RETURN:
     comment(node->token, "ND_RETURN");

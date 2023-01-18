@@ -27,6 +27,9 @@ stmt        = ";"
               | "return" expr? ";"
               | "break" ";"
               | "continue" ";"
+              | "switch" "(" expr ")" stmt
+              | "case" expr ":" stmt
+              | "default" ":" stmt
 expr        = assign
 assign      = condtional ("=" assign)?
 conditional = equality ("?" expr ":" conditional)?
@@ -70,6 +73,7 @@ Node *new_node_member(Token *tok, Node *x, Member *y);
 Node *new_node_var(Token *tok, Variable *var);
 Node *new_node_array_set_expr(Variable *var, int idx, Node *expr);
 Node *new_node_array_set_val(Variable *var, int idx, int val);
+int eval(Node *node);
 // <-- node.c
 
 void program();
@@ -92,6 +96,7 @@ Node *postfix();
 Node *stmt_if();
 Node *stmt_while();
 Node *stmt_for();
+Node *stmt_switch();
 Node *stmt_block();
 
 void expect_typedef();
@@ -105,6 +110,7 @@ static int local_variable_offset;
 static int label_index = 0;
 static Vector *continue_label; // stack of int
 static Vector *break_label;    // stack of int
+static Vector *switch_nodes;   // stack of Node*
 
 void new_scope() {
   Scope *s = calloc(1, sizeof(Scope));
@@ -540,6 +546,7 @@ void program() {
   static_local_variables = new_vector(0, sizeof(Variable *));
   break_label = new_vector(0, sizeof(int));
   continue_label = new_vector(0, sizeof(int));
+  switch_nodes = new_vector(0, sizeof(Node *));
   assert(current_scope == NULL);
   new_scope();
   global_scope = current_scope;
@@ -831,6 +838,8 @@ Node *init_multiple_local_variables(Vector *variables) {
 }
 
 Node *stmt() {
+  Token *tok = next_token;
+
   if (consume(TK_SEMICOLON))
     return NULL;
 
@@ -850,8 +859,53 @@ Node *stmt() {
   if (consume(TK_FOR))
     return stmt_for();
 
+  if (consume(TK_SWITCH))
+    return stmt_switch();
+
+  if (consume(TK_CASE)) {
+    if (switch_nodes->size == 0)
+      error_at(&tok->pos, "invalid case");
+    Node *sw = *(Node **)vector_last(switch_nodes);
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_CASE;
+    node->token = tok;
+    node->label_index = label_index++;
+
+    int val = eval(expr());
+    Node *c = sw->next_case;
+    while (c) {
+      assert(c->condition->kind == ND_NUM);
+      if (c->condition->val == val)
+        error_at(&tok->pos, "duplicated case value detected");
+      c = c->next_case;
+    }
+    node->condition = new_node_num(NULL, val);
+    expect(TK_COLON);
+    node->body = stmt();
+    node->next_case = sw->next_case;
+    sw->next_case = node;
+    return node;
+  }
+
+  if (consume(TK_DEFAULT)) {
+    expect(TK_COLON);
+    if (switch_nodes->size == 0)
+      error_at(&tok->pos, "invalid default");
+    Node *sw = *(Node **)vector_last(switch_nodes);
+    if (sw->default_)
+      error_at(&tok->pos, "multiple default for one switch");
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_DEFAULT;
+    node->token = tok;
+    node->label_index = label_index++;
+    node->body = stmt();
+    sw->default_ = node;
+    return node;
+  }
+
   if (consume(TK_RETURN)) {
     Node *node = calloc(1, sizeof(Node));
+    node->token = tok;
     node->kind = ND_RETURN;
     if (!consume(TK_SEMICOLON)) {
       node->lhs = expr();
@@ -860,8 +914,7 @@ Node *stmt() {
     return node;
   }
 
-  Token *tok = NULL;
-  if ((tok = consume(TK_CONTINUE))) {
+  if (consume(TK_CONTINUE)) {
     if (continue_label->size == 0)
       error_at(&tok->pos, "invalid continue");
     Node *node = calloc(1, sizeof(Node));
@@ -872,7 +925,7 @@ Node *stmt() {
     return node;
   }
 
-  if ((tok = consume(TK_BREAK))) {
+  if (consume(TK_BREAK)) {
     if (break_label->size == 0)
       error_at(&tok->pos, "invalid break");
     Node *node = calloc(1, sizeof(Node));
@@ -994,6 +1047,27 @@ Node *stmt_for() {
 
   vector_pop(continue_label);
   vector_pop(break_label);
+
+  return node;
+}
+
+Node *stmt_switch() {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_SWITCH;
+  node->label_index = label_index++;
+  vector_pushi(break_label, node->label_index);
+  vector_push(switch_nodes, &node);
+
+  expect(TK_LPAREN);
+  node->condition = expr();
+  expect(TK_RPAREN);
+
+  new_scope();
+  node->body = stmt();
+  restore_scope();
+
+  vector_pop(break_label);
+  vector_pop(switch_nodes);
 
   return node;
 }

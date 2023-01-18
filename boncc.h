@@ -31,6 +31,9 @@ typedef enum {
   TK_ELSE,      // else
   TK_WHILE,     // while
   TK_FOR,       // for
+  TK_SWITCH,    // switch
+  TK_CASE,      // case
+  TK_DEFAULT,   // default
   TK_BREAK,     // break
   TK_CONTINUE,  // continue
   TK_VOID,      // void
@@ -156,6 +159,9 @@ typedef enum {
   ND_IF,       // if
   ND_WHILE,    // while
   ND_FOR,      // for
+  ND_SWITCH,   // switch
+  ND_CASE,     // case
+  ND_DEFAULT,  // default
   ND_BREAK,    // break
   ND_CONTINUE, // continue
   ND_BLOCK,    // {...}
@@ -184,11 +190,17 @@ struct Node {
   // while(condition) body
   // for(init; condition; update) body
   // condition ? lhs : rhs
+  // switch(condition) body
+  // case condition: body
+  // default: body
   Node *condition;
   Node *body;
   Node *else_;
   Node *init;
   Node *update;
+
+  Node *next_case; // linked-list for ND_SWITCH, ND_CASE
+  Node *default_;  // ND_SWITCH
 
   Vector *blk_stmts; // statements in ND_BLOCK
 

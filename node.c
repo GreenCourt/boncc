@@ -160,6 +160,26 @@ Node *new_node_deref(Token *tok, Node *operand) {
   return node;
 }
 
+Node *new_node_lognot(Token *tok, Node *operand) {
+  Node *node = new_node(ND_LOGNOT, operand, NULL, base_type(TYPE_INT));
+  node->token = tok;
+  return node;
+}
+
+Node *new_node_logand(Token *tok, Node *lhs, Node *rhs, int label_index) {
+  Node *node = new_node(ND_LOGAND, lhs, rhs, base_type(TYPE_INT));
+  node->token = tok;
+  node->label_index = label_index;
+  return node;
+}
+
+Node *new_node_logor(Token *tok, Node *lhs, Node *rhs, int label_index) {
+  Node *node = new_node(ND_LOGOR, lhs, rhs, base_type(TYPE_INT));
+  node->token = tok;
+  node->label_index = label_index;
+  return node;
+}
+
 Node *new_node_assign(Token *tok, Node *lhs, Node *rhs) {
   Type *type = lhs->type;
   while (type->kind == TYPE_ARRAY)

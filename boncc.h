@@ -21,6 +21,9 @@ typedef enum {
   TK_LE,        // <=
   TK_GT,        // >
   TK_GE,        // >=
+  TK_LOGAND,    // &&
+  TK_LOGOR,     // ||
+  TK_LOGNOT,    // !
   TK_ASSIGN,    // =
   TK_LPAREN,    // (
   TK_RPAREN,    // )
@@ -164,6 +167,9 @@ typedef enum {
   ND_LE,       // <=
   ND_ASSIGN,   // =
   ND_COND,     // ?:
+  ND_LOGNOT,   // !
+  ND_LOGAND,   // &&
+  ND_LOGOR,    // ||
   ND_VAR,      // variable
   ND_NUM,      // integer
   ND_RETURN,   // return

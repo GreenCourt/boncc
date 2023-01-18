@@ -33,7 +33,9 @@ stmt        = ";"
               | "default" ":" stmt
 expr        = assign
 assign      = condtional (("=" | "+=" | "-=" | "*=" | "/=" | "%=") assign)?
-conditional = equality ("?" expr ":" conditional)?
+conditional = logor ("?" expr ":" conditional)?
+logor       = logand ("||" logand)*
+logand      = equality ("&&" equality)*
 equality    = relational ("==" relational | "!=" relational)*
 relational  = add ("<" add | "<=" add | ">" add | ">=" add)*
 add         = mul ("+" mul | "-" mul)*
@@ -47,6 +49,7 @@ unary       = postfix
               | ("-" unary)
               | ("*" unary)
               | ("&" unary)
+              | ("!" unary)
 postfix     = primary tail*
 tail        =  ("[" expr "]") | ("." ident) | ("->" ident) | ("++") | ("--")
 primary     = "(" expr ")"
@@ -71,6 +74,9 @@ Node *new_node_lt(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_le(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_addr(Token *tok, Node *operand);
 Node *new_node_deref(Token *tok, Node *operand);
+Node *new_node_lognot(Token *tok, Node *operand);
+Node *new_node_logand(Token *tok, Node *lhs, Node *rhs, int label_index);
+Node *new_node_logor(Token *tok, Node *lhs, Node *rhs, int label_index);
 Node *new_node_assign(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int label_index);
 Node *new_node_member(Token *tok, Node *x, Member *y);
@@ -89,6 +95,8 @@ Node *stmt();
 Node *expr();
 Node *assign();
 Node *conditional();
+Node *logor();
+Node *logand();
 Node *equality();
 Node *relational();
 Node *add();
@@ -1124,13 +1132,35 @@ Node *assign() {
 }
 
 Node *conditional() {
-  Node *node = equality();
+  Node *node = logor();
   Token *tok = consume(TK_QUESTION);
   if (!tok)
     return node;
   Node *lhs = expr();
   expect(TK_COLON);
   return new_node_conditional(tok, node, lhs, conditional(), label_index++);
+}
+
+Node *logor() {
+  Node *node = logand();
+  while (true) {
+    Token *tok = next_token;
+    if (consume(TK_LOGOR))
+      node = new_node_logor(tok, node, logand(), label_index++);
+    else
+      return node;
+  }
+}
+
+Node *logand() {
+  Node *node = equality();
+  while (true) {
+    Token *tok = next_token;
+    if (consume(TK_LOGAND))
+      node = new_node_logand(tok, node, equality(), label_index++);
+    else
+      return node;
+  }
 }
 
 Node *equality() {
@@ -1231,6 +1261,8 @@ Node *unary() {
     return new_node_addr(tok, unary());
   if (consume(TK_STAR))
     return new_node_deref(tok, unary());
+  if (consume(TK_LOGNOT))
+    return new_node_lognot(tok, unary());
   return postfix();
 }
 

@@ -527,6 +527,41 @@ void gen(Node *node) {
     writeline("  idiv rdi");
     writeline("  mov rax, rdx");
     break;
+  case ND_LOGNOT:
+    comment(node->token, "ND_LOGNOT");
+    gen(node->lhs);
+    writeline("  cmp rax, 0");
+    writeline("  sete al");
+    writeline("  movzx rax, al");
+    break;
+  case ND_LOGOR:
+    comment(node->token, "ND_LOGOR");
+    gen(node->lhs);
+    writeline("  cmp rax, 0");
+    writeline("  jne .Ltrue%d", node->label_index);
+    gen(node->rhs);
+    writeline("  cmp rax, 0");
+    writeline("  jne .Ltrue%d", node->label_index);
+    writeline("  mov rax, 0");
+    writeline("  jmp .Lend%d", node->label_index);
+    writeline(".Ltrue%d:", node->label_index);
+    writeline("  mov rax, 1");
+    writeline(".Lend%d:", node->label_index);
+    break;
+  case ND_LOGAND:
+    comment(node->token, "ND_LOGAND %d", node->label_index);
+    gen(node->lhs);
+    writeline("  cmp rax, 0");
+    writeline("  je .Lfalse%d", node->label_index);
+    gen(node->rhs);
+    writeline("  cmp rax, 0");
+    writeline("  je .Lfalse%d", node->label_index);
+    writeline("  mov rax, 1");
+    writeline("  jmp .Lend%d", node->label_index);
+    writeline(".Lfalse%d:", node->label_index);
+    writeline("  mov rax, 0");
+    writeline(".Lend%d:", node->label_index);
+    break;
   case ND_EQ:
     comment(node->token, "ND_EQ");
     gen(node->lhs);

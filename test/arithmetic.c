@@ -64,5 +64,27 @@ int main() {
     verify(2, x, __FILE__, __LINE__);
     verify(2, y, __FILE__, __LINE__);
   }
+  {
+    int a[3];
+    int *p;
+    verify(1, !0, __FILE__, __LINE__);
+    verify(0, !1, __FILE__, __LINE__);
+    verify(0, !57, __FILE__, __LINE__);
+    verify(0, !p, __FILE__, __LINE__);
+    verify(0, !a, __FILE__, __LINE__);
+
+    verify(1, 3 && 6, __FILE__, __LINE__);
+    verify(0, 0 && 9, __FILE__, __LINE__);
+    verify(0, 5 && 0, __FILE__, __LINE__);
+    verify(0, 0 && 0, __FILE__, __LINE__);
+    verify(1, a && p, __FILE__, __LINE__);
+
+    verify(1, 4 || 9, __FILE__, __LINE__);
+    verify(1, 0 || 7, __FILE__, __LINE__);
+    verify(1, 2 || 0, __FILE__, __LINE__);
+    verify(0, 0 || 0, __FILE__, __LINE__);
+    verify(1, a || 0, __FILE__, __LINE__);
+    verify(1, 0 || p, __FILE__, __LINE__);
+  }
   return 0;
 }

@@ -41,12 +41,14 @@ mul         = unary ("*" unary | "/" unary)*
 unary       = postfix
               | ("sizeof" unary)
               | ("sizeof" "(" type ")")
+              | ("++" unary)
+              | ("--" unary)
               | ("+" unary)
               | ("-" unary)
               | ("*" unary)
               | ("&" unary)
 postfix     = primary tail*
-tail        =  ("[" expr "]") | ("." ident) | ("->" ident)
+tail        =  ("[" expr "]") | ("." ident) | ("->" ident) | ("++") | ("--")
 primary     = "(" expr ")"
               | ident ("(" (expr ("," expr)*)? ")")?
               | ident
@@ -1105,7 +1107,6 @@ Node *expr() { return assign(); }
 Node *assign() {
   Node *node = conditional();
   Token *tok = next_token;
-  ;
   if (consume(TK_ASSIGN))
     node = new_node_assign(tok, node, assign());
   if (consume(TK_PLUSEQ))
@@ -1182,8 +1183,8 @@ Node *mul() {
 }
 
 Node *unary() {
-  Token *tok;
-  if ((tok = consume(TK_SIZEOF))) {
+  Token *tok = next_token;
+  if (consume(TK_SIZEOF)) {
     Token *keep = next_token;
     Token *left_paren = consume(TK_LPAREN);
     Type *type = consume_type();
@@ -1204,14 +1205,22 @@ Node *unary() {
       error_at(&tok->pos, "invalud sizeof operation for incomplete type");
     return new_node_long(tok, type->size);
   }
+  if (consume(TK_INC)) {
+    Node *u = unary();
+    return new_node_assign(NULL, u, new_node_add(NULL, u, new_node_num(NULL, 1)));
+  }
+  if (consume(TK_DEC)) {
+    Node *u = unary();
+    return new_node_assign(NULL, u, new_node_sub(NULL, u, new_node_num(NULL, 1)));
+  }
 
-  if ((tok = consume(TK_PLUS)))
+  if (consume(TK_PLUS))
     return unary();
-  if ((tok = consume(TK_MINUS)))
+  if (consume(TK_MINUS))
     return new_node_sub(tok, new_node_num(NULL, 0), unary());
-  if ((tok = consume(TK_AMP)))
+  if (consume(TK_AMP))
     return new_node_addr(tok, unary());
-  if ((tok = consume(TK_STAR)))
+  if (consume(TK_STAR))
     return new_node_deref(tok, unary());
   return postfix();
 }
@@ -1288,8 +1297,8 @@ Node *tail(Node *x) {
     return new_node_deref(tok, new_node_add(tok, x, y));
   }
 
-  Token *op;
-  if ((op = consume(TK_DOT))) {
+  Token *op = next_token;
+  if (consume(TK_DOT)) {
     // struct member access (x.y)
     if (x->type == NULL || x->type->kind != TYPE_STRUCT)
       error_at(&op->pos, "not a struct");
@@ -1299,7 +1308,7 @@ Node *tail(Node *x) {
       error_at(&y->pos, "unknown struct member");
     return new_node_member(op, x, member);
   }
-  if ((op = consume(TK_ARROW))) {
+  if (consume(TK_ARROW)) {
     // struct member access
     // x->y is (*x).y
     if (x->type == NULL || x->type->kind != TYPE_PTR || x->type->base->kind != TYPE_STRUCT)
@@ -1309,6 +1318,14 @@ Node *tail(Node *x) {
     if (member == NULL)
       error_at(&y->pos, "unknown struct member");
     return new_node_member(op, new_node_deref(NULL, x), member);
+  }
+  if (consume(TK_INC)) {
+    // (x = x + 1) - 1
+    return new_node_sub(NULL, new_node_assign(NULL, x, new_node_add(NULL, x, new_node_num(NULL, 1))), new_node_num(NULL, 1));
+  }
+  if (consume(TK_DEC)) {
+    // (x = x - 1) + 1
+    return new_node_add(NULL, new_node_assign(NULL, x, new_node_sub(NULL, x, new_node_num(NULL, 1))), new_node_num(NULL, 1));
   }
   return x;
 }

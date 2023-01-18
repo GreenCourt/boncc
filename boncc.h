@@ -7,6 +7,8 @@ typedef enum {
   TK_STAR,      // *
   TK_SLASH,     // /
   TK_AMP,       // &
+  TK_INC,       // ++
+  TK_DEC,       // --
   TK_PLUSEQ,    // +=
   TK_MINUSEQ,   // -=
   TK_EQ,        // ==

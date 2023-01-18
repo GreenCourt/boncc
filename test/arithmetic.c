@@ -31,10 +31,22 @@ int main() {
     int x = 0;
     int y;
     int *p = &x;
+    y = (*p)++;
+    verify(1, x, __FILE__, __LINE__);
+    verify(0, y, __FILE__, __LINE__);
+    y = ++(*p);
+    verify(2, x, __FILE__, __LINE__);
+    verify(2, y, __FILE__, __LINE__);
     y = (*p) += 2;
-    verify(2, x, __FILE__, __LINE__);
-    verify(2, x, __FILE__, __LINE__);
+    verify(4, x, __FILE__, __LINE__);
+    verify(4, x, __FILE__, __LINE__);
     y = (*p) -= 5;
+    verify(-1, x, __FILE__, __LINE__);
+    verify(-1, y, __FILE__, __LINE__);
+    y = (*p)--;
+    verify(-2, x, __FILE__, __LINE__);
+    verify(-1, y, __FILE__, __LINE__);
+    y = --(*p);
     verify(-3, x, __FILE__, __LINE__);
     verify(-3, y, __FILE__, __LINE__);
   }

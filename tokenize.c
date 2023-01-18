@@ -108,6 +108,8 @@ Token *tokenize(char *src) {
         TK_TYPEDEF,
         TK_STATIC,
         TK_ARROW,
+        TK_INC,
+        TK_DEC,
         TK_PLUSEQ,
         TK_MINUSEQ,
         TK_LE,

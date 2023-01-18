@@ -27,5 +27,16 @@ int main() {
   verify(1, 12 ? 1 : 2, __FILE__, __LINE__);
   verify(1, 8 - 4 ? 1 : 2, __FILE__, __LINE__);
   verify(2, 8 - 8 ? 1 : 2, __FILE__, __LINE__);
+  {
+    int x = 0;
+    int y;
+    int *p = &x;
+    y = (*p) += 2;
+    verify(2, x, __FILE__, __LINE__);
+    verify(2, x, __FILE__, __LINE__);
+    y = (*p) -= 5;
+    verify(-3, x, __FILE__, __LINE__);
+    verify(-3, y, __FILE__, __LINE__);
+  }
   return 0;
 }

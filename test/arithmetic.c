@@ -54,6 +54,15 @@ int main() {
     y = --(*p);
     verify(-3, x, __FILE__, __LINE__);
     verify(-3, y, __FILE__, __LINE__);
+    y = (*p) *= -8;
+    verify(24, x, __FILE__, __LINE__);
+    verify(24, y, __FILE__, __LINE__);
+    y = (*p) /= 4;
+    verify(6, x, __FILE__, __LINE__);
+    verify(6, y, __FILE__, __LINE__);
+    y = (*p) %= 4;
+    verify(2, x, __FILE__, __LINE__);
+    verify(2, y, __FILE__, __LINE__);
   }
   return 0;
 }

@@ -32,7 +32,7 @@ stmt        = ";"
               | "case" expr ":" stmt
               | "default" ":" stmt
 expr        = assign
-assign      = condtional (("=" | "+=" | "-=") assign)?
+assign      = condtional (("=" | "+=" | "-=" | "*=" | "/=" | "%=") assign)?
 conditional = equality ("?" expr ":" conditional)?
 equality    = relational ("==" relational | "!=" relational)*
 relational  = add ("<" add | "<=" add | ">" add | ">=" add)*
@@ -1110,10 +1110,16 @@ Node *assign() {
   Token *tok = next_token;
   if (consume(TK_ASSIGN))
     node = new_node_assign(tok, node, assign());
-  if (consume(TK_PLUSEQ))
+  if (consume(TK_ADDEQ))
     node = new_node_assign(tok, node, new_node_add(NULL, node, assign()));
-  if (consume(TK_MINUSEQ))
+  if (consume(TK_SUBEQ))
     node = new_node_assign(tok, node, new_node_sub(NULL, node, assign()));
+  if (consume(TK_MULEQ))
+    node = new_node_assign(tok, node, new_node_mul(NULL, node, assign()));
+  if (consume(TK_DIVEQ))
+    node = new_node_assign(tok, node, new_node_div(NULL, node, assign()));
+  if (consume(TK_MODEQ))
+    node = new_node_assign(tok, node, new_node_mod(NULL, node, assign()));
   return node;
 }
 

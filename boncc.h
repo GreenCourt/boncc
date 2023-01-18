@@ -10,8 +10,11 @@ typedef enum {
   TK_AMP,       // &
   TK_INC,       // ++
   TK_DEC,       // --
-  TK_PLUSEQ,    // +=
-  TK_MINUSEQ,   // -=
+  TK_ADDEQ,     // +=
+  TK_SUBEQ,     // -=
+  TK_MULEQ,     // *=
+  TK_DIVEQ,     // /=
+  TK_MODEQ,     // %=
   TK_EQ,        // ==
   TK_NE,        // !=
   TK_LT,        // <

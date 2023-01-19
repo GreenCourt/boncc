@@ -164,6 +164,7 @@ struct Function {
   Vector *params;
   Node *body;
   Token *token;
+  bool is_static;
   int offset; // total offset
 };
 

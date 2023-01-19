@@ -16,7 +16,7 @@ typedef     = "typedef" type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num 
 vardec      = "static"? type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
 varinit     = expr
               | "{" varinit ("," varinit)* "}"
-func        = type "*"* ident "(" funcparam? ")" (("{" stmt* "}") | ";")
+func        = "static"? type "*"* ident "(" funcparam? ")" (("{" stmt* "}") | ";")
 funcparam   = type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
 stmt        = ";"
               | expr ";"
@@ -99,7 +99,7 @@ int eval(Node *node);
 
 void program();
 Node *declaration();
-void func(Type *type, Token *name);
+void func(Type *type, Token *name, bool is_static);
 void funcparam(Vector *params);
 VariableInit *varinit();
 Node *stmt();
@@ -640,7 +640,7 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static) {
   return variables;
 }
 
-void func(Type *type, Token *tok) {
+void func(Type *type, Token *tok, bool is_static) {
   Function *f = calloc(1, sizeof(Function));
 
   Function *prev = map_get(functions, tok->ident);
@@ -650,6 +650,7 @@ void func(Type *type, Token *tok) {
   f->token = tok;
   f->type = type;
   f->ident = tok->ident;
+  f->is_static = is_static;
   f->params = new_vector(0, sizeof(Variable *));
   assert(local_variable_offset == 0);
   assert(current_scope == global_scope);
@@ -732,7 +733,7 @@ Node *declaration() {
   if (next_token->kind == TK_LPAREN) {
     if (current_scope != global_scope)
       error_at(&id->pos, "function declaration is only allowed in global scope");
-    func(type, id);
+    func(type, id, is_static);
     return NULL;
   }
 

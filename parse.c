@@ -11,7 +11,7 @@ type        = "void" | "int" | "char" | ("short" "int"?) | ("long" "long"? "int"
 struct      = ("struct" ident ("{" member* "}")?) | ("struct" ident? "{" member* "}")
 member      = type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";"
 enum        = ("enum" ident ("{" enumval ("," enumval)* "}")?) | ("enum" ident? "{" enumval ("," enumval)* "}")
-enumval     = indent
+enumval     = indent ("=" expr)?
 typedef     = "typedef" type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")*)* ";"
 vardec      = "static"? type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
 varinit     = expr
@@ -373,14 +373,17 @@ Type *consume_enum() {
   assert(et != NULL);
   et->size = base_type(TYPE_INT)->size;
 
-  int val = 0;
+  int val = -1;
   do {
-    Token *tok = expect(TK_IDENT);
-    if (map_get(current_scope->enum_elements, tok->ident))
-      error_at(&tok->pos, "duplicated identifier for enum element");
+    Token *id = expect(TK_IDENT);
+    if (map_get(current_scope->enum_elements, id->ident))
+      error_at(&id->pos, "duplicated identifier for enum element");
+
+    if (consume(TK_ASSIGN))
+      val = eval(expr()) - 1;
     int *v = calloc(1, sizeof(int));
-    *v = val++;
-    map_push(current_scope->enum_elements, tok->ident, v);
+    *v = ++val;
+    map_push(current_scope->enum_elements, id->ident, v);
   } while (consume(TK_COMMA));
   expect(TK_RBRACE);
 

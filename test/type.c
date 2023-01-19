@@ -202,5 +202,19 @@ int main() {
     verify(1, B, __FILE__, __LINE__);
     verify(2, C, __FILE__, __LINE__);
   }
+  {
+    enum T {
+      A,
+      B = 5,
+      C,
+      D = 4,
+      E
+    };
+    verify(0, A, __FILE__, __LINE__);
+    verify(5, B, __FILE__, __LINE__);
+    verify(6, C, __FILE__, __LINE__);
+    verify(4, D, __FILE__, __LINE__);
+    verify(5, E, __FILE__, __LINE__);
+  }
   return 0;
 }

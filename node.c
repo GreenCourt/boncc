@@ -180,6 +180,42 @@ Node *new_node_logor(Token *tok, Node *lhs, Node *rhs, int label_index) {
   return node;
 }
 
+Node *new_node_lshift(Token *tok, Node *lhs, Node *rhs) {
+  Node *node = new_node(ND_LSHIFT, lhs, rhs, base_type(TYPE_INT));
+  node->token = tok;
+  return node;
+}
+
+Node *new_node_rshift(Token *tok, Node *lhs, Node *rhs) {
+  Node *node = new_node(ND_RSHIFT, lhs, rhs, base_type(TYPE_INT));
+  node->token = tok;
+  return node;
+}
+
+Node *new_node_bitand(Token *tok, Node *lhs, Node *rhs) {
+  Node *node = new_node(ND_BITAND, lhs, rhs, base_type(TYPE_INT));
+  node->token = tok;
+  return node;
+}
+
+Node *new_node_bitor(Token *tok, Node *lhs, Node *rhs) {
+  Node *node = new_node(ND_BITOR, lhs, rhs, base_type(TYPE_INT));
+  node->token = tok;
+  return node;
+}
+
+Node *new_node_bitxor(Token *tok, Node *lhs, Node *rhs) {
+  Node *node = new_node(ND_BITXOR, lhs, rhs, base_type(TYPE_INT));
+  node->token = tok;
+  return node;
+}
+
+Node *new_node_bitnot(Token *tok, Node *lhs) {
+  Node *node = new_node(ND_BITNOT, lhs, NULL, base_type(TYPE_INT));
+  node->token = tok;
+  return node;
+}
+
 Node *new_node_assign(Token *tok, Node *lhs, Node *rhs) {
   Type *type = lhs->type;
   while (type->kind == TYPE_ARRAY)
@@ -263,6 +299,20 @@ int eval(Node *node) {
     return eval(node->lhs) * eval(node->rhs);
   case ND_DIV:
     return eval(node->lhs) / eval(node->rhs);
+  case ND_MOD:
+    return eval(node->lhs) % eval(node->rhs);
+  case ND_BITXOR:
+    return eval(node->lhs) ^ eval(node->rhs);
+  case ND_BITOR:
+    return eval(node->lhs) | eval(node->rhs);
+  case ND_BITAND:
+    return eval(node->lhs) & eval(node->rhs);
+  case ND_BITNOT:
+    return ~eval(node->lhs);
+  case ND_LSHIFT:
+    return eval(node->lhs) << eval(node->rhs);
+  case ND_RSHIFT:
+    return eval(node->lhs) >> eval(node->rhs);
   case ND_EQ:
     return eval(node->lhs) == eval(node->rhs);
   case ND_NE:
@@ -271,6 +321,14 @@ int eval(Node *node) {
     return eval(node->lhs) < eval(node->rhs);
   case ND_LE:
     return eval(node->lhs) <= eval(node->rhs);
+  case ND_COND:
+    return eval(node->condition) ? eval(node->lhs) : eval(node->rhs);
+  case ND_LOGNOT:
+    return !eval(node->lhs);
+  case ND_LOGAND:
+    return eval(node->lhs) && eval(node->rhs);
+  case ND_LOGOR:
+    return eval(node->lhs) || eval(node->rhs);
   case ND_NUM:
     return node->val;
   default:

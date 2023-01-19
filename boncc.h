@@ -8,6 +8,11 @@ typedef enum {
   TK_SLASH,     // /
   TK_PERCENT,   // %
   TK_AMP,       // &
+  TK_TILDE,     // ~
+  TK_HAT,       // ^
+  TK_BAR,       // |
+  TK_LSHIFT,    // <<
+  TK_RSHIFT,    // >>
   TK_INC,       // ++
   TK_DEC,       // --
   TK_ADDEQ,     // +=
@@ -15,6 +20,11 @@ typedef enum {
   TK_MULEQ,     // *=
   TK_DIVEQ,     // /=
   TK_MODEQ,     // %=
+  TK_XOREQ,     // ^=
+  TK_ANDEQ,     // &=
+  TK_OREQ,      // |=
+  TK_LSHIFTEQ,  // <<=
+  TK_RSHIFTEQ,  // >>=
   TK_EQ,        // ==
   TK_NE,        // !=
   TK_LT,        // <
@@ -161,6 +171,12 @@ typedef enum {
   ND_MUL,      // *
   ND_DIV,      // /
   ND_MOD,      // %
+  ND_BITXOR,   // ^
+  ND_BITOR,    // |
+  ND_BITAND,   // &
+  ND_BITNOT,   // ~
+  ND_LSHIFT,   // <<
+  ND_RSHIFT,   // >>
   ND_EQ,       // ==
   ND_NE,       // !=
   ND_LT,       // <

@@ -476,11 +476,6 @@ void gen(Node *node) {
     gen_address(node);
     load(node->type);
     return;
-  default:
-    break;
-  }
-
-  switch (node->kind) {
   case ND_ADD:
     comment(node->token, "ND_ADD");
     gen(node->lhs);
@@ -488,7 +483,7 @@ void gen(Node *node) {
     gen(node->rhs);
     writeline("  pop rdi");
     writeline("  add rax, rdi");
-    break;
+    return;
   case ND_SUB:
     comment(node->token, "ND_SUB");
     gen(node->lhs);
@@ -497,7 +492,7 @@ void gen(Node *node) {
     writeline("  mov rdi, rax");
     writeline("  pop rax");
     writeline("  sub rax, rdi");
-    break;
+    return;
   case ND_MUL:
     comment(node->token, "ND_MUL");
     gen(node->lhs);
@@ -505,7 +500,7 @@ void gen(Node *node) {
     gen(node->rhs);
     writeline("  pop rdi");
     writeline("  imul rax, rdi");
-    break;
+    return;
   case ND_DIV:
     comment(node->token, "ND_DIV");
     gen(node->lhs);
@@ -515,7 +510,7 @@ void gen(Node *node) {
     writeline("  pop rax");
     writeline("  cqo");
     writeline("  idiv rdi");
-    break;
+    return;
   case ND_MOD:
     comment(node->token, "ND_MOD");
     gen(node->lhs);
@@ -526,14 +521,14 @@ void gen(Node *node) {
     writeline("  cqo");
     writeline("  idiv rdi");
     writeline("  mov rax, rdx");
-    break;
+    return;
   case ND_LOGNOT:
     comment(node->token, "ND_LOGNOT");
     gen(node->lhs);
     writeline("  cmp rax, 0");
     writeline("  sete al");
     writeline("  movzx rax, al");
-    break;
+    return;
   case ND_LOGOR:
     comment(node->token, "ND_LOGOR");
     gen(node->lhs);
@@ -547,7 +542,7 @@ void gen(Node *node) {
     writeline(".Ltrue%d:", node->label_index);
     writeline("  mov rax, 1");
     writeline(".Lend%d:", node->label_index);
-    break;
+    return;
   case ND_LOGAND:
     comment(node->token, "ND_LOGAND %d", node->label_index);
     gen(node->lhs);
@@ -561,7 +556,57 @@ void gen(Node *node) {
     writeline(".Lfalse%d:", node->label_index);
     writeline("  mov rax, 0");
     writeline(".Lend%d:", node->label_index);
-    break;
+    return;
+  case ND_LSHIFT:
+    comment(node->token, "ND_LSHIFT");
+    gen(node->lhs);
+    writeline("  push rax");
+    gen(node->rhs);
+    writeline("  mov rcx, rax");
+    writeline("  pop rax");
+    writeline("  shl rax, cl");
+    return;
+  case ND_RSHIFT:
+    comment(node->token, "ND_RSHIFT");
+    gen(node->lhs);
+    writeline("  push rax");
+    gen(node->rhs);
+    writeline("  mov rcx, rax");
+    writeline("  pop rax");
+    writeline("  sar rax, cl");
+    return;
+  case ND_BITXOR:
+    comment(node->token, "ND_BITXOR");
+    gen(node->lhs);
+    writeline("  push rax");
+    gen(node->rhs);
+    writeline("  mov rdi, rax");
+    writeline("  pop rax");
+    writeline("  xor rax, rdi");
+    return;
+  case ND_BITOR:
+    comment(node->token, "ND_BITOR");
+    gen(node->lhs);
+    writeline("  push rax");
+    gen(node->rhs);
+    writeline("  mov rdi, rax");
+    writeline("  pop rax");
+    writeline("  or rax, rdi");
+    return;
+  case ND_BITAND:
+    comment(node->token, "ND_BITAND");
+    gen(node->lhs);
+    writeline("  push rax");
+    gen(node->rhs);
+    writeline("  mov rdi, rax");
+    writeline("  pop rax");
+    writeline("  and rax, rdi");
+    return;
+  case ND_BITNOT:
+    comment(node->token, "ND_BITNOT");
+    gen(node->lhs);
+    writeline("  not rax");
+    return;
   case ND_EQ:
     comment(node->token, "ND_EQ");
     gen(node->lhs);
@@ -571,7 +616,7 @@ void gen(Node *node) {
     writeline("  cmp rax, rdi");
     writeline("  sete al");
     writeline("  movzb rax, al");
-    break;
+    return;
   case ND_NE:
     comment(node->token, "ND_NE");
     gen(node->lhs);
@@ -581,7 +626,7 @@ void gen(Node *node) {
     writeline("  cmp rax, rdi");
     writeline("  setne al");
     writeline("  movzb rax, al");
-    break;
+    return;
   case ND_LT:
     comment(node->token, "ND_LT");
     gen(node->lhs);
@@ -592,7 +637,7 @@ void gen(Node *node) {
     writeline("  cmp rax, rdi");
     writeline("  setl al");
     writeline("  movzb rax, al");
-    break;
+    return;
   case ND_LE:
     comment(node->token, "ND_LE");
     gen(node->lhs);
@@ -603,10 +648,9 @@ void gen(Node *node) {
     writeline("  cmp rax, rdi");
     writeline("  setle al");
     writeline("  movzb rax, al");
-    break;
+    return;
   default:
     assert(false);
-    break;
   }
 }
 

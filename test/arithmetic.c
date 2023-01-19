@@ -86,5 +86,39 @@ int main() {
     verify(1, a || 0, __FILE__, __LINE__);
     verify(1, 0 || p, __FILE__, __LINE__);
   }
+  {
+    verify(2, 4 >> 1, __FILE__, __LINE__);
+    verify(1, 4 >> 2, __FILE__, __LINE__);
+    verify(0, 4 >> 3, __FILE__, __LINE__);
+    verify(2, 5 >> 1, __FILE__, __LINE__);
+    verify(10, 5 << 1, __FILE__, __LINE__);
+    verify(20, 5 << 2, __FILE__, __LINE__);
+    verify(-456790, ~456789, __FILE__, __LINE__);
+    verify(10000, ~~10000, __FILE__, __LINE__);
+    verify(465429, 123456 ^ 456789, __FILE__, __LINE__);
+    verify(522837, 123456 | 456789, __FILE__, __LINE__);
+    verify(57408, 123456 & 456789, __FILE__, __LINE__);
+    int x = 123456;
+    int y;
+    y = (x <<= 4);
+    verify(1975296, x, __FILE__, __LINE__);
+    verify(1975296, y, __FILE__, __LINE__);
+    x = 123456;
+    y = (x >>= 4);
+    verify(7716, x, __FILE__, __LINE__);
+    verify(7716, y, __FILE__, __LINE__);
+    x = 123456;
+    y = (x ^= 671389);
+    verify(777437, x, __FILE__, __LINE__);
+    verify(777437, y, __FILE__, __LINE__);
+    x = 123456;
+    y = (x &= 671389);
+    verify(8704, x, __FILE__, __LINE__);
+    verify(8704, y, __FILE__, __LINE__);
+    x = 123456;
+    y = (x |= 671389);
+    verify(786141, x, __FILE__, __LINE__);
+    verify(786141, y, __FILE__, __LINE__);
+  }
   return 0;
 }

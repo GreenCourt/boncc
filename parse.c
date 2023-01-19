@@ -32,14 +32,18 @@ stmt        = ";"
               | "case" expr ":" stmt
               | "default" ":" stmt
 expr        = assign
-assign      = condtional (("=" | "+=" | "-=" | "*=" | "/=" | "%=") assign)?
+assign      = condtional (("=" | "+=" | "-=" | "*=" | "/=" | "%=" | "^=" | "&=" | "|=" | "<<=" | ">>=" ) assign)?
 conditional = logor ("?" expr ":" conditional)?
 logor       = logand ("||" logand)*
-logand      = equality ("&&" equality)*
-equality    = relational ("==" relational | "!=" relational)*
-relational  = add ("<" add | "<=" add | ">" add | ">=" add)*
-add         = mul ("+" mul | "-" mul)*
-mul         = unary ("*" unary | "/" unary | "%" unary)*
+logand      = bitor ("&&" bitor)*
+bitor       = bitxor ("|" bitxor)*
+bitxor      = bitand ("^" bitand)*
+bitand      = equality ("&" equality)*
+equality    = relational (("==" | "!=") relational)*
+relational  = bitshift (("<" | "<=" | ">" | ">=") bitshift)*
+bitshift    = add (("<<" | ">>") add)*
+add         = mul (("+" | "-") mul)*
+mul         = unary (("*" | "/" | "%") unary)*
 unary       = postfix
               | ("sizeof" unary)
               | ("sizeof" "(" type ")")
@@ -50,6 +54,7 @@ unary       = postfix
               | ("*" unary)
               | ("&" unary)
               | ("!" unary)
+              | ("~" unary)
 postfix     = primary tail*
 tail        =  ("[" expr "]") | ("." ident) | ("->" ident) | ("++") | ("--")
 primary     = "(" expr ")"
@@ -77,6 +82,12 @@ Node *new_node_deref(Token *tok, Node *operand);
 Node *new_node_lognot(Token *tok, Node *operand);
 Node *new_node_logand(Token *tok, Node *lhs, Node *rhs, int label_index);
 Node *new_node_logor(Token *tok, Node *lhs, Node *rhs, int label_index);
+Node *new_node_lshift(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_rshift(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_bitand(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_bitor(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_bitxor(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_bitnot(Token *tok, Node *lhs);
 Node *new_node_assign(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int label_index);
 Node *new_node_member(Token *tok, Node *x, Member *y);
@@ -97,8 +108,12 @@ Node *assign();
 Node *conditional();
 Node *logor();
 Node *logand();
+Node * bitor ();
+Node *bitxor();
+Node *bitand();
 Node *equality();
 Node *relational();
+Node *bitshift();
 Node *add();
 Node *mul();
 Node *primary();
@@ -1128,6 +1143,16 @@ Node *assign() {
     node = new_node_assign(tok, node, new_node_div(NULL, node, assign()));
   if (consume(TK_MODEQ))
     node = new_node_assign(tok, node, new_node_mod(NULL, node, assign()));
+  if (consume(TK_XOREQ))
+    node = new_node_assign(tok, node, new_node_bitxor(NULL, node, assign()));
+  if (consume(TK_ANDEQ))
+    node = new_node_assign(tok, node, new_node_bitand(NULL, node, assign()));
+  if (consume(TK_OREQ))
+    node = new_node_assign(tok, node, new_node_bitor(NULL, node, assign()));
+  if (consume(TK_LSHIFTEQ))
+    node = new_node_assign(tok, node, new_node_lshift(NULL, node, assign()));
+  if (consume(TK_RSHIFTEQ))
+    node = new_node_assign(tok, node, new_node_rshift(NULL, node, assign()));
   return node;
 }
 
@@ -1153,11 +1178,44 @@ Node *logor() {
 }
 
 Node *logand() {
-  Node *node = equality();
+  Node *node = bitor ();
   while (true) {
     Token *tok = next_token;
     if (consume(TK_LOGAND))
-      node = new_node_logand(tok, node, equality(), label_index++);
+      node = new_node_logand(tok, node, bitor (), label_index++);
+    else
+      return node;
+  }
+}
+
+Node * bitor () {
+  Node *node = bitxor();
+  while (true) {
+    Token *tok = next_token;
+    if (consume(TK_BAR))
+      node = new_node_bitor(tok, node, bitxor());
+    else
+      return node;
+  }
+}
+
+Node *bitxor() {
+  Node *node = bitand();
+  while (true) {
+    Token *tok = next_token;
+    if (consume(TK_HAT))
+      node = new_node_bitxor(tok, node, bitand());
+    else
+      return node;
+  }
+}
+
+Node *bitand() {
+  Node *node = equality();
+  while (true) {
+    Token *tok = next_token;
+    if (consume(TK_AMP))
+      node = new_node_bitand(tok, node, equality());
     else
       return node;
   }
@@ -1177,18 +1235,31 @@ Node *equality() {
 }
 
 Node *relational() {
-  Node *node = add();
+  Node *node = bitshift();
   while (true) {
     Token *tok;
     if ((tok = consume(TK_LT)))
-      node = new_node_lt(tok, node, add());
+      node = new_node_lt(tok, node, bitshift());
     else if ((tok = consume(TK_LE)))
-      node = new_node_le(tok, node, add());
+      node = new_node_le(tok, node, bitshift());
     if ((tok = consume(TK_GT)))
-      node = new_node_lt(tok, add(), node);
+      node = new_node_lt(tok, bitshift(), node);
     else if ((tok = consume(TK_GE)))
-      node = new_node_le(tok, add(), node);
+      node = new_node_le(tok, bitshift(), node);
     else
+      return node;
+  }
+}
+
+Node *bitshift() {
+  Node *node = add();
+  while (true) {
+    Token *tok = next_token;
+    if (consume(TK_LSHIFT)) {
+      node = new_node_lshift(tok, node, add());
+    } else if (consume(TK_RSHIFT)) {
+      node = new_node_rshift(tok, node, add());
+    } else
       return node;
   }
 }
@@ -1196,7 +1267,7 @@ Node *relational() {
 Node *add() {
   Node *node = mul();
   while (true) {
-    Token *tok = next_token; // for error message
+    Token *tok = next_token;
     if (consume(TK_PLUS)) {
       node = new_node_add(tok, node, mul());
     } else if (consume(TK_MINUS)) {
@@ -1263,6 +1334,8 @@ Node *unary() {
     return new_node_deref(tok, unary());
   if (consume(TK_LOGNOT))
     return new_node_lognot(tok, unary());
+  if (consume(TK_TILDE))
+    return new_node_bitnot(tok, unary());
   return postfix();
 }
 

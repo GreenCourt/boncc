@@ -16,7 +16,7 @@ typedef     = "typedef" type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num 
 vardec      = "static"? type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
 varinit     = expr
               | "{" varinit ("," varinit)* "}"
-func        = type "*"* ident "(" funcparam? ")" "{" stmt* "}"
+func        = type "*"* ident "(" funcparam? ")" (("{" stmt* "}") | ";")
 funcparam   = type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
 stmt        = ";"
               | expr ";"
@@ -641,26 +641,44 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static) {
 }
 
 void func(Type *type, Token *tok) {
-  Node *node = calloc(1, sizeof(Node));
-  map_push(functions, tok->ident, node);
-  node->token = tok;
-  node->type = type;
-  node->kind = ND_FUNC;
-  node->func = calloc(1, sizeof(Function));
-  node->func->ident = tok->ident;
-  node->func->params = new_vector(0, sizeof(Variable *));
-  node->func->type = type;
+  Function *f = calloc(1, sizeof(Function));
+
+  Function *prev = map_get(functions, tok->ident);
+  if (prev == NULL)
+    map_push(functions, tok->ident, f);
+
+  f->token = tok;
+  f->type = type;
+  f->ident = tok->ident;
+  f->params = new_vector(0, sizeof(Variable *));
   assert(local_variable_offset == 0);
   assert(current_scope == global_scope);
   new_scope();
   expect(TK_LPAREN);
   if (!consume(TK_RPAREN)) {
-    funcparam(node->func->params);
+    funcparam(f->params);
     expect(TK_RPAREN);
   }
-  expect(TK_LBRACE);
-  node->body = stmt_block();
-  node->func->offset = local_variable_offset;
+
+  if (prev) {
+    if (prev->params->size != f->params->size)
+      error_at(&tok->pos, "conflicted function declaration");
+    for (int i = 0; i < f->params->size; ++i) {
+      Type *ft = *(Type **)vector_get(f->params, i);
+      Type *pt = *(Type **)vector_get(prev->params, i);
+      if (!same_type(ft, pt))
+        error_at(&tok->pos, "conflicted function declaration");
+    }
+  }
+
+  if (!consume(TK_LBRACE))
+    expect(TK_SEMICOLON);
+  else if (prev && prev->body)
+    error_at(&tok->pos, "duplicated function definition");
+  else {
+    f->body = stmt_block();
+    f->offset = local_variable_offset;
+  }
   restore_scope();
   local_variable_offset = 0;
 }
@@ -1357,7 +1375,7 @@ Node *primary() {
       node->kind = ND_CALL;
       node->token = tok;
 
-      Node *fn = (Node *)map_get(functions, tok->ident);
+      Function *fn = map_get(functions, tok->ident);
 
       if (fn == NULL) {
         // TODO
@@ -1365,7 +1383,7 @@ Node *primary() {
         node->func = calloc(1, sizeof(Function));
         node->func->ident = tok->ident;
       } else {
-        node->func = fn->func;
+        node->func = fn;
       }
 
       node->type = node->func->type;

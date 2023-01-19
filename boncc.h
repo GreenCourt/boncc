@@ -162,6 +162,8 @@ struct Function {
   Ident *ident;
   Type *type;
   Vector *params;
+  Node *body;
+  Token *token;
   int offset; // total offset
 };
 
@@ -200,7 +202,6 @@ typedef enum {
   ND_CONTINUE, // continue
   ND_BLOCK,    // {...}
   ND_CALL,     // call function
-  ND_FUNC,     // function
   ND_ADDR,     // &val
   ND_DEREF,    // *ptr
   ND_MEMBER,   // struct member access
@@ -239,8 +240,8 @@ struct Node {
 
   Vector *blk_stmts; // statements in ND_BLOCK
 
-  Function *func; // for ND_FUNC or ND_CALL
-  Vector *args;   // arguments for ND_CALL
+  Function *func; // ND_CALL
+  Vector *args;   // ND_CALL
 
   Member *member; // ND_MEMBER
 };
@@ -264,7 +265,7 @@ void map_push(Map *map, Ident *key, void *val);
 
 extern char *source_file_name;
 extern Token *next_token;
-extern Map *functions; // Node*
+extern Map *functions; // Function*
 extern Map *strings;   // Variable*
 extern Scope *global_scope;
 extern Vector *static_local_variables; // Variable*

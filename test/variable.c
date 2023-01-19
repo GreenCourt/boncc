@@ -1,3 +1,5 @@
+void verify(int expected, int actual, char *file_name, int line_number);
+
 int global_int1;
 int global_int2 = 4;
 int global_int3 = {3};

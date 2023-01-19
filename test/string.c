@@ -1,3 +1,5 @@
+void verify(int expected, int actual, char *file_name, int line_number);
+
 char global_str[4] = "abc";
 char *global_char_ptr = "abc";
 char *global_array_of_char_ptr[] = {"abc", "def", "ghi"};

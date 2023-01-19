@@ -1,3 +1,5 @@
+void verify(int expected, int actual, char *file_name, int line_number);
+
 int main() {
   verify(0, 0, __FILE__, __LINE__);
   verify(42, 42, __FILE__, __LINE__);

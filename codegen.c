@@ -338,9 +338,12 @@ void gen_global_init(VariableInit *init, Type *type) {
     assert(false);
 }
 
-void gen_func(Node *node) {
-  writeline("  .globl %.*s", node->func->ident->len, node->func->ident->name);
-  writeline("%.*s:", node->func->ident->len, node->func->ident->name);
+void gen_func(Function *func) {
+  if (!func->body)
+    return; // declared but not defined
+  comment(func->token, "function %.*s", func->ident->len, func->ident->name);
+  writeline("  .globl %.*s", func->ident->len, func->ident->name);
+  writeline("%.*s:", func->ident->len, func->ident->name);
 
   // prologue
   writeline("  push rbp");
@@ -348,8 +351,8 @@ void gen_func(Node *node) {
 
   // move args to stack
   comment(NULL, "function arguments to stack");
-  for (int i = 0; i < node->func->params->size; ++i) {
-    Variable *v = *(Variable **)vector_get(node->func->params, i);
+  for (int i = 0; i < func->params->size; ++i) {
+    Variable *v = *(Variable **)vector_get(func->params, i);
     if (v->type->size == 1)
       writeline("  mov [rbp-%d], %s", v->offset, reg_args1[i]);
     else if (v->type->size == 2)
@@ -360,14 +363,14 @@ void gen_func(Node *node) {
       writeline("  mov [rbp-%d], %s", v->offset, reg_args8[i]);
   }
 
-  if (node->func->offset) {
-    int ofs = node->func->offset;
+  if (func->offset) {
+    int ofs = func->offset;
     if (ofs % 8)
       ofs += 8 - ofs % 8; // align by 8
     writeline("  sub rsp, %d", ofs);
   }
 
-  gen(node->body);
+  gen(func->body);
 
   // epilogue
   writeline("  mov rsp, rbp");
@@ -377,10 +380,6 @@ void gen_func(Node *node) {
 
 void gen(Node *node) {
   switch (node->kind) {
-  case ND_FUNC:
-    comment(node->token, "ND_FUNC %.*s", node->func->ident->len, node->func->ident->name);
-    gen_func(node);
-    return;
   case ND_CALL:
     comment(node->token, "ND_CALL %.*s", node->func->ident->len, node->func->ident->name);
     gen_call(node);
@@ -690,8 +689,8 @@ void generate_code(FILE *output_stream) {
   // functions
   writeline(".text");
   for (int i = 0; i < functions->size; i++) {
-    Node *f = map_geti(functions, i);
-    gen(f);
+    Function *f = map_geti(functions, i);
+    gen_func(f);
   }
   ostream = NULL;
 }

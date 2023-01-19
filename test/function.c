@@ -1,3 +1,5 @@
+void verify(int expected, int actual, char *file_name, int line_number);
+
 int foo() { return 12; }
 int add2(int x, int y) { return x + y; }
 int add3(int x, int y, int z) { return x + add2(y, z); }

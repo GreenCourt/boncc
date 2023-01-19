@@ -1,3 +1,5 @@
+void verify(int expected, int actual, char *file_name, int line_number);
+
 int one() { return 1; }
 int zero() { return 0; }
 int f(int a[]) {

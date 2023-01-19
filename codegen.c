@@ -669,7 +669,10 @@ void generate_code(FILE *output_stream) {
   for (int i = 0; i < global_scope->variables->size; i++) {
     Variable *v = map_geti(global_scope->variables, i);
     writeline(".data");
-    writeline(".globl %.*s", v->ident->len, v->ident->name);
+    if (v->is_static)
+      writeline(".local %.*s", v->ident->len, v->ident->name);
+    else
+      writeline(".globl %.*s", v->ident->len, v->ident->name);
     writeline("%.*s:", v->ident->len, v->ident->name);
     gen_global_init(v->init, v->type);
   }

@@ -522,10 +522,10 @@ void set_offset(Variable *var) {
   local_variable_offset = var->offset;
 }
 
-Variable *new_global(Token *tok, Type *type) {
+Variable *new_global(Token *tok, Type *type, bool is_static) {
   if (map_get(global_scope->variables, tok->ident))
     error_at(&tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, VK_GLOBAL, false);
+  Variable *var = new_variable(tok, type, VK_GLOBAL, is_static);
   map_push(global_scope->variables, var->ident, var);
   return var;
 }
@@ -598,7 +598,7 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static) {
     Variable *var = NULL;
 
     if (kind == VK_GLOBAL)
-      var = new_global(name, type);
+      var = new_global(name, type, is_static);
     else if (kind == VK_LOCAL)
       var = new_local_variable(name, type, is_static);
     else

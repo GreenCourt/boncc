@@ -3,11 +3,8 @@ OBJ_DIR=obj
 TEST_OBJ_DIR=test/obj
 TEST_EXE_DIR=test/exe
 
-default: boncc
-
 boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenize.o parse.o codegen.o vector.o type.o node.o map.o)
 	$(CC) -o $@ $^ $(LDFLAGS)
-
 
 test: $(addprefix $(TEST_EXE_DIR)/,$(basename $(filter-out common.c,$(notdir $(wildcard test/*.c)))))
 	for i in $^; do echo $$i; $$i || exit $$?; done
@@ -43,5 +40,14 @@ $(TEST_OBJ_DIR)/vector.o: test/vector.c
 	@mkdir -p $(TEST_OBJ_DIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+gtest: $(addprefix $(TEST_EXE_DIR)/,$(addprefix gcc_,$(basename $(filter-out common.c,$(notdir $(wildcard test/*.c))))))
+	for i in $^; do echo $$i; $$i || exit $$?; done
+
+$(TEST_EXE_DIR)/gcc_vector: vector.c
+$(TEST_EXE_DIR)/gcc_%: test/%.c test/common.c
+	@mkdir -p $(TEST_EXE_DIR)
+	gcc -w -o $@ $^
+
+
 -include $(OBJ_DIR)/*.d
-.PHONY: default test clean fmt
+.PHONY: test clean fmt gtest

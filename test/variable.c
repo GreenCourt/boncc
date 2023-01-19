@@ -293,18 +293,18 @@ int main() {
 
   {
     int x[2][2] = {{1, 2}, {(27 / 3 == 9) * 3}};
-    verify(1, x[0][0], sizeof(x), __FILE__, __LINE__);
-    verify(2, x[0][1], sizeof(x), __FILE__, __LINE__);
-    verify(3, x[1][0], sizeof(x), __FILE__, __LINE__);
-    verify(0, x[1][1], sizeof(x), __FILE__, __LINE__);
+    verify(1, x[0][0], __FILE__, __LINE__);
+    verify(2, x[0][1], __FILE__, __LINE__);
+    verify(3, x[1][0], __FILE__, __LINE__);
+    verify(0, x[1][1], __FILE__, __LINE__);
     verify(16, sizeof(x), __FILE__, __LINE__);
   }
   {
     int x[2][2] = {(3 > 1) + (2 <= 2) - (5 != 4) - (3 >= 2)};
-    verify(0, x[0][0], sizeof(x), __FILE__, __LINE__);
-    verify(0, x[0][1], sizeof(x), __FILE__, __LINE__);
-    verify(0, x[0][1], sizeof(x), __FILE__, __LINE__);
-    verify(0, x[1][1], sizeof(x), __FILE__, __LINE__);
+    verify(0, x[0][0], __FILE__, __LINE__);
+    verify(0, x[0][1], __FILE__, __LINE__);
+    verify(0, x[0][1], __FILE__, __LINE__);
+    verify(0, x[1][1], __FILE__, __LINE__);
     verify(16, sizeof(x), __FILE__, __LINE__);
   }
   {

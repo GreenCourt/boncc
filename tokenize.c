@@ -69,6 +69,13 @@ Token *tokenize(char *src) {
       continue;
     }
 
+    if (*p.pos == '#') { // TODO: temporary ignore #include
+      advance(&p, 1);
+      while (*p.pos != '\n')
+        advance(&p, 1);
+      continue;
+    }
+
     if (match(p.pos, "//")) { // line comments
       advance(&p, 2);
       while (*p.pos != '\n')

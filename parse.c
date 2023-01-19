@@ -8,7 +8,7 @@
 program     = declaration*
 declaration = func | vardec | (struct ";") | (enum ";") | typedef
 type        = "void" | "int" | "char" | ("short" "int"?) | ("long" "long"? "int"?) | struct | enum
-struct      = ("struct" ident ("{" member* "}")?) | ("struct" ident? "{" member* "}")
+struct      = (("struct" | "union") ident ("{" member* "}")?) | (("struct" | "union") ident? "{" member* "}")
 member      = type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";"
 enum        = ("enum" ident ("{" enumval ("," enumval)* "}")?) | ("enum" ident? "{" enumval ("," enumval)* "}")
 enumval     = indent ("=" expr)?
@@ -225,7 +225,7 @@ Type *find_struct(Ident *id) {
 }
 
 Member *find_member(Type *st, Token *tok) {
-  assert(st->kind == TYPE_STRUCT);
+  assert(st->kind == TYPE_STRUCT || st->kind == TYPE_UNION);
   assert(tok->kind == TK_IDENT);
   Member *member = st->member;
   while (member) {
@@ -236,42 +236,44 @@ Member *find_member(Type *st, Token *tok) {
   return NULL;
 }
 
-Type *consume_struct() {
+Type *consume_struct(bool is_union) {
   static int idx = 0;
 
-  Token *struct_name = consume(TK_IDENT);
+  Token *tag = consume(TK_IDENT);
   Type *st = NULL;
 
-  if (struct_name) {
+  if (tag) {
     if (consume(TK_LBRACE)) {
-      // define struct
-      // struct can be defined only for the current-scope
-      st = map_get(current_scope->structs, struct_name->ident);
+      // define struct/union
+      // struct/union can be defined only for the current-scope
+      st = map_get(current_scope->structs, tag->ident);
       if (st && st->size > 0)
-        error_at(&struct_name->pos, "duplicated struct identifier");
+        error_at(&tag->pos, "duplicated struct identifier");
       if (st == NULL) {
-        st = struct_type(struct_name->ident);
+        st = is_union ? union_type(tag->ident) : struct_type(tag->ident);
         map_push(current_scope->structs, st->ident, st);
       }
     } else {
-      // declare struct
+      // declare struct/union
       // multipe time declaration is allowed
-      st = find_struct(struct_name->ident);
+      st = find_struct(tag->ident);
+      if (st && ((st->kind == TYPE_STRUCT && is_union) || (st->kind == TYPE_UNION && !is_union)))
+        error_at(&tag->pos, "conflicted struct/union tag");
       if (st == NULL) {
-        st = struct_type(struct_name->ident);
+        st = is_union ? union_type(tag->ident) : struct_type(tag->ident);
         map_push(current_scope->structs, st->ident, st);
       }
       return st;
     }
   } else {
-    // unnamed struct
+    // unnamed struct/union
     expect(TK_LBRACE);
-    Ident *struct_ident = calloc(1, sizeof(Ident));
-    struct_ident->name = calloc(20, sizeof(char));
-    sprintf(struct_ident->name, ".struct%d", idx++);
-    struct_ident->len = strlen(struct_ident->name);
+    Ident *ident = calloc(1, sizeof(Ident));
+    ident->name = calloc(20, sizeof(char));
+    sprintf(ident->name, ".struct%d", idx++);
+    ident->len = strlen(ident->name);
 
-    st = struct_type(struct_ident);
+    st = is_union ? union_type(ident) : struct_type(ident);
     map_push(current_scope->structs, st->ident, st);
   }
 
@@ -310,12 +312,18 @@ Type *consume_struct() {
       m->ident = var_name->ident;
       m->type = type;
 
-      int padding = (offset % type->size) ? type->size - (offset % type->size) : 0;
-      offset += padding;
-      m->offset = offset;
-      offset += type->size;
-      if (type->size > align)
-        align = type->size;
+      if (is_union) {
+        m->offset = 0;
+        if (offset < type->size)
+          offset = type->size;
+      } else {
+        int padding = (offset % type->size) ? type->size - (offset % type->size) : 0;
+        offset += padding;
+        m->offset = offset;
+        offset += type->size;
+        if (type->size > align)
+          align = type->size;
+      }
 
       tail->next = m;
       tail = m;
@@ -425,7 +433,10 @@ Type *consume_type() {
   }
 
   if (consume(TK_STRUCT))
-    return consume_struct();
+    return consume_struct(false);
+
+  if (consume(TK_UNION))
+    return consume_struct(true);
 
   if (consume(TK_ENUM))
     return consume_enum();
@@ -718,7 +729,7 @@ Node *declaration() {
     return NULL;
   }
 
-  if ((type->kind == TYPE_STRUCT || type->kind == TYPE_ENUM) && consume(TK_SEMICOLON)) {
+  if ((type->kind == TYPE_STRUCT || type->kind == TYPE_UNION || type->kind == TYPE_ENUM) && consume(TK_SEMICOLON)) {
     // type declaration only (is_static is allowed)
     return new_node_nop();
   }
@@ -1436,7 +1447,7 @@ Node *tail(Node *x) {
   Token *op = next_token;
   if (consume(TK_DOT)) {
     // struct member access (x.y)
-    if (x->type == NULL || x->type->kind != TYPE_STRUCT)
+    if (x->type == NULL || (x->type->kind != TYPE_STRUCT && x->type->kind != TYPE_UNION))
       error_at(&op->pos, "not a struct");
     Token *y = expect(TK_IDENT);
     Member *member = find_member(x->type, y);
@@ -1447,7 +1458,7 @@ Node *tail(Node *x) {
   if (consume(TK_ARROW)) {
     // struct member access
     // x->y is (*x).y
-    if (x->type == NULL || x->type->kind != TYPE_PTR || x->type->base->kind != TYPE_STRUCT)
+    if (x->type == NULL || x->type->kind != TYPE_PTR || (x->type->base->kind != TYPE_STRUCT && x->type->base->kind != TYPE_UNION))
       error_at(&op->pos, "not a struct pointer");
     Token *y = expect(TK_IDENT);
     Member *member = find_member(x->type->base, y);

@@ -235,7 +235,7 @@ Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int lab
 
 Node *new_node_member(Token *tok, Node *x, Member *y) {
   // struct member access (x.y)
-  assert(x->type->kind == TYPE_STRUCT);
+  assert(x->type->kind == TYPE_STRUCT || x->type->kind == TYPE_UNION);
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_MEMBER;
   node->type = y->type;

@@ -342,7 +342,7 @@ void gen_func(Function *func) {
   if (!func->body)
     return; // declared but not defined
   comment(func->token, "function %.*s", func->ident->len, func->ident->name);
-  if(func->is_static)
+  if (func->is_static)
     writeline("  .local %.*s", func->ident->len, func->ident->name);
   else
     writeline("  .globl %.*s", func->ident->len, func->ident->name);

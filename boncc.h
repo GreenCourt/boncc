@@ -65,6 +65,7 @@ typedef enum {
   TK_LONG,      // long
   TK_SIZEOF,    // sizeof
   TK_STRUCT,    // struct
+  TK_UNION,     // union
   TK_ENUM,      // enum
   TK_TYPEDEF,   // typedef
   TK_STATIC,    // static
@@ -115,6 +116,7 @@ typedef enum { TYPE_VOID,
                TYPE_PTR,
                TYPE_ARRAY,
                TYPE_STRUCT,
+               TYPE_UNION,
                TYPE_ENUM,
                TYPE_INT,
                TYPE_CHAR,
@@ -287,6 +289,7 @@ Type *base_type(TypeKind kind);
 Type *pointer_type(Type *base);
 Type *array_type(Type *base, int len);
 Type *struct_type(Ident *ident);
+Type *union_type(Ident *ident);
 Type *enum_type(Ident *ident);
 bool same_type(Type *a, Type *b);
 bool is_integer(Type *type);

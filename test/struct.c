@@ -136,5 +136,43 @@ int main() {
     verify(8, sizeof(struct S), __FILE__, __LINE__);
     verify(8, sizeof(a), __FILE__, __LINE__);
   }
+  {
+    union U1 {
+      short x;
+      int y;
+      char z[10];
+    };
+
+    union U2 {
+      struct S {
+        int a;
+        long b;
+      } s;
+      struct T {
+        int c;
+        short d;
+      } t;
+    };
+
+    typedef union U1 U1;
+    U1 u1;
+    struct S s;
+    s.a = 3;
+    s.b = 5;
+    verify(3, s.a, __FILE__, __LINE__);
+    verify(5, s.b, __FILE__, __LINE__);
+
+    u1.y = 42;
+    verify(42, u1.y, __FILE__, __LINE__);
+    u1.z[2] = 3;
+    verify(3, u1.z[2], __FILE__, __LINE__);
+    u1.y = 100;
+    verify(1, u1.z[2] != 3, __FILE__, __LINE__);
+
+    union U2 u2;
+    u2.s.a = 14;
+    verify(14, u2.s.a, __FILE__, __LINE__);
+    verify(14, u2.t.c, __FILE__, __LINE__);
+  }
   return 0;
 }

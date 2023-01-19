@@ -21,6 +21,8 @@ char *type_text(TypeKind kind) {
     return "array";
   case TYPE_STRUCT:
     return "struct";
+  case TYPE_UNION:
+    return "union";
   case TYPE_ENUM:
     return "enum";
   default:
@@ -73,6 +75,15 @@ Type *struct_type(Ident *ident) {
   return t;
 }
 
+Type *union_type(Ident *ident) {
+  assert(ident != NULL);
+  Type *t = calloc(1, sizeof(Type));
+  t->kind = TYPE_UNION;
+  t->ident = ident;
+  t->size = -1;
+  return t;
+}
+
 Type *enum_type(Ident *ident) {
   assert(ident != NULL);
   Type *t = calloc(1, sizeof(Type));
@@ -96,7 +107,7 @@ bool same_type(Type *a, Type *b) {
   if (a->kind != b->kind)
     return false;
 
-  if (a->kind == TYPE_ENUM || a->kind == TYPE_STRUCT)
+  if (a->kind == TYPE_ENUM || a->kind == TYPE_STRUCT || a->kind == TYPE_UNION)
     return same_ident(a->ident, b->ident);
 
   return true;

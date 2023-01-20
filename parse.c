@@ -174,10 +174,10 @@ Token *expect(TokenKind kind) {
   return tok;
 }
 
-int expect_number() {
-  if (next_token->kind != TK_NUM || next_token->kind != TK_CHARLIT)
+long long expect_number() {
+  if (next_token->kind != TK_NUM)
     error_at(&next_token->pos, "number expected but not found");
-  int val = next_token->val;
+  long long val = next_token->val;
   next_token = next_token->next;
   return val;
 }
@@ -1439,9 +1439,6 @@ Node *primary() {
   }
 
   if ((tok = consume(TK_NUM)))
-    return new_node_num(tok, tok->val);
-
-  if ((tok = consume(TK_CHARLIT)))
     return new_node_num(tok, tok->val);
 
   error_at(&next_token->pos, "primary expected but not found", next_token->token_length, next_token->pos);

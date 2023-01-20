@@ -85,9 +85,9 @@ const char *token_text[] = {
     "typedef",
     "static",
     "str",
-    "charlit",
     "identifier",
     "number",
+    "eof",
 };
 
 bool same_ident(Ident *a, Ident *b) { return a->len == b->len && strncmp(a->name, b->name, a->len) == 0; }

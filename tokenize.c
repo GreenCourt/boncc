@@ -45,6 +45,7 @@ static void new_token(TokenKind kind, Token **tail, Position *p, int len) {
   if (match(p->pos, "__LINE__")) {
     tok->kind = TK_NUM;
     tok->val = p->line_number;
+    tok->type = base_type(TYPE_INT);
   }
 
   (*tail)->next = tok;
@@ -218,8 +219,9 @@ Token *tokenize(char *src) {
         default:
           error_at(&p, "unsupported escaped literal");
         }
-        new_token(TK_CHARLIT, &tail, &p, 2);
+        new_token(TK_NUM, &tail, &p, 2);
         tail->val = val;
+        tail->type = base_type(TYPE_CHAR);
         advance(&p, 1);
         continue;
       }
@@ -227,8 +229,9 @@ Token *tokenize(char *src) {
       if (*(p.pos + 1) != '\'')
         error_at(&p, "invalid character literal");
 
-      new_token(TK_CHARLIT, &tail, &p, 1);
+      new_token(TK_NUM, &tail, &p, 1);
       tail->val = *(tail->pos.pos);
+      tail->type = base_type(TYPE_CHAR);
       advance(&p, 1);
       continue;
     }
@@ -264,10 +267,11 @@ Token *tokenize(char *src) {
 
     if (isdigit(*p.pos)) {
       char *q;
-      int val = strtol(p.pos, &q, 10);
+      long long val = strtol(p.pos, &q, 10);
       int len = q - p.pos;
       new_token(TK_NUM, &tail, &p, len);
       tail->val = val;
+      tail->type = base_type(TYPE_INT);
       continue;
     }
 

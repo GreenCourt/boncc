@@ -70,7 +70,6 @@ typedef enum {
   TK_TYPEDEF,   // typedef
   TK_STATIC,    // static
   TK_STR,       // string literal
-  TK_CHARLIT,   // charactor literal
   TK_IDENT,
   TK_NUM,
   TK_EOF,
@@ -92,6 +91,7 @@ struct Ident {
   int len;
 };
 
+typedef struct Type Type;
 typedef struct Token Token;
 struct Token {
   TokenKind kind;
@@ -99,8 +99,9 @@ struct Token {
   Position pos;
   int token_length;
   Ident *ident;         // TK_IDENT
-  int val;              // only for TK_NUM
+  long long val;        // only for TK_NUM
   char *string_literal; // null terminated, only for TK_STR
+  Type *type;           // TK_NUM
 };
 
 typedef struct Type Type;

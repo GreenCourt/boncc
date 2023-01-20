@@ -381,6 +381,90 @@ void gen_func(Function *func) {
   writeline("  ret");
 }
 
+void gen_cast(Node *node) {
+  Type *from = node->lhs->type;
+  Type *to = node->type;
+
+  gen(node->lhs);
+  if (from->kind == to->kind)
+    return;
+
+  if (from->kind == TYPE_INT && to->kind == TYPE_ENUM)
+    return;
+
+  if (from->kind == TYPE_ENUM && to->kind == TYPE_INT)
+    return;
+
+  if (from->kind == TYPE_LONG && to->kind == TYPE_PTR)
+    return;
+
+  if (from->kind == TYPE_PTR && to->kind == TYPE_LONG)
+    return;
+
+  if (from->kind == TYPE_CHAR) {
+    switch (to->kind) {
+    case TYPE_SHORT:
+    case TYPE_INT:
+    case TYPE_ENUM:
+    case TYPE_LONG:
+    case TYPE_PTR:
+      return;
+    default:
+      break;
+    }
+  }
+
+  if (from->kind == TYPE_SHORT) {
+    switch (to->kind) {
+    case TYPE_CHAR:
+      writeline("  movsx rax, al");
+      return;
+    case TYPE_INT:
+    case TYPE_ENUM:
+    case TYPE_LONG:
+    case TYPE_PTR:
+      return;
+    default:
+      break;
+    }
+  }
+
+  if (from->kind == TYPE_INT || from->kind == TYPE_ENUM) {
+    switch (to->kind) {
+    case TYPE_CHAR:
+      writeline("  movsx rax, al");
+      return;
+    case TYPE_SHORT:
+      writeline("  movsx rax, ax");
+      return;
+    case TYPE_LONG:
+    case TYPE_PTR:
+      return;
+    default:
+      break;
+    }
+  }
+
+  if (from->kind == TYPE_LONG || from->kind == TYPE_PTR) {
+    switch (to->kind) {
+    case TYPE_CHAR:
+      writeline("  movsx rax, al");
+      return;
+    case TYPE_SHORT:
+      writeline("  movsx rax, ax");
+      return;
+    case TYPE_INT:
+    case TYPE_ENUM:
+      writeline("  movsxd rax, eax");
+      return;
+    default:
+      break;
+    }
+  }
+
+  assert(false);
+}
+
 void gen(Node *node) {
   switch (node->kind) {
   case ND_CALL:
@@ -650,6 +734,10 @@ void gen(Node *node) {
     writeline("  cmp rax, rdi");
     writeline("  setle al");
     writeline("  movzb rax, al");
+    return;
+  case ND_CAST:
+    comment(node->token, "ND_CAST %s --> %s", type_text(node->lhs->type->kind), type_text(node->type->kind));
+    gen_cast(node);
     return;
   default:
     assert(false);

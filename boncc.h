@@ -191,6 +191,7 @@ typedef enum {
   ND_LOGNOT,   // !
   ND_LOGAND,   // &&
   ND_LOGOR,    // ||
+  ND_CAST,     // (type)
   ND_VAR,      // variable
   ND_NUM,      // integer
   ND_RETURN,   // return

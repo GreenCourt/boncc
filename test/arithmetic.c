@@ -122,5 +122,22 @@ int main() {
     verify(786141, x, __FILE__, __LINE__);
     verify(786141, y, __FILE__, __LINE__);
   }
+  {
+    verify(-1661445099, (int)11223456789, __FILE__, __LINE__);
+    verify(513, (short)8590066177, __FILE__, __LINE__);
+    verify(1, (char)8590066177, __FILE__, __LINE__);
+    verify(1, (long)1, __FILE__, __LINE__);
+    verify(0, (long)&*(int *)0, __FILE__, __LINE__);
+    {
+      int x = 512;
+      *(char *)&x = 1;
+      verify(513, x, __FILE__, __LINE__);
+    }
+    {
+      int x = 5;
+      long y = (long)&x;
+      verify(5, *(int *)y, __FILE__, __LINE__);
+    }
+  }
   return 0;
 }

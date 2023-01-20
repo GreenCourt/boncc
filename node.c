@@ -233,6 +233,15 @@ Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int lab
   return node;
 }
 
+Node *new_node_cast(Token *tok, Type *type, Node *lhs) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_CAST;
+  node->token = tok;
+  node->type = type;
+  node->lhs = lhs;
+  return node;
+}
+
 Node *new_node_member(Token *tok, Node *x, Member *y) {
   // struct member access (x.y)
   assert(x->type->kind == TYPE_STRUCT || x->type->kind == TYPE_UNION);

@@ -55,6 +55,7 @@ unary       = postfix
               | ("&" unary)
               | ("!" unary)
               | ("~" unary)
+              | ("(" type ")" unary)
 postfix     = primary tail*
 tail        =  ("[" expr "]") | ("." ident) | ("->" ident) | ("++") | ("--")
 primary     = "(" expr ")"
@@ -90,6 +91,7 @@ Node *new_node_bitxor(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_bitnot(Token *tok, Node *lhs);
 Node *new_node_assign(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int label_index);
+Node *new_node_cast(Token *tok, Type *type, Node *lhs);
 Node *new_node_member(Token *tok, Node *x, Member *y);
 Node *new_node_var(Token *tok, Variable *var);
 Node *new_node_array_set_expr(Variable *var, int idx, Node *expr);
@@ -1369,6 +1371,16 @@ Node *unary() {
     return new_node_lognot(tok, unary());
   if (consume(TK_TILDE))
     return new_node_bitnot(tok, unary());
+
+  if (consume(TK_LPAREN)) {
+    Type *type = consume_type();
+    if (type) {
+      type = consume_type_star(type);
+      if (consume(TK_RPAREN))
+        return new_node_cast(tok, type, unary());
+    }
+    next_token = tok; // rollback
+  }
   return postfix();
 }
 

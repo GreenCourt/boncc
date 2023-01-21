@@ -25,27 +25,33 @@ char *type_text(TypeKind kind) {
     return "union";
   case TYPE_ENUM:
     return "enum";
-  default:
-    assert(false);
-    return NULL;
   }
+  assert(false);
+  return NULL;
 };
 
 Type *base_type(TypeKind kind) {
   Type *t = calloc(1, sizeof(Type));
   t->kind = kind;
-  if (kind == TYPE_VOID)
+  switch (kind) {
+  case TYPE_VOID:
     t->size = 1;
-  else if (kind == TYPE_CHAR)
+    break;
+  case TYPE_CHAR:
     t->size = 1;
-  else if (kind == TYPE_SHORT)
+    break;
+  case TYPE_SHORT:
     t->size = 2;
-  else if (kind == TYPE_INT)
+    break;
+  case TYPE_INT:
     t->size = 4;
-  else if (kind == TYPE_LONG)
+    break;
+  case TYPE_LONG:
     t->size = 8;
-  else
+    break;
+  default:
     assert(false);
+  }
   return t;
 }
 
@@ -125,4 +131,22 @@ bool is_integer(Type *type) {
   default:
     return false;
   }
+}
+
+Type *implicit_type_convertion(Type *l, Type *r) {
+  if (l->kind == TYPE_ARRAY)
+    return pointer_type(l->base);
+  if (r->kind == TYPE_ARRAY)
+    return pointer_type(r->base);
+
+  if (l->kind == TYPE_PTR || r->kind == TYPE_PTR)
+    return l;
+
+  if (l->size > r->size)
+    return l;
+
+  if (l->size < r->size)
+    return r;
+
+  return l;
 }

@@ -295,3 +295,4 @@ Type *union_type(Ident *ident);
 Type *enum_type(Ident *ident);
 bool same_type(Type *a, Type *b);
 bool is_integer(Type *type);
+Type *implicit_type_convertion(Type *l, Type *r);

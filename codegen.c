@@ -382,7 +382,7 @@ void gen_func(Function *func) {
 }
 
 void gen_cast(Node *node) {
-  Type *from = node->lhs->type;
+  Type *from = node->lhs->type->kind == TYPE_ARRAY ? pointer_type(node->lhs->type->base) : node->lhs->type;
   Type *to = node->type;
 
   gen(node->lhs);
@@ -393,12 +393,6 @@ void gen_cast(Node *node) {
     return;
 
   if (from->kind == TYPE_ENUM && to->kind == TYPE_INT)
-    return;
-
-  if (from->kind == TYPE_LONG && to->kind == TYPE_PTR)
-    return;
-
-  if (from->kind == TYPE_PTR && to->kind == TYPE_LONG)
     return;
 
   if (from->kind == TYPE_CHAR) {
@@ -456,6 +450,9 @@ void gen_cast(Node *node) {
     case TYPE_INT:
     case TYPE_ENUM:
       writeline("  movsxd rax, eax");
+      return;
+    case TYPE_LONG:
+    case TYPE_PTR:
       return;
     default:
       break;
@@ -588,17 +585,8 @@ void gen(Node *node) {
     writeline("  imul rax, rdi");
     return;
   case ND_DIV:
-    comment(node->token, "ND_DIV");
-    gen(node->lhs);
-    writeline("  push rax");
-    gen(node->rhs);
-    writeline("  mov rdi, rax");
-    writeline("  pop rax");
-    writeline("  cqo");
-    writeline("  idiv rdi");
-    return;
   case ND_MOD:
-    comment(node->token, "ND_MOD");
+    comment(node->token, node->kind == ND_DIV ? "ND_DIV" : "ND_MOD");
     gen(node->lhs);
     writeline("  push rax");
     gen(node->rhs);
@@ -606,7 +594,8 @@ void gen(Node *node) {
     writeline("  pop rax");
     writeline("  cqo");
     writeline("  idiv rdi");
-    writeline("  mov rax, rdx");
+    if (node->kind == ND_MOD)
+      writeline("  mov rax, rdx");
     return;
   case ND_LOGNOT:
     comment(node->token, "ND_LOGNOT");

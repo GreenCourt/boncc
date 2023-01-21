@@ -68,7 +68,7 @@ int main() {
   }
   {
     int a[3];
-    int *p;
+    int *p = &a;
     verify(1, !0, __FILE__, __LINE__);
     verify(0, !1, __FILE__, __LINE__);
     verify(0, !57, __FILE__, __LINE__);

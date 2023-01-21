@@ -67,8 +67,7 @@ primary     = "(" expr ")"
 
 // node.c -->
 Node *new_node_nop();
-Node *new_node_num(Token *tok, int val);
-Node *new_node_long(Token *tok, long long val);
+Node *new_node_num(Token *tok, long long val, Type *type);
 Node *new_node_mul(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_div(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_mod(Token *tok, Node *lhs, Node *rhs);
@@ -937,7 +936,8 @@ Node *stmt() {
     node->token = tok;
     node->label_index = label_index++;
 
-    int val = eval(expr());
+    Node *e = expr();
+    long long val = eval(e);
     Node *c = sw->next_case;
     while (c) {
       assert(c->condition->kind == ND_NUM);
@@ -945,7 +945,7 @@ Node *stmt() {
         error_at(&tok->pos, "duplicated case value detected");
       c = c->next_case;
     }
-    node->condition = new_node_num(NULL, val);
+    node->condition = new_node_num(NULL, val, e->type);
     expect(TK_COLON);
     node->body = stmt();
     node->next_case = sw->next_case;
@@ -1348,21 +1348,25 @@ Node *unary() {
       error_at(&tok->pos, "invalud sizeof operation for void type");
     if (type->size < 0)
       error_at(&tok->pos, "invalud sizeof operation for incomplete type");
-    return new_node_long(tok, type->size);
+    return new_node_num(tok, type->size, base_type(TYPE_LONG));
   }
   if (consume(TK_INC)) {
     Node *u = unary();
-    return new_node_assign(NULL, u, new_node_add(NULL, u, new_node_num(NULL, 1)));
+    return new_node_assign(NULL, u, new_node_add(NULL, u, new_node_num(NULL, 1, u->type)));
   }
   if (consume(TK_DEC)) {
     Node *u = unary();
-    return new_node_assign(NULL, u, new_node_sub(NULL, u, new_node_num(NULL, 1)));
+    return new_node_assign(NULL, u, new_node_sub(NULL, u, new_node_num(NULL, 1, u->type)));
   }
 
   if (consume(TK_PLUS))
     return unary();
-  if (consume(TK_MINUS))
-    return new_node_sub(tok, new_node_num(NULL, 0), unary());
+
+  if (consume(TK_MINUS)) {
+    Node *u = unary();
+    return new_node_sub(tok, new_node_num(NULL, 0, u->type), u);
+  }
+
   if (consume(TK_AMP))
     return new_node_addr(tok, unary());
   if (consume(TK_STAR))
@@ -1424,7 +1428,7 @@ Node *primary() {
       expect(TK_RPAREN);
       return node;
     } else if ((enum_val = find_enum_element(tok->ident))) { // enum value
-      return new_node_num(tok, *enum_val);
+      return new_node_num(tok, *enum_val, base_type(TYPE_INT));
     } else { // variable
       Variable *var = find_variable(tok);
       if (!var)
@@ -1439,7 +1443,7 @@ Node *primary() {
   }
 
   if ((tok = consume(TK_NUM)))
-    return new_node_num(tok, tok->val);
+    return new_node_num(tok, tok->val, tok->type);
 
   error_at(&next_token->pos, "primary expected but not found", next_token->token_length, next_token->pos);
   return NULL;
@@ -1477,11 +1481,11 @@ Node *tail(Node *x) {
   }
   if (consume(TK_INC)) {
     // (x = x + 1) - 1
-    return new_node_sub(NULL, new_node_assign(NULL, x, new_node_add(NULL, x, new_node_num(NULL, 1))), new_node_num(NULL, 1));
+    return new_node_sub(NULL, new_node_assign(NULL, x, new_node_add(NULL, x, new_node_num(NULL, 1, x->type))), new_node_num(NULL, 1, x->type));
   }
   if (consume(TK_DEC)) {
     // (x = x - 1) + 1
-    return new_node_add(NULL, new_node_assign(NULL, x, new_node_sub(NULL, x, new_node_num(NULL, 1))), new_node_num(NULL, 1));
+    return new_node_add(NULL, new_node_assign(NULL, x, new_node_sub(NULL, x, new_node_num(NULL, 1, x->type))), new_node_num(NULL, 1, x->type));
   }
   return x;
 }

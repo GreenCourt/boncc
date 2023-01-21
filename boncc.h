@@ -69,6 +69,8 @@ typedef enum {
   TK_ENUM,      // enum
   TK_TYPEDEF,   // typedef
   TK_STATIC,    // static
+  TK_SIGNED,    // signed
+  TK_UNSIGNED,  // unsigned
   TK_STR,       // string literal
   TK_IDENT,
   TK_NUM,
@@ -122,7 +124,11 @@ typedef enum { TYPE_VOID,
                TYPE_INT,
                TYPE_CHAR,
                TYPE_SHORT,
-               TYPE_LONG } TypeKind;
+               TYPE_LONG,
+               TYPE_UINT,
+               TYPE_UCHAR,
+               TYPE_USHORT,
+               TYPE_ULONG } TypeKind;
 
 typedef struct Type Type;
 struct Type {
@@ -164,7 +170,7 @@ typedef struct Function Function;
 struct Function {
   Ident *ident;
   Type *type;
-  Vector *params;
+  Vector *params; // Variable*
   Node *body;
   Token *token;
   bool is_static;
@@ -295,4 +301,6 @@ Type *union_type(Ident *ident);
 Type *enum_type(Ident *ident);
 bool same_type(Type *a, Type *b);
 bool is_integer(Type *type);
-Type *implicit_type_convertion(Type *l, Type *r);
+bool is_unsigned(Type *type);
+bool is_signed(Type *type);
+Type *implicit_type_conversion(Type *l, Type *r);

@@ -52,7 +52,7 @@ static Node *new_node(NodeKind kind, Node *lhs, Node *rhs, Type *type) {
 Node *new_node_mul(Token *tok, Node *lhs, Node *rhs) {
   if (!is_integer(lhs->type) || !is_integer(rhs->type))
     error_at(&tok->pos, "invalid operands to binary * operator");
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_MUL, lhs, rhs, type);
@@ -63,7 +63,7 @@ Node *new_node_mul(Token *tok, Node *lhs, Node *rhs) {
 Node *new_node_div(Token *tok, Node *lhs, Node *rhs) {
   if (!is_integer(lhs->type) || !is_integer(rhs->type))
     error_at(&tok->pos, "invalid operands to binary / operator");
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_DIV, lhs, rhs, type);
@@ -74,7 +74,7 @@ Node *new_node_div(Token *tok, Node *lhs, Node *rhs) {
 Node *new_node_mod(Token *tok, Node *lhs, Node *rhs) {
   if (!is_integer(lhs->type) || !is_integer(rhs->type))
     error_at(&tok->pos, "invalid operands to binary % operator");
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_MOD, lhs, rhs, type);
@@ -92,13 +92,13 @@ Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
   if (!right_is_ptr && !is_integer(rhs->type))
     error_at(&tok->pos, "invalid operands to binary + operator");
 
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   if (left_is_ptr) {
     rhs = new_node_cast(NULL, type, rhs);
-    rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size, rhs->type), rhs->type);
+    rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size, type), type);
   } else if (right_is_ptr) {
     lhs = new_node_cast(NULL, type, lhs);
-    lhs = new_node(ND_MUL, lhs, new_node_num(NULL, rhs->type->base->size, lhs->type), lhs->type);
+    lhs = new_node(ND_MUL, lhs, new_node_num(NULL, rhs->type->base->size, type), type);
   }
 
   lhs = new_node_cast(NULL, type, lhs);
@@ -119,12 +119,12 @@ Node *new_node_sub(Token *tok, Node *lhs, Node *rhs) {
   if (!right_is_ptr && !is_integer(rhs->type))
     error_at(&tok->pos, "invalid operands to binary - operator");
 
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   if (left_is_ptr && !right_is_ptr) {
-    rhs = new_node_cast(NULL, lhs->type, rhs);
-    rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size, rhs->type), rhs->type);
+    rhs = new_node_cast(NULL, type, rhs);
+    rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size, type), type);
   }
 
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_SUB, lhs, rhs, type);
@@ -152,7 +152,7 @@ Node *new_node_eq(Token *tok, Node *lhs, Node *rhs) {
   if (right_is_ptr && (!left_is_ptr && !left_is_zero))
     error_at(&tok->pos, "invalid operands to == operator (pointer and non-pointer)");
 
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_EQ, lhs, rhs, base_type(TYPE_INT));
@@ -178,7 +178,7 @@ Node *new_node_ne(Token *tok, Node *lhs, Node *rhs) {
   if (right_is_ptr && (!left_is_ptr && !left_is_zero))
     error_at(&tok->pos, "invalid operands to == operator (pointer and non-pointer)");
 
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_NE, lhs, rhs, base_type(TYPE_INT));
@@ -199,7 +199,7 @@ Node *new_node_lt(Token *tok, Node *lhs, Node *rhs) {
   if (left_is_ptr != right_is_ptr)
     error_at(&tok->pos, "invalid operands to relational operator");
 
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_LT, lhs, rhs, base_type(TYPE_INT));
@@ -220,7 +220,7 @@ Node *new_node_le(Token *tok, Node *lhs, Node *rhs) {
   if (left_is_ptr != right_is_ptr)
     error_at(&tok->pos, "invalid operands to relational operator");
 
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_LE, lhs, rhs, base_type(TYPE_INT));
@@ -263,7 +263,7 @@ Node *new_node_logand(Token *tok, Node *lhs, Node *rhs, int label_index) {
   if (!right_is_ptr && !is_integer(rhs->type))
     error_at(&tok->pos, "invalid operands to binary && operator");
 
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_LOGAND, lhs, rhs, base_type(TYPE_INT));
@@ -280,7 +280,7 @@ Node *new_node_logor(Token *tok, Node *lhs, Node *rhs, int label_index) {
   if (!right_is_ptr && !is_integer(rhs->type))
     error_at(&tok->pos, "invalid operands to binary && operator");
 
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_LOGOR, lhs, rhs, base_type(TYPE_INT));
@@ -292,7 +292,7 @@ Node *new_node_logor(Token *tok, Node *lhs, Node *rhs, int label_index) {
 Node *new_node_lshift(Token *tok, Node *lhs, Node *rhs) {
   if (!is_integer(lhs->type) || !is_integer(rhs->type))
     error_at(&tok->pos, "invalid operands to binary << operator");
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_LSHIFT, lhs, rhs, type);
@@ -303,7 +303,7 @@ Node *new_node_lshift(Token *tok, Node *lhs, Node *rhs) {
 Node *new_node_rshift(Token *tok, Node *lhs, Node *rhs) {
   if (!is_integer(lhs->type) || !is_integer(rhs->type))
     error_at(&tok->pos, "invalid operands to binary >> operator");
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_RSHIFT, lhs, rhs, type);
@@ -314,7 +314,7 @@ Node *new_node_rshift(Token *tok, Node *lhs, Node *rhs) {
 Node *new_node_bitand(Token *tok, Node *lhs, Node *rhs) {
   if (!is_integer(lhs->type) || !is_integer(rhs->type))
     error_at(&tok->pos, "invalid operands to binary & operator");
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_BITAND, lhs, rhs, type);
@@ -325,7 +325,7 @@ Node *new_node_bitand(Token *tok, Node *lhs, Node *rhs) {
 Node *new_node_bitor(Token *tok, Node *lhs, Node *rhs) {
   if (!is_integer(lhs->type) || !is_integer(rhs->type))
     error_at(&tok->pos, "invalid operands to binary | operator");
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_BITOR, lhs, rhs, type);
@@ -336,7 +336,7 @@ Node *new_node_bitor(Token *tok, Node *lhs, Node *rhs) {
 Node *new_node_bitxor(Token *tok, Node *lhs, Node *rhs) {
   if (!is_integer(lhs->type) || !is_integer(rhs->type))
     error_at(&tok->pos, "invalid operands to binary ^ operator");
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_BITXOR, lhs, rhs, type);
@@ -373,7 +373,7 @@ Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int lab
   if (lhs->type->kind == TYPE_STRUCT || lhs->type->kind == TYPE_UNION || rhs->type->kind == TYPE_STRUCT || rhs->type->kind == TYPE_UNION)
     error_at(&tok->pos, "struct/union is currentry not supported for conditional operator");
 
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
+  Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_COND, lhs, rhs, lhs->type);

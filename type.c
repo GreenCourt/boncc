@@ -15,6 +15,14 @@ char *type_text(TypeKind kind) {
     return "short";
   case TYPE_LONG:
     return "long";
+  case TYPE_UINT:
+    return "unsigned int";
+  case TYPE_UCHAR:
+    return "unsigned char";
+  case TYPE_USHORT:
+    return "unsigned short";
+  case TYPE_ULONG:
+    return "unsigned long";
   case TYPE_PTR:
     return "ptr";
   case TYPE_ARRAY:
@@ -38,15 +46,19 @@ Type *base_type(TypeKind kind) {
     t->size = 1;
     break;
   case TYPE_CHAR:
+  case TYPE_UCHAR:
     t->size = 1;
     break;
   case TYPE_SHORT:
+  case TYPE_USHORT:
     t->size = 2;
     break;
   case TYPE_INT:
+  case TYPE_UINT:
     t->size = 4;
     break;
   case TYPE_LONG:
+  case TYPE_ULONG:
     t->size = 8;
     break;
   default:
@@ -126,6 +138,10 @@ bool is_integer(Type *type) {
   case TYPE_CHAR:
   case TYPE_SHORT:
   case TYPE_LONG:
+  case TYPE_UINT:
+  case TYPE_UCHAR:
+  case TYPE_USHORT:
+  case TYPE_ULONG:
   case TYPE_ENUM:
     return true;
   default:
@@ -133,7 +149,35 @@ bool is_integer(Type *type) {
   }
 }
 
-Type *implicit_type_convertion(Type *l, Type *r) {
+bool is_signed(Type *type) {
+  assert(type);
+  switch (type->kind) {
+  case TYPE_INT:
+  case TYPE_CHAR:
+  case TYPE_SHORT:
+  case TYPE_LONG:
+  case TYPE_ENUM:
+    return true;
+  default:
+    return false;
+  }
+}
+
+bool is_unsigned(Type *type) {
+  assert(type);
+  switch (type->kind) {
+  case TYPE_UINT:
+  case TYPE_UCHAR:
+  case TYPE_USHORT:
+  case TYPE_ULONG:
+  case TYPE_PTR:
+    return true;
+  default:
+    return false;
+  }
+}
+
+Type *implicit_type_conversion(Type *l, Type *r) {
   if (l->kind == TYPE_ARRAY)
     return pointer_type(l->base);
   if (r->kind == TYPE_ARRAY)
@@ -146,6 +190,9 @@ Type *implicit_type_convertion(Type *l, Type *r) {
     return l;
 
   if (l->size < r->size)
+    return r;
+
+  if (is_unsigned(r))
     return r;
 
   return l;

@@ -79,9 +79,9 @@ void load(Type *type) {
   if (type->kind == TYPE_ARRAY)
     return; // nothing todo
   if (type->size == 1)
-    writeline("  movsx rax, byte ptr [rax]");
+    writeline("  mov%cx rax, byte ptr [rax]", is_unsigned(type) ? 'z' : 's');
   else if (type->size == 2)
-    writeline("  movsx rax, word ptr [rax]");
+    writeline("  mov%cx rax, word ptr [rax]", is_unsigned(type) ? 'z' : 's');
   else if (type->size == 4)
     writeline("  movsxd rax, dword ptr [rax]");
   else if (type->size == 8)
@@ -399,10 +399,37 @@ void gen_cast(Node *node) {
 
   if (from->kind == TYPE_CHAR) {
     switch (to->kind) {
+    case TYPE_CHAR:
     case TYPE_SHORT:
     case TYPE_INT:
     case TYPE_ENUM:
     case TYPE_LONG:
+      return;
+    case TYPE_UCHAR:
+      writeline("  movzx rax, al");
+      return;
+    case TYPE_USHORT:
+    case TYPE_UINT:
+    case TYPE_ULONG:
+    case TYPE_PTR:
+    default:
+      break;
+    }
+  }
+
+  if (from->kind == TYPE_UCHAR) {
+    switch (to->kind) {
+    case TYPE_CHAR:
+      writeline("  movsx rax, al");
+      return;
+    case TYPE_SHORT:
+    case TYPE_INT:
+    case TYPE_ENUM:
+    case TYPE_LONG:
+    case TYPE_UCHAR:
+    case TYPE_USHORT:
+    case TYPE_UINT:
+    case TYPE_ULONG:
     case TYPE_PTR:
       return;
     default:
@@ -412,13 +439,49 @@ void gen_cast(Node *node) {
 
   if (from->kind == TYPE_SHORT) {
     switch (to->kind) {
+    case TYPE_UCHAR:
+      writeline("  movzx rax, al");
+      return;
+    case TYPE_USHORT:
+      writeline("  movzx rax, ax");
+      return;
+    case TYPE_UINT:
+    case TYPE_ULONG:
+    case TYPE_PTR:
+      return;
     case TYPE_CHAR:
       writeline("  movsx rax, al");
+      return;
+    case TYPE_SHORT:
+    case TYPE_INT:
+    case TYPE_ENUM:
+    case TYPE_LONG:
+      return;
+    default:
+      break;
+    }
+  }
+
+  if (from->kind == TYPE_USHORT) {
+    switch (to->kind) {
+    case TYPE_UCHAR:
+      writeline("  movzx rax, al");
+      return;
+    case TYPE_USHORT:
+    case TYPE_UINT:
+    case TYPE_ULONG:
+    case TYPE_PTR:
+      return;
+    case TYPE_CHAR:
+      writeline("  movsx rax, al");
+      return;
+    case TYPE_SHORT:
+      writeline("  movsx rax, ax");
       return;
     case TYPE_INT:
     case TYPE_ENUM:
     case TYPE_LONG:
-    case TYPE_PTR:
+      return;
       return;
     default:
       break;
@@ -427,22 +490,75 @@ void gen_cast(Node *node) {
 
   if (from->kind == TYPE_INT || from->kind == TYPE_ENUM) {
     switch (to->kind) {
+    case TYPE_UCHAR:
+      writeline("  mov eax, eax");
+      writeline("  movzx rax, al");
+      return;
+    case TYPE_USHORT:
+      writeline("  movzx rax, ax");
+      return;
+    case TYPE_UINT:
+      writeline("  mov eax, eax");
+    case TYPE_ULONG:
+    case TYPE_PTR:
+      return;
     case TYPE_CHAR:
       writeline("  movsx rax, al");
       return;
     case TYPE_SHORT:
       writeline("  movsx rax, ax");
       return;
+    case TYPE_INT:
+    case TYPE_ENUM:
     case TYPE_LONG:
-    case TYPE_PTR:
       return;
     default:
       break;
     }
   }
 
-  if (from->kind == TYPE_LONG || from->kind == TYPE_PTR) {
+  if (from->kind == TYPE_UINT) {
     switch (to->kind) {
+    case TYPE_UCHAR:
+      writeline("  movzx rax, al");
+      return;
+    case TYPE_USHORT:
+      writeline("  movzx rax, ax");
+      return;
+    case TYPE_UINT:
+    case TYPE_ULONG:
+    case TYPE_PTR:
+      return;
+    case TYPE_CHAR:
+      writeline("  movsx rax, al");
+      return;
+    case TYPE_SHORT:
+      writeline("  movsx rax, ax");
+      return;
+    case TYPE_INT:
+      writeline("  movsxd rax, eax");
+    case TYPE_ENUM:
+    case TYPE_LONG:
+      return;
+    default:
+      break;
+    }
+  }
+
+  if (from->kind == TYPE_LONG) {
+    switch (to->kind) {
+    case TYPE_UCHAR:
+      writeline("  movzx rax, al");
+      return;
+    case TYPE_USHORT:
+      writeline("  movzx rax, ax");
+      return;
+    case TYPE_UINT:
+      writeline("  mov eax, eax");
+      return;
+    case TYPE_ULONG:
+    case TYPE_PTR:
+      return;
     case TYPE_CHAR:
       writeline("  movsx rax, al");
       return;
@@ -454,13 +570,42 @@ void gen_cast(Node *node) {
       writeline("  movsxd rax, eax");
       return;
     case TYPE_LONG:
-    case TYPE_PTR:
       return;
     default:
       break;
     }
   }
 
+  if (from->kind == TYPE_ULONG || from->kind == TYPE_PTR) {
+    switch (to->kind) {
+    case TYPE_UCHAR:
+      writeline("  movzx rax, al");
+      return;
+    case TYPE_USHORT:
+      writeline("  movzx rax, ax");
+      return;
+    case TYPE_UINT:
+      writeline("  mov eax, eax");
+      return;
+    case TYPE_ULONG:
+    case TYPE_PTR:
+      return;
+    case TYPE_CHAR:
+      writeline("  movsx rax, al");
+      return;
+    case TYPE_SHORT:
+      writeline("  movsx rax, ax");
+      return;
+    case TYPE_INT:
+    case TYPE_ENUM:
+      writeline("  movsxd rax, eax");
+      return;
+    case TYPE_LONG:
+      return;
+    default:
+      break;
+    }
+  }
   assert(false);
 }
 
@@ -594,8 +739,13 @@ void gen(Node *node) {
     gen(node->rhs);
     writeline("  mov rdi, rax");
     writeline("  pop rax");
-    writeline("  cqo");
-    writeline("  idiv rdi");
+    if (is_unsigned(node->type)) {
+      writeline("  mov rdx, 0");
+      writeline("  div rdi");
+    } else {
+      writeline("  cqo");
+      writeline("  idiv rdi");
+    }
     if (node->kind == ND_MOD)
       writeline("  mov rax, rdx");
     return;
@@ -650,7 +800,7 @@ void gen(Node *node) {
     gen(node->rhs);
     writeline("  mov rcx, rax");
     writeline("  pop rax");
-    writeline("  sar rax, cl");
+    writeline("  s%cr rax, cl", is_unsigned(node->lhs->type) ? 'h' : 'a');
     return;
   case ND_BITXOR:
     comment(node->token, "ND_BITXOR");
@@ -712,7 +862,7 @@ void gen(Node *node) {
     writeline("  mov rdi, rax");
     writeline("  pop rax");
     writeline("  cmp rax, rdi");
-    writeline("  setl al");
+    writeline("  set%c al", is_unsigned(node->lhs->type) ? 'b' : 'l');
     writeline("  movzb rax, al");
     return;
   case ND_LE:
@@ -723,7 +873,7 @@ void gen(Node *node) {
     writeline("  mov rdi, rax");
     writeline("  pop rax");
     writeline("  cmp rax, rdi");
-    writeline("  setle al");
+    writeline("  set%ce al", is_unsigned(node->lhs->type) ? 'b' : 'l');
     writeline("  movzb rax, al");
     return;
   case ND_CAST:

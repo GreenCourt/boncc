@@ -138,6 +138,43 @@ int main() {
       long y = (long)&x;
       verify(5, *(int *)y, __FILE__, __LINE__);
     }
+
+    verify(-1, (char)255, __FILE__, __LINE__);
+    verify(-1, (signed char)255, __FILE__, __LINE__);
+    verify(255, (unsigned char)255, __FILE__, __LINE__);
+    verify(-1, (short)65535, __FILE__, __LINE__);
+    verify(65535, (unsigned short)65535, __FILE__, __LINE__);
+    verify(1, -1 < 1, __FILE__, __LINE__);
+    verify(0, -1 < (unsigned)1, __FILE__, __LINE__);
+    verify(254, (char)127 + (char)127, __FILE__, __LINE__);
+    verify(65534, (short)32767 + (short)32767, __FILE__, __LINE__);
+    verify(-1, -1 >> 1, __FILE__, __LINE__);
+    verify(-1, (unsigned long)-1, __FILE__, __LINE__);
+    verify(2147483647, ((unsigned)-1) >> 1, __FILE__, __LINE__);
+    verify(-50, (-100) / 2, __FILE__, __LINE__);
+    verify(2147483598, ((unsigned)-100) / 2, __FILE__, __LINE__);
+    verify(9223372036854775758, ((unsigned long)-100) / 2, __FILE__, __LINE__);
+    verify(0, ((long)-1) / (unsigned)100, __FILE__, __LINE__);
+    verify(-2, (-100) % 7, __FILE__, __LINE__);
+    verify(2, ((unsigned)-100) % 7, __FILE__, __LINE__);
+    verify(6, ((unsigned long)-100) % 9, __FILE__, __LINE__);
+
+    verify(65535, (int)(unsigned short)65535, __FILE__, __LINE__);
+    {
+      unsigned short x = 65535;
+      verify(65535, x, __FILE__, __LINE__);
+      verify(65535, (int)x, __FILE__, __LINE__);
+    }
+    {
+      typedef short T;
+      T x = 65535;
+      verify(-1, (int)x, __FILE__, __LINE__);
+    }
+    {
+      typedef unsigned short T;
+      T x = 65535;
+      verify(65535, (int)x, __FILE__, __LINE__);
+    }
   }
   return 0;
 }

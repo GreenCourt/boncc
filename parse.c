@@ -7,7 +7,8 @@
 /* BNF
 program     = declaration*
 declaration = func | vardec | (struct ";") | (enum ";") | typedef
-type        = "void" | "int" | "char" | ("short" "int"?) | ("long" "long"? "int"?) | struct | enum
+type        = "void" | int_type | struct | enum
+int_type    = ("signed" | "unsigned")? ("int" | "char" | ("short" "int"?) | ("long" "long"? "int"?))
 struct      = (("struct" | "union") ident ("{" member* "}")?) | (("struct" | "union") ident? "{" member* "}")
 member      = type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";"
 enum        = ("enum" ident ("{" enumval ("," enumval)* "}")?) | ("enum" ident? "{" enumval ("," enumval)* "}")
@@ -416,23 +417,6 @@ Type *consume_type() {
   if (consume(TK_VOID))
     return base_type(TYPE_VOID);
 
-  if (consume(TK_INT))
-    return base_type(TYPE_INT);
-
-  if (consume(TK_CHAR))
-    return base_type(TYPE_CHAR);
-
-  if (consume(TK_SHORT)) {
-    consume(TK_INT);
-    return base_type(TYPE_SHORT);
-  }
-
-  if (consume(TK_LONG)) {
-    consume(TK_LONG);
-    consume(TK_INT);
-    return base_type(TYPE_LONG);
-  }
-
   if (consume(TK_STRUCT))
     return consume_struct(false);
 
@@ -441,6 +425,35 @@ Type *consume_type() {
 
   if (consume(TK_ENUM))
     return consume_enum();
+
+  Token *tok_signed = consume(TK_SIGNED);
+  Token *tok_unsigned = consume(TK_UNSIGNED);
+
+  if (tok_signed && tok_unsigned)
+    error_at(&tok_signed->pos, "conflicted signed and unsigned");
+
+  if (consume(TK_CHAR))
+    return base_type(tok_unsigned ? TYPE_UCHAR : TYPE_CHAR);
+
+  if (consume(TK_SHORT)) {
+    consume(TK_INT);
+    return base_type(tok_unsigned ? TYPE_USHORT : TYPE_SHORT);
+  }
+
+  if (consume(TK_LONG)) {
+    consume(TK_LONG);
+    consume(TK_INT);
+    return base_type(tok_unsigned ? TYPE_ULONG : TYPE_LONG);
+  }
+
+  if (consume(TK_INT))
+    return base_type(tok_unsigned ? TYPE_UINT : TYPE_INT);
+
+  if (tok_signed)
+    return base_type(TYPE_INT);
+
+  if (tok_unsigned)
+    return base_type(TYPE_UINT);
 
   return NULL;
 }
@@ -1348,7 +1361,7 @@ Node *unary() {
       error_at(&tok->pos, "invalud sizeof operation for void type");
     if (type->size < 0)
       error_at(&tok->pos, "invalud sizeof operation for incomplete type");
-    return new_node_num(tok, type->size, base_type(TYPE_LONG));
+    return new_node_num(tok, type->size, base_type(TYPE_ULONG));
   }
   if (consume(TK_INC)) {
     Node *u = unary();
@@ -1408,12 +1421,12 @@ Node *primary() {
       if (fn == NULL) {
         // TODO
         // error_at(&tok->pos, "undefined function: '%.*s'", tok->token_length, tok->pos.pos);
-        node->func = calloc(1, sizeof(Function));
-        node->func->ident = tok->ident;
-      } else {
-        node->func = fn;
+        fn = calloc(1, sizeof(Function));
+        fn->ident = tok->ident;
+        fn->params = new_vector(0, sizeof(Variable *));
       }
 
+      node->func = fn;
       node->type = node->func->type;
       node->args = new_vector(0, sizeof(Node *));
 
@@ -1422,6 +1435,17 @@ Node *primary() {
 
       do {
         Node *e = expr();
+
+        // TODO
+        //if(fn->params->size == node->args->size)
+        //  error_at(&tok->pos, "too many arguments for function %*.s", tok->token_length, tok->pos.pos);
+
+        if (fn && fn->params->size > node->args->size) { // TODO remove this if
+          // argument type conversion
+          Variable *p = *(Variable **)vector_get(fn->params, node->args->size);
+          e = new_node_cast(tok, p->type, e);
+        }
+
         vector_push(node->args, &e);
       } while (consume(TK_COMMA));
 

@@ -1,6 +1,7 @@
 #include "boncc.h"
 #include <assert.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -116,6 +117,8 @@ Token *tokenize(char *src) {
         TK_ENUM,
         TK_TYPEDEF,
         TK_STATIC,
+        TK_SIGNED,
+        TK_UNSIGNED,
         TK_ARROW,
         TK_INC,
         TK_DEC,
@@ -271,7 +274,7 @@ Token *tokenize(char *src) {
       int len = q - p.pos;
       new_token(TK_NUM, &tail, &p, len);
       tail->val = val;
-      tail->type = base_type(TYPE_INT);
+      tail->type = base_type((-2147483648 <= val && val <= 2147483647) ? TYPE_INT : TYPE_LONG);
       continue;
     }
 

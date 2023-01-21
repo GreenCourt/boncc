@@ -84,6 +84,8 @@ const char *token_text[] = {
     "enum",
     "typedef",
     "static",
+    "signed",
+    "unsigned",
     "str",
     "identifier",
     "number",

@@ -168,7 +168,7 @@ Token *consume(TokenKind kind) {
 
 Token *expect(TokenKind kind) {
   if (next_token->kind != kind)
-    error_at(&next_token->pos, "'%s' expected but not found", token_text[kind]);
+    error(&next_token->pos, "'%s' expected but not found", token_text[kind]);
   Token *tok = next_token;
   next_token = next_token->next;
   return tok;
@@ -176,7 +176,7 @@ Token *expect(TokenKind kind) {
 
 long long expect_number() {
   if (next_token->kind != TK_NUM)
-    error_at(&next_token->pos, "number expected but not found");
+    error(&next_token->pos, "number expected but not found");
   long long val = next_token->val;
   next_token = next_token->next;
   return val;
@@ -250,7 +250,7 @@ Type *consume_struct(bool is_union) {
       // struct/union can be defined only for the current-scope
       st = map_get(current_scope->structs, tag->ident);
       if (st && st->size > 0)
-        error_at(&tag->pos, "duplicated struct identifier");
+        error(&tag->pos, "duplicated struct identifier");
       if (st == NULL) {
         st = is_union ? union_type(tag->ident) : struct_type(tag->ident);
         map_push(current_scope->structs, st->ident, st);
@@ -260,7 +260,7 @@ Type *consume_struct(bool is_union) {
       // multipe time declaration is allowed
       st = find_struct(tag->ident);
       if (st && ((st->kind == TYPE_STRUCT && is_union) || (st->kind == TYPE_UNION && !is_union)))
-        error_at(&tag->pos, "conflicted struct/union tag");
+        error(&tag->pos, "conflicted struct/union tag");
       if (st == NULL) {
         st = is_union ? union_type(tag->ident) : struct_type(tag->ident);
         map_push(current_scope->structs, st->ident, st);
@@ -292,7 +292,7 @@ Type *consume_struct(bool is_union) {
     Token *tok_type = next_token;
     Type *base = consume_type();
     if (!base)
-      error_at(&tok_type->pos, "invalid member type");
+      error(&tok_type->pos, "invalid member type");
 
     do {
       Type *type = consume_type_star(base);
@@ -300,15 +300,15 @@ Type *consume_struct(bool is_union) {
       // struct S { struct S* p; }; is allowed
       bool is_self_pointer = type->kind == TYPE_PTR && same_type(base, st);
       if (!is_self_pointer && base->size < 0)
-        error_at(&tok_type->pos, "incomplete type");
+        error(&tok_type->pos, "incomplete type");
 
       if (type->kind == TYPE_VOID)
-        error_at(&tok_type->pos, "void type is not allowed");
+        error(&tok_type->pos, "void type is not allowed");
 
       Token *var_name = expect(TK_IDENT);
       type = consume_array_brackets(type);
       if (type->kind == TYPE_ARRAY && type->size < 0)
-        error_at(&var_name->pos, "invalid member array size");
+        error(&var_name->pos, "invalid member array size");
 
       Member *m = calloc(1, sizeof(Member));
       m->ident = var_name->ident;
@@ -353,7 +353,7 @@ Type *consume_enum() {
       // enum can be defined only for the current-scope
       et = map_get(current_scope->enums, enum_name->ident);
       if (et && et->size > 0)
-        error_at(&enum_name->pos, "duplicated enum identifier");
+        error(&enum_name->pos, "duplicated enum identifier");
       if (et == NULL) {
         et = enum_type(enum_name->ident);
         map_push(current_scope->enums, et->ident, et);
@@ -387,7 +387,7 @@ Type *consume_enum() {
   do {
     Token *id = expect(TK_IDENT);
     if (map_get(current_scope->enum_elements, id->ident))
-      error_at(&id->pos, "duplicated identifier for enum element");
+      error(&id->pos, "duplicated identifier for enum element");
 
     if (consume(TK_ASSIGN))
       val = eval(expr()) - 1;
@@ -430,7 +430,7 @@ Type *consume_type() {
   Token *tok_unsigned = consume(TK_UNSIGNED);
 
   if (tok_signed && tok_unsigned)
-    error_at(&tok_signed->pos, "conflicted signed and unsigned");
+    error(&tok_signed->pos, "conflicted signed and unsigned");
 
   if (consume(TK_CHAR))
     return base_type(tok_unsigned ? TYPE_UCHAR : TYPE_CHAR);
@@ -463,19 +463,19 @@ Type *consume_array_brackets(Type *type) {
     return type;
   Token *num = consume(TK_NUM);
   if (num && num->val < 0)
-    error_at(&num->pos, "invalid array size");
+    error(&num->pos, "invalid array size");
   int size = num ? num->val : -1; // -1 will be assumed by rhs initializer
   Token *r = expect(TK_RBRACKET);
   type = consume_array_brackets(type);
   if (type->size < 0)
-    error_at(&r->pos, "array size assumption is allowed only in the first dimension");
+    error(&r->pos, "array size assumption is allowed only in the first dimension");
   return array_type(type, size);
 }
 
 Type *expect_type() {
   Type *ty = consume_type();
   if (!ty)
-    error_at(&next_token->pos, "type expected but not found");
+    error(&next_token->pos, "type expected but not found");
   return ty;
 }
 
@@ -489,7 +489,7 @@ void expect_typedef() {
 
     // multiple typedef for same type is allowed
     if (pre && !same_type(type, pre))
-      error_at(&name->pos, "duplicated typedef identifier");
+      error(&name->pos, "duplicated typedef identifier");
     if (!pre)
       map_push(current_scope->typedefs, name->ident, type);
   } while (consume(TK_COMMA));
@@ -523,7 +523,7 @@ Variable *new_variable(Token *tok, Type *type, VariableKind kind, bool is_static
 Variable *new_local_variable(Token *tok, Type *type, bool is_static, bool is_extern) {
   assert(!is_static || !is_extern);
   if (map_get(current_scope->variables, tok->ident))
-    error_at(&tok->pos, "duplicated identifier");
+    error(&tok->pos, "duplicated identifier");
   Variable *var = new_variable(tok, type, VK_LOCAL, is_static, is_extern);
   map_push(current_scope->variables, var->ident, var);
 
@@ -551,7 +551,7 @@ void set_offset(Variable *var) {
 
 Variable *new_global(Token *tok, Type *type, bool is_static, bool is_extern) {
   if (map_get(global_scope->variables, tok->ident))
-    error_at(&tok->pos, "duplicated identifier");
+    error(&tok->pos, "duplicated identifier");
   Variable *var = new_variable(tok, type, VK_GLOBAL, is_static, is_extern);
   map_push(global_scope->variables, var->ident, var);
   return var;
@@ -621,7 +621,7 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static, bool 
   Vector *variables = new_vector(0, sizeof(Variable *));
   while (true) {
     if (type->kind == TYPE_VOID)
-      error_at(&name->pos, "void type is not allowed");
+      error(&name->pos, "void type is not allowed");
     type = consume_array_brackets(type);
     Variable *var = NULL;
 
@@ -634,14 +634,14 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static, bool 
 
     if (consume(TK_ASSIGN)) {
       if (is_extern)
-        error_at(&name->pos, "cannot initialize extern variable");
+        error(&name->pos, "cannot initialize extern variable");
       var->init = varinit();
       if (type->kind == TYPE_ARRAY) {
         if (var->init->vec == NULL) {
           if (type->base->kind != TYPE_CHAR) {
-            error_at(&name->pos, "invalid initializer for an array");
+            error(&name->pos, "invalid initializer for an array");
           } else if (var->init->expr->kind != ND_VAR || var->init->expr->variable->kind != VK_STRLIT) {
-            error_at(&name->pos, "invalid initializer for an array");
+            error(&name->pos, "invalid initializer for an array");
           } else if (type->array_size < 0) {
             type->array_size = var->init->expr->variable->type->array_size;
             type->size = var->init->expr->variable->type->size;
@@ -654,7 +654,7 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static, bool 
         assert(type->array_size >= 0);
       }
     } else if (type->array_size < 0) {
-      error_at(&name->pos, "invalid array size");
+      error(&name->pos, "invalid array size");
     }
 
     if (kind == VK_LOCAL && !is_static && !is_extern)
@@ -693,19 +693,19 @@ void func(Type *type, Token *tok, bool is_static) {
 
   if (prev) {
     if (prev->params->size != f->params->size)
-      error_at(&tok->pos, "conflicted function declaration");
+      error(&tok->pos, "conflicted function declaration");
     for (int i = 0; i < f->params->size; ++i) {
       Type *ft = *(Type **)vector_get(f->params, i);
       Type *pt = *(Type **)vector_get(prev->params, i);
       if (!same_type(ft, pt))
-        error_at(&tok->pos, "conflicted function declaration");
+        error(&tok->pos, "conflicted function declaration");
     }
   }
 
   if (!consume(TK_LBRACE))
     expect(TK_SEMICOLON);
   else if (prev && prev->body)
-    error_at(&tok->pos, "duplicated function definition");
+    error(&tok->pos, "duplicated function definition");
   else {
     f->body = stmt_block();
     f->offset = local_variable_offset;
@@ -719,7 +719,7 @@ void funcparam(Vector *params) {
     Token *tok_type = next_token;
     Type *ty = consume_type_star(expect_type());
     if (ty->kind == TYPE_VOID)
-      error_at(&tok_type->pos, "void type is not allowed");
+      error(&tok_type->pos, "void type is not allowed");
     Token *id = expect(TK_IDENT);
     while (consume(TK_LBRACKET)) {
       consume(TK_NUM);       // currently not used
@@ -746,15 +746,15 @@ Node *declaration() {
   bool is_extern = tok_extern != NULL;
 
   if (is_static && is_extern)
-    error_at(&tok_static->pos, "conflicted static and external");
+    error(&tok_static->pos, "conflicted static and external");
 
   Token *tk = next_token;
   Type *type = consume_type();
   if (type == NULL) {
     if (tok_static)
-      error_at(&tok_static->pos, "invalid static");
+      error(&tok_static->pos, "invalid static");
     if (tok_extern)
-      error_at(&tok_extern->pos, "invalid extern");
+      error(&tok_extern->pos, "invalid extern");
     return NULL;
   }
 
@@ -764,7 +764,7 @@ Node *declaration() {
   }
 
   if (type->size < 0)
-    error_at(&tk->pos, "incomplete type");
+    error(&tk->pos, "incomplete type");
 
   type = consume_type_star(type);
 
@@ -772,7 +772,7 @@ Node *declaration() {
 
   if (next_token->kind == TK_LPAREN) {
     if (current_scope != global_scope)
-      error_at(&id->pos, "function declaration is only allowed in global scope");
+      error(&id->pos, "function declaration is only allowed in global scope");
     func(type, id, is_static);
     return NULL;
   }
@@ -794,7 +794,7 @@ VariableInit *varinit() {
   if (consume(TK_LBRACE)) {
     Token *tok = consume(TK_RBRACE);
     if (tok)
-      error_at(&tok->pos, "empty brace initializer is not allowed");
+      error(&tok->pos, "empty brace initializer is not allowed");
     init->vec = new_vector(0, sizeof(VariableInit *));
     do {
       VariableInit *i = varinit();
@@ -825,7 +825,7 @@ Node *init_local_variable(Variable *var, VariableInit *init, Type *type, int arr
         // initilize the array as a string
         char *lit = init->expr->variable->string_literal;
         if (type->array_size != (int)strlen(lit) + 1)
-          error_at(&var->token->pos, "miss-match between array-size and string-length");
+          error(&var->token->pos, "miss-match between array-size and string-length");
 
         for (int i = 0; i < type->array_size; ++i) {
           Node *s = new_node_array_set_val(var, i + array_index_offset, (int)lit[i]);
@@ -957,7 +957,7 @@ Node *stmt() {
 
   if (consume(TK_CASE)) {
     if (switch_nodes->size == 0)
-      error_at(&tok->pos, "invalid case");
+      error(&tok->pos, "invalid case");
     Node *sw = *(Node **)vector_last(switch_nodes);
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_CASE;
@@ -970,7 +970,7 @@ Node *stmt() {
     while (c) {
       assert(c->condition->kind == ND_NUM);
       if (c->condition->val == val)
-        error_at(&tok->pos, "duplicated case value detected");
+        error(&tok->pos, "duplicated case value detected");
       c = c->next_case;
     }
     node->condition = new_node_num(NULL, val, e->type);
@@ -984,10 +984,10 @@ Node *stmt() {
   if (consume(TK_DEFAULT)) {
     expect(TK_COLON);
     if (switch_nodes->size == 0)
-      error_at(&tok->pos, "invalid default");
+      error(&tok->pos, "invalid default");
     Node *sw = *(Node **)vector_last(switch_nodes);
     if (sw->default_)
-      error_at(&tok->pos, "multiple default for one switch");
+      error(&tok->pos, "multiple default for one switch");
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_DEFAULT;
     node->token = tok;
@@ -1010,7 +1010,7 @@ Node *stmt() {
 
   if (consume(TK_CONTINUE)) {
     if (continue_label->size == 0)
-      error_at(&tok->pos, "invalid continue");
+      error(&tok->pos, "invalid continue");
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_CONTINUE;
     node->label_index = vector_lasti(continue_label);
@@ -1021,7 +1021,7 @@ Node *stmt() {
 
   if (consume(TK_BREAK)) {
     if (break_label->size == 0)
-      error_at(&tok->pos, "invalid break");
+      error(&tok->pos, "invalid break");
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_BREAK;
     node->label_index = vector_lasti(break_label);
@@ -1136,7 +1136,7 @@ Node *stmt_for() {
     Type *type = consume_type();
     if (type) {
       if (type->size < 0)
-        error_at(&tok->pos, "incomplete type");
+        error(&tok->pos, "incomplete type");
 
       type = consume_type_star(type);
       Token *name = expect(TK_IDENT);
@@ -1365,7 +1365,7 @@ Node *unary() {
       // sizeof(type)
       type = consume_array_brackets(consume_type_star(type));
       if (type->size < 0)
-        error_at(&tok->pos, "invalid array size");
+        error(&tok->pos, "invalid array size");
       expect(TK_RPAREN);
     } else {
       // sizeof unary
@@ -1373,9 +1373,9 @@ Node *unary() {
       type = unary()->type;
     }
     if (type->kind == TYPE_VOID)
-      error_at(&tok->pos, "invalud sizeof operation for void type");
+      error(&tok->pos, "invalud sizeof operation for void type");
     if (type->size < 0)
-      error_at(&tok->pos, "invalud sizeof operation for incomplete type");
+      error(&tok->pos, "invalud sizeof operation for incomplete type");
     return new_node_num(tok, type->size, base_type(TYPE_ULONG));
   }
   if (consume(TK_INC)) {
@@ -1435,7 +1435,7 @@ Node *primary() {
 
       if (fn == NULL) {
         // TODO
-        // error_at(&tok->pos, "undefined function: '%.*s'", tok->token_length, tok->pos.pos);
+        // error(&tok->pos, "undefined function: '%.*s'", tok->token_length, tok->pos.pos);
         fn = calloc(1, sizeof(Function));
         fn->ident = tok->ident;
         fn->params = new_vector(0, sizeof(Variable *));
@@ -1453,7 +1453,7 @@ Node *primary() {
 
         // TODO
         //if(fn->params->size == node->args->size)
-        //  error_at(&tok->pos, "too many arguments for function %*.s", tok->token_length, tok->pos.pos);
+        //  error(&tok->pos, "too many arguments for function %*.s", tok->token_length, tok->pos.pos);
 
         if (fn && fn->params->size > node->args->size) { // TODO remove this if
           // argument type conversion
@@ -1471,7 +1471,7 @@ Node *primary() {
     } else { // variable
       Variable *var = find_variable(tok);
       if (!var)
-        error_at(&tok->pos, "undefined identifier: '%.*s'", tok->token_length, tok->pos.pos);
+        error(&tok->pos, "undefined identifier: '%.*s'", tok->token_length, tok->pos.pos);
       return new_node_var(tok, var);
     }
   }
@@ -1484,7 +1484,7 @@ Node *primary() {
   if ((tok = consume(TK_NUM)))
     return new_node_num(tok, tok->val, tok->type);
 
-  error_at(&next_token->pos, "primary expected but not found", next_token->token_length, next_token->pos);
+  error(&next_token->pos, "primary expected but not found", next_token->token_length, next_token->pos);
   return NULL;
 }
 
@@ -1500,22 +1500,22 @@ Node *tail(Node *x) {
   if (consume(TK_DOT)) {
     // struct member access (x.y)
     if (x->type == NULL || (x->type->kind != TYPE_STRUCT && x->type->kind != TYPE_UNION))
-      error_at(&op->pos, "not a struct");
+      error(&op->pos, "not a struct");
     Token *y = expect(TK_IDENT);
     Member *member = find_member(x->type, y);
     if (member == NULL)
-      error_at(&y->pos, "unknown struct member");
+      error(&y->pos, "unknown struct member");
     return new_node_member(op, x, member);
   }
   if (consume(TK_ARROW)) {
     // struct member access
     // x->y is (*x).y
     if (x->type == NULL || x->type->kind != TYPE_PTR || (x->type->base->kind != TYPE_STRUCT && x->type->base->kind != TYPE_UNION))
-      error_at(&op->pos, "not a struct pointer");
+      error(&op->pos, "not a struct pointer");
     Token *y = expect(TK_IDENT);
     Member *member = find_member(x->type->base, y);
     if (member == NULL)
-      error_at(&y->pos, "unknown struct member");
+      error(&y->pos, "unknown struct member");
     return new_node_member(op, new_node_deref(NULL, x), member);
   }
   if (consume(TK_INC)) {

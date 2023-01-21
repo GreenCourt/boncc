@@ -70,7 +70,7 @@ void gen_address(Node *node) {
     writeline("  add rax, %d", node->member->offset);
     return;
   default:
-    error_at(&node->token->pos, "left-value must be a variable");
+    error(&node->token->pos, "left-value must be a variable");
   }
 }
 
@@ -197,7 +197,7 @@ void gen_block(Node *node) {
 void gen_call(Node *node) {
   int sz = node->args->size;
   if (sz > 6)
-    error("maximum number of argument is currently 6");
+    error(NULL, "maximum number of argument is currently 6");
 
   for (int i = 0; i < sz; ++i) {
     Node *d = *(Node **)vector_get(node->args, i);
@@ -238,7 +238,7 @@ void gen_global_init(VariableInit *init, Type *type) {
         // initilize the array as a string
         Variable *lit = init->expr->variable;
         if (type->array_size != lit->type->array_size)
-          error_at(&init->expr->token->pos, "miss-match between array-size and string-length");
+          error(&init->expr->token->pos, "miss-match between array-size and string-length");
         writeline("  .ascii \"%s\\0\"", lit->string_literal);
       } else {
         // When init->expr is given for an array, only the first element will be initialized.
@@ -303,7 +303,7 @@ void gen_global_init(VariableInit *init, Type *type) {
                   right_addr->ident->name,
                   eval(init->expr->lhs));
       } else {
-        error("unsupported initalization of a global pointer.");
+        error(NULL, "unsupported initalization of a global pointer.");
       }
     } else if (is_const_var_addr(init->expr)) {
       Variable *var = is_const_var_addr(init->expr);
@@ -313,7 +313,7 @@ void gen_global_init(VariableInit *init, Type *type) {
     } else if (is_constant_number(init->expr)) {
       writeline("  .quad %d", eval(init->expr));
     } else {
-      error("unsupported initalization of a global pointer.");
+      error(NULL, "unsupported initalization of a global pointer.");
     }
   } else if (is_integer(type)) {
     while (init->vec) { // for non-array primitive types, only the first element in the brace will be used

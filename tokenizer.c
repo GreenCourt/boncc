@@ -88,7 +88,7 @@ Token *tokenize(char *src) {
     if (match(p.pos, "/*")) { // block comments
       char *q = strstr(p.pos + 2, "*/");
       if (!q)
-        error_at(&p, "unclosed block comment");
+        error(&p, "unclosed block comment");
       advance(&p, (q + 2) - p.pos);
       continue;
     }
@@ -182,7 +182,7 @@ Token *tokenize(char *src) {
     if (*p.pos == '\'') { // character literal
       advance(&p, 1);
       if (*p.pos == '\'')
-        error_at(&p, "invalid character literal");
+        error(&p, "invalid character literal");
 
       if (*p.pos == '\\') {
         char val = -1;
@@ -221,7 +221,7 @@ Token *tokenize(char *src) {
           val = '\0';
           break;
         default:
-          error_at(&p, "unsupported escaped literal");
+          error(&p, "unsupported escaped literal");
         }
         new_token(TK_NUM, &tail, &p, 2);
         tail->val = val;
@@ -231,7 +231,7 @@ Token *tokenize(char *src) {
       }
 
       if (*(p.pos + 1) != '\'')
-        error_at(&p, "invalid character literal");
+        error(&p, "invalid character literal");
 
       new_token(TK_NUM, &tail, &p, 1);
       tail->val = *(tail->pos.pos);
@@ -251,14 +251,14 @@ Token *tokenize(char *src) {
 
         if (c == '\\') { // escape
           if (d == '\0')
-            error_at(&p, "missing terminating \" character");
+            error(&p, "missing terminating \" character");
           q += 2;
           continue;
         }
 
         q++;
         if (*q == '\0' || *q == '\n')
-          error_at(&p, "missing terminating \" character");
+          error(&p, "missing terminating \" character");
       }
       int len = q - p.pos;
       char *string_literal = calloc(len + 1, sizeof(char));
@@ -288,7 +288,7 @@ Token *tokenize(char *src) {
       continue;
     }
 
-    error_at(&p, "failed to tokenize");
+    error(&p, "failed to tokenize");
   }
   new_token(TK_EOF, &tail, &p, 0);
   return head.next;

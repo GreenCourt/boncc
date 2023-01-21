@@ -3,7 +3,7 @@ OBJ_DIR=obj
 TEST_OBJ_DIR=test/obj
 TEST_EXE_DIR=test/exe
 
-boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenize.o parse.o codegen.o vector.o type.o node.o map.o)
+boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenizer.o parser.o generator.o vector.o type.o node.o map.o)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 test: $(addprefix $(TEST_EXE_DIR)/,$(basename $(filter-out common.c,$(notdir $(wildcard test/*.c)))))

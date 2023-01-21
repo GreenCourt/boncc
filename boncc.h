@@ -285,8 +285,7 @@ extern Vector *static_local_variables; // Variable*
 
 bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);
-void error_at(Position *pos, char *fmt, ...);
-void error(char *fmt, ...);
+void error(Position *pos, char *fmt, ...);
 char *read_file(char *path);
 bool same_ident(Ident *a, Ident *b);
 

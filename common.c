@@ -95,30 +95,26 @@ const char *token_text[] = {
 
 bool same_ident(Ident *a, Ident *b) { return a->len == b->len && strncmp(a->name, b->name, a->len) == 0; }
 
-void error_at(Position *pos, char *fmt, ...) {
+void error(Position *pos, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
-  char *line_start = pos->pos - pos->column_number + 1;
-  char *line_end = pos->pos;
-  while (*line_end != '\n')
-    line_end++;
+  if(pos) {
+    char *line_start = pos->pos - pos->column_number + 1;
+    char *line_end = pos->pos;
+    while (*line_end != '\n')
+      line_end++;
 
-  int indent = fprintf(stderr, "%s:%d:%d: ", pos->file_name, pos->line_number, pos->column_number);
-  fprintf(stderr, "%.*s\n", (int)(line_end - line_start), line_start);
+    int indent = fprintf(stderr, "%s:%d:%d: ", pos->file_name, pos->line_number, pos->column_number);
+    fprintf(stderr, "%.*s\n", (int)(line_end - line_start), line_start);
 
-  int sp = pos->pos - line_start + indent;
-  fprintf(stderr, "%*s", sp, ""); // print spaces
-  fprintf(stderr, "^ ");
-  vfprintf(stderr, fmt, ap);
-  fprintf(stderr, "\n");
-  exit(1);
-}
+    int sp = pos->pos - line_start + indent;
+    fprintf(stderr, "%*s", sp, ""); // print spaces
+    fprintf(stderr, "^ ");
+  } else {
+    fprintf(stderr, "%s: ", source_file_name);
+  }
 
-void error(char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  fprintf(stderr, "%s: ", source_file_name);
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
   exit(1);
@@ -135,7 +131,7 @@ char *read_file(char *path) {
   } else {
     fp = fopen(path, "r");
     if (!fp)
-      error("cannot open %s: %s", path, strerror(errno));
+      error(NULL, "cannot open %s: %s", path, strerror(errno));
   }
 
   char *content;

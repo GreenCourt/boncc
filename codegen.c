@@ -48,6 +48,9 @@ void gen_address(Node *node) {
       if (node->variable->is_static) {
         comment(NULL, "gen_address ND_VAR static-local: %.*s", node->variable->ident->len, node->variable->ident->name);
         writeline("  lea rax, %.*s[rip]", node->variable->internal_ident->len, node->variable->internal_ident->name);
+      } else if (node->variable->is_extern) {
+        comment(NULL, "gen_address ND_VAR extern-local: %.*s", node->variable->ident->len, node->variable->ident->name);
+        writeline("  lea rax, %.*s[rip]", node->variable->ident->len, node->variable->ident->name);
       } else {
         comment(NULL, "gen_address ND_VAR local: %.*s", node->variable->ident->len, node->variable->ident->name);
         writeline("  lea rax, [rbp-%d]", node->variable->offset);
@@ -900,6 +903,8 @@ void generate_code(FILE *output_stream) {
   // global variables
   for (int i = 0; i < global_scope->variables->size; i++) {
     Variable *v = map_geti(global_scope->variables, i);
+    if (v->is_extern)
+      continue;
     writeline(".data");
     if (v->is_static)
       writeline(".local %.*s", v->ident->len, v->ident->name);

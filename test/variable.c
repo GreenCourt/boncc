@@ -18,6 +18,7 @@ long global_long = 2;
 long global_long_array[1][2][3] = {1, 2, 3, 4, 5};
 short global_short = 3;
 short global_short_array[1][2][3] = {1, 2, 3, 4, 5};
+extern short external_short;
 
 int main() {
   // global varinit
@@ -386,6 +387,19 @@ int main() {
     verify(4, x[0][1][0], __FILE__, __LINE__);
     verify(5, x[0][1][1], __FILE__, __LINE__);
     verify(0, x[0][1][2], __FILE__, __LINE__);
+  }
+  {
+    extern char external_char;
+    {
+      extern int external_int;
+      verify(56, external_char, __FILE__, __LINE__);
+      verify(1234, external_int, __FILE__, __LINE__);
+      external_char = 78;
+    }
+    verify(78, external_char, __FILE__, __LINE__);
+    verify(789, external_short, __FILE__, __LINE__);
+    external_short = -455;
+    verify(-455, external_short, __FILE__, __LINE__);
   }
   return 0;
 }

@@ -176,5 +176,42 @@ int main() {
       verify(65535, (int)x, __FILE__, __LINE__);
     }
   }
+  {
+    verify((long)-5, -10 + (long)5, __FILE__, __LINE__);
+    verify((long)-15, -10 - (long)5, __FILE__, __LINE__);
+    verify((long)-50, -10 * (long)5, __FILE__, __LINE__);
+    verify((long)-2, -10 / (long)5, __FILE__, __LINE__);
+
+    verify(1, -2 < (long)-1, __FILE__, __LINE__);
+    verify(1, -2 <= (long)-1, __FILE__, __LINE__);
+    verify(0, -2 > (long)-1, __FILE__, __LINE__);
+    verify(0, -2 >= (long)-1, __FILE__, __LINE__);
+
+    verify(1, (long)-2 < -1, __FILE__, __LINE__);
+    verify(1, (long)-2 <= -1, __FILE__, __LINE__);
+    verify(0, (long)-2 > -1, __FILE__, __LINE__);
+    verify(0, (long)-2 >= -1, __FILE__, __LINE__);
+
+    {
+      long x = -1;
+      verify((long)-1, x, __FILE__, __LINE__);
+    }
+    {
+      char x[3];
+      x[0] = 0;
+      x[1] = 1;
+      x[2] = 2;
+      char *y = x + 1;
+      verify(1, y[0], __FILE__, __LINE__);
+    }
+    {
+      char x[3];
+      x[0] = 0;
+      x[1] = 1;
+      x[2] = 2;
+      char *y = x + 1;
+      verify(0, y[-1], __FILE__, __LINE__);
+    }
+  }
   return 0;
 }

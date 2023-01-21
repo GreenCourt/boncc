@@ -401,5 +401,9 @@ int main() {
     external_short = -455;
     verify(-455, external_short, __FILE__, __LINE__);
   }
+  {
+    const int x = 12;
+    verify(12, x, __FILE__, __LINE__);
+  }
   return 0;
 }

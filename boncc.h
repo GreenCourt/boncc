@@ -70,6 +70,7 @@ typedef enum {
   TK_TYPEDEF,   // typedef
   TK_STATIC,    // static
   TK_EXTERN,    // extern
+  TK_CONST,     // const
   TK_SIGNED,    // signed
   TK_UNSIGNED,  // unsigned
   TK_STR,       // string literal
@@ -163,6 +164,7 @@ struct Variable {
   int offset;           // only for VK_LOCAL
   char *string_literal; // null terminated, only for VK_STRLIT
   VariableInit *init;   // VK_GLOBAL, VK_LOCAL
+  bool is_const;
   bool is_extern;
   bool is_static;
   Ident *internal_ident; // for static local

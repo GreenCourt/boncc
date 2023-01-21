@@ -352,7 +352,7 @@ Node *new_node_bitnot(Token *tok, Node *operand) {
   return node;
 }
 
-Node *new_node_assign(Token *tok, Node *lhs, Node *rhs) {
+Node *new_node_assign_ignore_const(Token *tok, Node *lhs, Node *rhs) {
   if (lhs->type->kind == TYPE_STRUCT || lhs->type->kind == TYPE_UNION || rhs->type->kind == TYPE_STRUCT || rhs->type->kind == TYPE_UNION)
     error(tok ? &tok->pos : NULL, "assignning to/from struct/union is currentry not supported");
   Type *type = lhs->type;
@@ -361,6 +361,21 @@ Node *new_node_assign(Token *tok, Node *lhs, Node *rhs) {
   Node *node = new_node(ND_ASSIGN, lhs, rhs, type);
   node->token = tok;
   return node;
+}
+
+Node *new_node_assign(Token *tok, Node *lhs, Node *rhs) {
+  if (lhs->kind == ND_VAR && lhs->variable->is_const)
+    error(tok ? &tok->pos : NULL, "cannot assignning to a const variable");
+
+  if (lhs->kind == ND_MEMBER && lhs->lhs->kind == ND_VAR) {
+    assert(lhs->lhs->type->kind == TYPE_STRUCT || lhs->lhs->type->kind == TYPE_UNION);
+    assert(lhs->lhs->variable->type->kind == TYPE_STRUCT || lhs->lhs->variable->type->kind == TYPE_UNION);
+    assert(lhs->lhs->type->kind == lhs->lhs->variable->type->kind);
+    if (lhs->lhs->variable->is_const)
+      error(tok ? &tok->pos : NULL, "cannot assignning to a const variable");
+  }
+
+  return new_node_assign_ignore_const(tok, lhs, rhs);
 }
 
 Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int label_index) {

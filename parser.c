@@ -14,7 +14,7 @@ member      = type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* "
 enum        = ("enum" ident ("{" enumval ("," enumval)* ","? "}")?) | ("enum" ident? "{" enumval ("," enumval)* ","? "}")
 enumval     = indent ("=" expr)?
 typedef     = "typedef" type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")*)* ";"
-vardec      = ("static" | "extern") ? type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
+vardec      = "const"* ("static" | "extern")? "const"* type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
 varinit     = expr
               | "{" varinit ("," varinit)* "}"
 func        = "static"? type "*"* ident "(" funcparam? ")" (("{" stmt* "}") | ";")
@@ -90,6 +90,7 @@ Node *new_node_bitor(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_bitxor(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_bitnot(Token *tok, Node *lhs);
 Node *new_node_assign(Token *tok, Node *lhs, Node *rhs);
+Node *new_node_assign_ignore_const(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int label_index);
 Node *new_node_cast(Token *tok, Type *type, Node *lhs);
 Node *new_node_member(Token *tok, Node *x, Member *y);
@@ -515,7 +516,7 @@ Variable *find_variable(Token *tok) {
   return NULL;
 }
 
-Variable *new_variable(Token *tok, Type *type, VariableKind kind, bool is_static, bool is_extern) {
+Variable *new_variable(Token *tok, Type *type, VariableKind kind, bool is_static, bool is_extern, bool is_const) {
   Variable *var = calloc(1, sizeof(Variable));
   var->ident = tok->ident;
   var->type = type;
@@ -523,14 +524,15 @@ Variable *new_variable(Token *tok, Type *type, VariableKind kind, bool is_static
   var->token = tok;
   var->is_static = is_static;
   var->is_extern = is_extern;
+  var->is_const = is_const;
   return var;
 }
 
-Variable *new_local_variable(Token *tok, Type *type, bool is_static, bool is_extern) {
+Variable *new_local_variable(Token *tok, Type *type, bool is_static, bool is_extern, bool is_const) {
   assert(!is_static || !is_extern);
   if (map_get(current_scope->variables, tok->ident))
     error(&tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, VK_LOCAL, is_static, is_extern);
+  Variable *var = new_variable(tok, type, VK_LOCAL, is_static, is_extern, is_const);
   map_push(current_scope->variables, var->ident, var);
 
   static int idx = 0;
@@ -555,10 +557,10 @@ void set_offset(Variable *var) {
   local_variable_offset = var->offset;
 }
 
-Variable *new_global(Token *tok, Type *type, bool is_static, bool is_extern) {
+Variable *new_global(Token *tok, Type *type, bool is_static, bool is_extern, bool is_const) {
   if (map_get(global_scope->variables, tok->ident))
     error(&tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, VK_GLOBAL, is_static, is_extern);
+  Variable *var = new_variable(tok, type, VK_GLOBAL, is_static, is_extern, is_const);
   map_push(global_scope->variables, var->ident, var);
   return var;
 }
@@ -585,6 +587,7 @@ Variable *new_string_literal(Token *tok) {
   var->token = tok;
   var->is_static = true;
   var->is_extern = false;
+  var->is_const = true;
 
   // Because of escaped charactors, actual array length is not always equal to (strlen(var->string_literal) + 1).
   int len = strlen(var->string_literal);
@@ -619,7 +622,7 @@ void program() {
     declaration();
 }
 
-Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static, bool is_extern) {
+Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static, bool is_extern, bool is_const) {
   Type *base = type;
   while (base->kind == TYPE_ARRAY || base->kind == TYPE_PTR)
     base = base->base;
@@ -632,9 +635,9 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static, bool 
     Variable *var = NULL;
 
     if (kind == VK_GLOBAL)
-      var = new_global(name, type, is_static, is_extern);
+      var = new_global(name, type, is_static, is_extern, is_const);
     else if (kind == VK_LOCAL)
-      var = new_local_variable(name, type, is_static, is_extern);
+      var = new_local_variable(name, type, is_static, is_extern, is_const);
     else
       assert(false);
 
@@ -732,7 +735,7 @@ void funcparam(Vector *params) {
       ty = pointer_type(ty); // array as a pointer
       expect(TK_RBRACKET);
     }
-    Variable *var = new_local_variable(id, ty, false, false);
+    Variable *var = new_local_variable(id, ty, false, false, false);
     set_offset(var);
     vector_push(params, &var);
   } while (consume(TK_COMMA));
@@ -744,8 +747,15 @@ Node *declaration() {
     return new_node_nop();
   }
 
+  bool is_const = false;
+  while (consume(TK_CONST))
+    is_const = true;
   Token *tok_static = consume(TK_STATIC);
+  while (consume(TK_CONST))
+    is_const = true;
   Token *tok_extern = consume(TK_EXTERN);
+  while (consume(TK_CONST))
+    is_const = true;
   if (tok_static == NULL)
     tok_static = consume(TK_STATIC);
   bool is_static = tok_static != NULL;
@@ -784,7 +794,7 @@ Node *declaration() {
   }
 
   VariableKind kind = current_scope == global_scope ? VK_GLOBAL : VK_LOCAL;
-  Vector *vars = vardec(type, id, kind, is_static, is_extern);
+  Vector *vars = vardec(type, id, kind, is_static, is_extern, is_const);
   if (kind == VK_GLOBAL)
     return NULL;
   if (is_static)
@@ -896,7 +906,7 @@ Node *init_local_variable(Variable *var, VariableInit *init, Type *type, int arr
     if (var->type->kind == TYPE_ARRAY) {
       return new_node_array_set_expr(var, array_index_offset, init->expr);
     } else
-      return new_node_assign(NULL, new_node_var(NULL, var), init->expr);
+      return new_node_assign_ignore_const(NULL, new_node_var(NULL, var), init->expr);
   } else
     assert(false);
   return NULL;
@@ -1146,7 +1156,7 @@ Node *stmt_for() {
 
       type = consume_type_star(type);
       Token *name = expect(TK_IDENT);
-      Vector *vars = vardec(type, name, VK_LOCAL, false, false);
+      Vector *vars = vardec(type, name, VK_LOCAL, false, false, false);
       node->init = init_multiple_local_variables(vars);
     } else {
       node->init = expr();

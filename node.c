@@ -92,15 +92,15 @@ Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
   if (!right_is_ptr && !is_integer(rhs->type))
     error_at(&tok->pos, "invalid operands to binary + operator");
 
+  Type *type = implicit_type_convertion(lhs->type, rhs->type);
   if (left_is_ptr) {
-    rhs = new_node_cast(NULL, base_type(TYPE_LONG), rhs);
+    rhs = new_node_cast(NULL, type, rhs);
     rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size, rhs->type), rhs->type);
   } else if (right_is_ptr) {
-    lhs = new_node_cast(NULL, base_type(TYPE_LONG), lhs);
+    lhs = new_node_cast(NULL, type, lhs);
     lhs = new_node(ND_MUL, lhs, new_node_num(NULL, rhs->type->base->size, lhs->type), lhs->type);
   }
 
-  Type *type = implicit_type_convertion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_ADD, lhs, rhs, type);
@@ -120,7 +120,7 @@ Node *new_node_sub(Token *tok, Node *lhs, Node *rhs) {
     error_at(&tok->pos, "invalid operands to binary - operator");
 
   if (left_is_ptr && !right_is_ptr) {
-    rhs = new_node_cast(NULL, base_type(TYPE_PTR), rhs);
+    rhs = new_node_cast(NULL, lhs->type, rhs);
     rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size, rhs->type), rhs->type);
   }
 
@@ -418,6 +418,29 @@ Node *new_node_array_set_val(Variable *var, int idx, int val) {
   assert(var->type->kind == TYPE_ARRAY);
   assert(idx >= 0);
   return new_node_array_set_expr(var, idx, new_node_num(NULL, val, base_type(TYPE_INT)));
+}
+
+Variable *is_const_var_addr(Node *node) {
+  assert(node);
+  int count = 0;
+  while (true) {
+    switch (node->kind) {
+    case ND_VAR:
+      return (count == 1) ? node->variable : NULL;
+    case ND_ADDR:
+      count++;
+      break;
+    case ND_DEREF:
+      count--;
+      break;
+    case ND_CAST:
+      break;
+    default:
+      return NULL;
+    }
+    node = node->lhs;
+  }
+  return NULL;
 }
 
 int is_constant_number(Node *node) {

@@ -12,40 +12,40 @@ int g(int a[1]) {
 }
 
 int a = 12;
-//int *p = &a;
-//int *p_addr_num = &a + 1;
-//int *p_num_addr = 3 + &a;
+int *p = &a;
+int *p_addr_num = &a + 1;
+int *p_num_addr = 3 + &a;
 int *p_num = 1;
-//int *p_array[][2] = {{&a + 1, &a + 2}, {&a + 3, &a + 4}};
-//int **pp_array[][2] = {{&p + 1, &p + 2}, {&p + 3, &p + 4}};
+int *p_array[][2] = {{&a + 1, &a + 2}, {&a + 3, &a + 4}};
+int **pp_array[][2] = {{&p + 1, &p + 2}, {&p + 3, &p + 4}};
 
 int main() {
-  //verify(&a, p, __FILE__, __LINE__);
-  //verify(&a + 1, p_addr_num, __FILE__, __LINE__);
-  //verify(&a + 3, p_num_addr, __FILE__, __LINE__);
+  verify(&a, p, __FILE__, __LINE__);
+  verify(&a + 1, p_addr_num, __FILE__, __LINE__);
+  verify(&a + 3, p_num_addr, __FILE__, __LINE__);
   verify(1, p_num, __FILE__, __LINE__);
-  //verify(12, *p, __FILE__, __LINE__);
-  //verify(12, *(p_addr_num - 1), __FILE__, __LINE__);
+  verify(12, *p, __FILE__, __LINE__);
+  verify(12, *(p_addr_num - 1), __FILE__, __LINE__);
 
-  //verify(32, sizeof(p_array), __FILE__, __LINE__);
-  //verify(&a + 1, p_array[0][0], __FILE__, __LINE__);
-  //verify(&a + 2, p_array[0][1], __FILE__, __LINE__);
-  //verify(&a + 3, p_array[1][0], __FILE__, __LINE__);
-  //verify(&a + 4, p_array[1][1], __FILE__, __LINE__);
-  //verify(12, *(p_array[0][0] - 1), __FILE__, __LINE__);
-  //verify(12, *(p_array[0][1] - 2), __FILE__, __LINE__);
-  //verify(12, *(p_array[1][0] - 3), __FILE__, __LINE__);
-  //verify(12, *(p_array[1][1] - 4), __FILE__, __LINE__);
+  verify(32, sizeof(p_array), __FILE__, __LINE__);
+  verify(&a + 1, p_array[0][0], __FILE__, __LINE__);
+  verify(&a + 2, p_array[0][1], __FILE__, __LINE__);
+  verify(&a + 3, p_array[1][0], __FILE__, __LINE__);
+  verify(&a + 4, p_array[1][1], __FILE__, __LINE__);
+  verify(12, *(p_array[0][0] - 1), __FILE__, __LINE__);
+  verify(12, *(p_array[0][1] - 2), __FILE__, __LINE__);
+  verify(12, *(p_array[1][0] - 3), __FILE__, __LINE__);
+  verify(12, *(p_array[1][1] - 4), __FILE__, __LINE__);
 
-  //verify(32, sizeof(pp_array), __FILE__, __LINE__);
-  //verify(&p + 1, pp_array[0][0], __FILE__, __LINE__);
-  //verify(&p + 2, pp_array[0][1], __FILE__, __LINE__);
-  //verify(&p + 3, pp_array[1][0], __FILE__, __LINE__);
-  //verify(&p + 4, pp_array[1][1], __FILE__, __LINE__);
-  //verify(12, **(pp_array[0][0] - 1), __FILE__, __LINE__);
-  //verify(12, **(pp_array[0][1] - 2), __FILE__, __LINE__);
-  //verify(12, **(pp_array[1][0] - 3), __FILE__, __LINE__);
-  //verify(12, **(pp_array[1][1] - 4), __FILE__, __LINE__);
+  verify(32, sizeof(pp_array), __FILE__, __LINE__);
+  verify(&p + 1, pp_array[0][0], __FILE__, __LINE__);
+  verify(&p + 2, pp_array[0][1], __FILE__, __LINE__);
+  verify(&p + 3, pp_array[1][0], __FILE__, __LINE__);
+  verify(&p + 4, pp_array[1][1], __FILE__, __LINE__);
+  verify(12, **(pp_array[0][0] - 1), __FILE__, __LINE__);
+  verify(12, **(pp_array[0][1] - 2), __FILE__, __LINE__);
+  verify(12, **(pp_array[1][0] - 3), __FILE__, __LINE__);
+  verify(12, **(pp_array[1][1] - 4), __FILE__, __LINE__);
 
   {
     int x;

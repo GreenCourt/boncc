@@ -13,6 +13,7 @@ static const char *reg_args8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 // node.c -->
 bool is_constant_number(Node *node);
+Variable *is_const_var_addr(Node *node);
 int eval(Node *node);
 // <-- node.c
 
@@ -285,26 +286,27 @@ void gen_global_init(VariableInit *init, Type *type) {
       writeline("  .quad %.*s", init->expr->variable->ident->len, init->expr->variable->ident->name);
       return;
     } else if (init->expr->kind == ND_ADD) {
-      bool left_is_addr = init->expr->lhs->kind == ND_ADDR && init->expr->lhs->lhs->kind == ND_VAR && init->expr->lhs->lhs->variable->kind == VK_GLOBAL;
-      bool right_is_addr = init->expr->rhs->kind == ND_ADDR && init->expr->rhs->lhs->kind == ND_VAR && init->expr->rhs->lhs->variable->kind == VK_GLOBAL;
+      Variable *left_addr = is_const_var_addr(init->expr->lhs);
+      Variable *right_addr = is_const_var_addr(init->expr->rhs);
 
-      if (left_is_addr && is_constant_number(init->expr->rhs)) {
+      if (left_addr && is_constant_number(init->expr->rhs)) {
         writeline("  .quad %.*s+%d",
-                  init->expr->lhs->lhs->variable->ident->len,
-                  init->expr->lhs->lhs->variable->ident->name,
+                  left_addr->ident->len,
+                  left_addr->ident->name,
                   eval(init->expr->rhs));
-      } else if (right_is_addr && is_constant_number(init->expr->lhs)) {
+      } else if (right_addr && is_constant_number(init->expr->lhs)) {
         writeline("  .quad %.*s+%d",
-                  init->expr->rhs->lhs->variable->ident->len,
-                  init->expr->rhs->lhs->variable->ident->name,
+                  right_addr->ident->len,
+                  right_addr->ident->name,
                   eval(init->expr->lhs));
       } else {
         error("unsupported initalization of a global pointer.");
       }
-    } else if (init->expr->kind == ND_ADDR && init->expr->lhs->kind == ND_VAR && init->expr->lhs->variable->kind == VK_GLOBAL) {
+    } else if (is_const_var_addr(init->expr)) {
+      Variable *var = is_const_var_addr(init->expr);
       writeline("  .quad %.*s",
-                init->expr->lhs->variable->ident->len,
-                init->expr->lhs->variable->ident->name);
+                var->ident->len,
+                var->ident->name);
     } else if (is_constant_number(init->expr)) {
       writeline("  .quad %d", eval(init->expr));
     } else {

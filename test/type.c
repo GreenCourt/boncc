@@ -7,7 +7,8 @@ enum global_enum { X0,
 
 typedef enum { A,
                B,
-               C } typedef_global_unnamed_enum;
+               C,
+} typedef_global_unnamed_enum;
 typedef struct {
   short a;
   int b;

@@ -99,7 +99,7 @@ void error(Position *pos, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
-  if(pos) {
+  if (pos) {
     char *line_start = pos->pos - pos->column_number + 1;
     char *line_end = pos->pos;
     while (*line_end != '\n')

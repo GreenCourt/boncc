@@ -447,34 +447,73 @@ Type *consume_type() {
   if (consume(TK_ENUM))
     return consume_enum();
 
-  Token *tok_signed = consume(TK_SIGNED);
-  Token *tok_unsigned = consume(TK_UNSIGNED);
+  int has_signed = 0;
+  int has_unsigned = 0;
+  int has_long = 0;
+  int has_short = 0;
+  int has_char = 0;
+  int has_int = 0;
 
-  if (tok_signed && tok_unsigned)
-    error(&tok_signed->pos, "conflicted signed and unsigned");
+  Token *itok = NULL;
+  while ((itok = consume(TK_UNSIGNED)) ||
+         (itok = consume(TK_SIGNED)) ||
+         (itok = consume(TK_INT)) ||
+         (itok = consume(TK_CHAR)) ||
+         (itok = consume(TK_SHORT)) ||
+         (itok = consume(TK_LONG))) {
 
-  if (consume(TK_CHAR))
-    return base_type(tok_unsigned ? TYPE_UCHAR : TYPE_CHAR);
-
-  if (consume(TK_SHORT)) {
-    consume(TK_INT);
-    return base_type(tok_unsigned ? TYPE_USHORT : TYPE_SHORT);
+    switch (itok->kind) {
+    case TK_SIGNED:
+      if (has_signed || has_unsigned)
+        error(&itok->pos, "conflicted signed/unsigned");
+      has_signed = 1;
+      break;
+    case TK_UNSIGNED:
+      if (has_signed || has_unsigned)
+        error(&itok->pos, "conflicted signed/unsigned");
+      has_unsigned = 1;
+      break;
+    case TK_CHAR:
+      if (has_int || has_short || has_long)
+        error(&itok->pos, "conflicted integer type");
+      has_char = 1;
+      break;
+    case TK_INT:
+      if (has_int || has_char)
+        error(&itok->pos, "conflicted integer type");
+      has_int = 1;
+      break;
+    case TK_SHORT:
+      if (has_char || has_short || has_long)
+        error(&itok->pos, "conflicted integer type");
+      has_short = 1;
+      break;
+    case TK_LONG:
+      if (has_long == 2)
+        error(&itok->pos, "too long");
+      if (has_short || has_char)
+        error(&itok->pos, "conflicted integer type");
+      has_long++;
+      break;
+    default:
+      assert(false);
+    }
   }
 
-  if (consume(TK_LONG)) {
-    consume(TK_LONG);
-    consume(TK_INT);
-    return base_type(tok_unsigned ? TYPE_ULONG : TYPE_LONG);
-  }
+  if (has_char)
+    return base_type(has_unsigned ? TYPE_UCHAR : TYPE_CHAR);
 
-  if (consume(TK_INT))
-    return base_type(tok_unsigned ? TYPE_UINT : TYPE_INT);
+  if (has_short)
+    return base_type(has_unsigned ? TYPE_USHORT : TYPE_SHORT);
 
-  if (tok_signed)
-    return base_type(TYPE_INT);
+  if (has_long)
+    return base_type(has_unsigned ? TYPE_ULONG : TYPE_LONG);
 
-  if (tok_unsigned)
+  if (has_unsigned)
     return base_type(TYPE_UINT);
+
+  if (has_signed || has_int)
+    return base_type(TYPE_INT);
 
   return NULL;
 }

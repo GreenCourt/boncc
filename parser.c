@@ -14,11 +14,12 @@ member      = type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* "
 enum        = ("enum" ident ("{" enumval ("," enumval)* ","? "}")?) | ("enum" ident? "{" enumval ("," enumval)* ","? "}")
 enumval     = indent ("=" expr)?
 typedef     = "typedef" type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")*)* ";"
-vardec      = "const"* ("static" | "extern")? "const"* type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
+dec_prefix  = ("const" | "static" | "extern")*
+vardec      = dec_prefix? type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
 varinit     = expr
               | "{" varinit ("," varinit)* ","? "}"
-func        = "static"? type "*"* ident "(" funcparam? ")" (("{" stmt* "}") | ";")
-funcparam   = type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
+func        = dec_prefix? type "*"* ident "(" funcparam? ")" (("{" stmt* "}") | ";")
+funcparam   = dec_prefix? type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
 stmt        = ";"
               | expr ";"
               | "{" (declaration | stmt)* "}"
@@ -100,8 +101,15 @@ Node *new_node_array_set_val(Variable *var, int idx, int val);
 int eval(Node *node);
 // <-- node.c
 
+typedef enum {
+  IS_STATIC = 1,
+  IS_CONST = 2,
+  IS_EXTERN = 4,
+} DeclarationPrefix;
+
+int dec_prefix();
 Node *declaration();
-void func(Type *type, Token *name, bool is_static);
+void func(Type *type, Token *name, int prefix);
 void funcparam(Vector *params);
 VariableInit *varinit();
 Node *stmt();
@@ -515,27 +523,26 @@ Variable *find_variable(Token *tok) {
   return NULL;
 }
 
-Variable *new_variable(Token *tok, Type *type, VariableKind kind, bool is_static, bool is_extern, bool is_const) {
+Variable *new_variable(Token *tok, Type *type, VariableKind kind, int prefix) {
   Variable *var = calloc(1, sizeof(Variable));
   var->ident = tok->ident;
   var->type = type;
   var->kind = kind;
   var->token = tok;
-  var->is_static = is_static;
-  var->is_extern = is_extern;
-  var->is_const = is_const;
+  var->is_static = (prefix & IS_STATIC) != 0;
+  var->is_extern = (prefix & IS_EXTERN) != 0;
+  var->is_const = (prefix & IS_CONST) != 0;
   return var;
 }
 
-Variable *new_local_variable(Token *tok, Type *type, bool is_static, bool is_extern, bool is_const) {
-  assert(!is_static || !is_extern);
+Variable *new_local_variable(Token *tok, Type *type, int prefix) {
   if (map_get(current_scope->variables, tok->ident))
     error(&tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, VK_LOCAL, is_static, is_extern, is_const);
+  Variable *var = new_variable(tok, type, VK_LOCAL, prefix);
   map_push(current_scope->variables, var->ident, var);
 
   static int idx = 0;
-  if (is_static) {
+  if (prefix & IS_STATIC) {
     vector_push(static_local_variables, &var);
 
     // give internal ident
@@ -556,10 +563,10 @@ void set_offset(Variable *var) {
   local_variable_offset = var->offset;
 }
 
-Variable *new_global(Token *tok, Type *type, bool is_static, bool is_extern, bool is_const) {
+Variable *new_global(Token *tok, Type *type, int prefix) {
   if (map_get(global_scope->variables, tok->ident))
     error(&tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, VK_GLOBAL, is_static, is_extern, is_const);
+  Variable *var = new_variable(tok, type, VK_GLOBAL, prefix);
   map_push(global_scope->variables, var->ident, var);
   return var;
 }
@@ -607,10 +614,13 @@ Variable *new_string_literal(Token *tok) {
   return var;
 }
 
-Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static, bool is_extern, bool is_const) {
+Vector *vardec(Type *type, Token *name, VariableKind kind, int prefix) {
   Type *base = type;
   while (base->kind == TYPE_ARRAY || base->kind == TYPE_PTR)
     base = base->base;
+
+  bool is_static = (prefix & IS_STATIC) != 0;
+  bool is_extern = (prefix & IS_EXTERN) != 0;
 
   Vector *variables = new_vector(0, sizeof(Variable *));
   while (true) {
@@ -620,9 +630,9 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static, bool 
     Variable *var = NULL;
 
     if (kind == VK_GLOBAL)
-      var = new_global(name, type, is_static, is_extern, is_const);
+      var = new_global(name, type, prefix);
     else if (kind == VK_LOCAL)
-      var = new_local_variable(name, type, is_static, is_extern, is_const);
+      var = new_local_variable(name, type, prefix);
     else
       assert(false);
 
@@ -664,7 +674,7 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static, bool 
   return variables;
 }
 
-void func(Type *type, Token *tok, bool is_static) {
+void func(Type *type, Token *tok, int prefix) {
   Function *f = calloc(1, sizeof(Function));
 
   Function *prev = map_get(functions, tok->ident);
@@ -674,7 +684,7 @@ void func(Type *type, Token *tok, bool is_static) {
   f->token = tok;
   f->type = type;
   f->ident = tok->ident;
-  f->is_static = is_static;
+  f->is_static = (prefix & IS_STATIC) != 0;
   f->params = new_vector(0, sizeof(Variable *));
   assert(local_variable_offset == 0);
   assert(current_scope == global_scope);
@@ -710,6 +720,11 @@ void func(Type *type, Token *tok, bool is_static) {
 
 void funcparam(Vector *params) {
   do {
+    Token *tok_prefix = next_token;
+    int prefix = dec_prefix();
+    if (prefix & (IS_STATIC | IS_EXTERN))
+      error(&tok_prefix->pos, "invalid storage class for funcparam");
+
     Token *tok_type = next_token;
     Type *ty = consume_type_star(expect_type());
     if (ty->kind == TYPE_VOID)
@@ -720,10 +735,32 @@ void funcparam(Vector *params) {
       ty = pointer_type(ty); // array as a pointer
       expect(TK_RBRACKET);
     }
-    Variable *var = new_local_variable(id, ty, false, false, false);
+    Variable *var = new_local_variable(id, ty, prefix);
     set_offset(var);
     vector_push(params, &var);
   } while (consume(TK_COMMA));
+}
+
+int dec_prefix() {
+  int prefix = 0;
+  Token *tok = NULL;
+  while ((tok = consume(TK_CONST)) || (tok = consume(TK_STATIC)) || (tok = consume(TK_EXTERN))) {
+    if (tok->kind == TK_CONST) {
+      prefix |= IS_CONST;
+      continue;
+    }
+
+    if (prefix & (IS_STATIC | IS_EXTERN))
+      error(&tok->pos, "conflicted storage class");
+
+    if (tok->kind == TK_STATIC)
+      prefix |= IS_STATIC;
+
+    if (tok->kind == TK_EXTERN)
+      prefix |= IS_EXTERN;
+  }
+
+  return prefix;
 }
 
 Node *declaration() {
@@ -732,37 +769,21 @@ Node *declaration() {
     return new_node_nop();
   }
 
-  bool is_const = false;
-  while (consume(TK_CONST))
-    is_const = true;
-  Token *tok_static = consume(TK_STATIC);
-  while (consume(TK_CONST))
-    is_const = true;
-  Token *tok_extern = consume(TK_EXTERN);
-  while (consume(TK_CONST))
-    is_const = true;
-  if (tok_static == NULL)
-    tok_static = consume(TK_STATIC);
-  bool is_static = tok_static != NULL;
-  bool is_extern = tok_extern != NULL;
-
-  if (is_static && is_extern)
-    error(&tok_static->pos, "conflicted static and external");
+  Token *tok_prefix = next_token;
+  int prefix = dec_prefix();
 
   Token *tk = next_token;
   Type *type = consume_type();
   if (type == NULL) {
     if (current_scope == global_scope)
       error(&tk->pos, "unknown type");
-    if (tok_static)
-      error(&tok_static->pos, "invalid static");
-    if (tok_extern)
-      error(&tok_extern->pos, "invalid extern");
+    if (prefix)
+      error(&tok_prefix->pos, "invalid prefix");
     return NULL;
   }
 
   if ((type->kind == TYPE_STRUCT || type->kind == TYPE_UNION || type->kind == TYPE_ENUM) && consume(TK_SEMICOLON)) {
-    // type declaration only (is_static or is_extern is allowed)
+    // type declaration only (prefix is allowed)
     return new_node_nop();
   }
 
@@ -776,15 +797,15 @@ Node *declaration() {
   if (next_token->kind == TK_LPAREN) {
     if (current_scope != global_scope)
       error(&id->pos, "function declaration is only allowed in global scope");
-    func(type, id, is_static);
+    func(type, id, prefix);
     return NULL;
   }
 
   VariableKind kind = current_scope == global_scope ? VK_GLOBAL : VK_LOCAL;
-  Vector *vars = vardec(type, id, kind, is_static, is_extern, is_const);
+  Vector *vars = vardec(type, id, kind, prefix);
   if (kind == VK_GLOBAL)
     return NULL;
-  if (is_static)
+  if (prefix & IS_STATIC)
     return new_node_nop();
   Node *node = init_multiple_local_variables(vars);
   if (node == NULL)
@@ -1150,7 +1171,7 @@ Node *stmt_for() {
 
       type = consume_type_star(type);
       Token *name = expect(TK_IDENT);
-      Vector *vars = vardec(type, name, VK_LOCAL, false, false, false);
+      Vector *vars = vardec(type, name, VK_LOCAL, 0);
       node->init = init_multiple_local_variables(vars);
     } else {
       node->init = expr();

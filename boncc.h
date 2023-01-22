@@ -149,6 +149,8 @@ struct Type {
   struct Type *base; // only for TYPE_PTR and TYPE_ARRAY
   int array_size;    // number of elements for TYPE_ARRAY
 
+  bool is_unnamed;
+
   Ident *ident;
   Member *member; // TYPE_STRUCT
 };

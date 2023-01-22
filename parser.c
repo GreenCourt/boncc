@@ -287,6 +287,7 @@ Type *consume_struct(bool is_union) {
     ident->len = strlen(ident->name);
 
     st = is_union ? union_type(ident) : struct_type(ident);
+    st->is_unnamed = true;
     map_push(current_scope->structs, st->ident, st);
   }
 
@@ -310,6 +311,48 @@ Type *consume_struct(bool is_union) {
     if (!base)
       error(&tok_type->pos, "invalid member type");
 
+    if (next_token->kind == TK_SEMICOLON) {
+      if (base->kind != TYPE_STRUCT && base->kind != TYPE_UNION)
+        error(&tok_type->pos, "identifier required for the member");
+      if (!base->is_unnamed)
+        error(&tok_type->pos, "identifier required for the member");
+      expect(TK_SEMICOLON);
+      // merge unnamed struct/union
+      Member *child = base->member;
+      if (is_union) {
+        if (offset < base->size)
+          offset = base->size;
+      } else if (base->kind == TYPE_STRUCT) {
+        Member *m = child;
+        while (m) {
+          Type *type = m->type;
+          int padding = (offset % type->size) ? type->size - (offset % type->size) : 0;
+          offset += padding;
+          m->offset += offset;
+          m = m->next;
+          offset += type->size;
+          if (type->size > align)
+            align = type->size;
+        }
+      } else if (base->kind == TYPE_UNION) {
+        int padding = (offset % base->size) ? base->size - (offset % base->size) : 0;
+        offset += padding;
+        Member *m = child;
+        while (m) {
+          m->offset += offset;
+          m = m->next;
+        }
+        offset += base->size;
+        if (base->size > align)
+          align = base->size;
+      } else {
+        assert(false);
+      }
+      tail->next = child;
+      tail = child;
+      continue;
+    }
+
     do {
       Type *type = consume_type_star(base);
 
@@ -320,13 +363,13 @@ Type *consume_struct(bool is_union) {
       if (type->kind == TYPE_VOID)
         error(&tok_type->pos, "void type is not allowed");
 
-      Token *var_name = expect(TK_IDENT);
+      Token *member_name = expect(TK_IDENT);
       type = consume_array_brackets(type);
       if (type->kind == TYPE_ARRAY && type->size < 0)
-        error(&var_name->pos, "invalid member array size");
+        error(&member_name->pos, "invalid member array size");
 
       Member *m = calloc(1, sizeof(Member));
-      m->ident = var_name->ident;
+      m->ident = member_name->ident;
       m->type = type;
       m->is_const = (prefix & IS_CONST) == IS_CONST;
 
@@ -393,6 +436,7 @@ Type *consume_enum() {
     enum_ident->len = strlen(enum_ident->name);
 
     et = enum_type(enum_ident);
+    et->is_unnamed = true;
     map_push(current_scope->enums, et->ident, et);
   }
 

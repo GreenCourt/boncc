@@ -182,5 +182,120 @@ int main() {
     s.x = 12;
     verify(12, s.x, __FILE__, __LINE__);
   }
+  {
+    struct S {
+      struct NAMED {
+        int a;
+        int b;
+      } x;
+    };
+    verify(8, sizeof(struct S), __FILE__, __LINE__);
+    struct S s;
+    s.x.a = 2;
+    s.x.b = 3;
+    verify(2, s.x.a, __FILE__, __LINE__);
+    verify(3, s.x.b, __FILE__, __LINE__);
+  }
+  {
+    struct S {
+      union NAMED {
+        int a;
+        int b;
+      } x;
+    };
+    verify(4, sizeof(struct S), __FILE__, __LINE__);
+    struct S s;
+    s.x.a = 2;
+    verify(2, s.x.a, __FILE__, __LINE__);
+    verify(2, s.x.b, __FILE__, __LINE__);
+  }
+  {
+    union U {
+      union NAMED {
+        int a;
+        int b;
+      } x;
+    };
+    verify(4, sizeof(union U), __FILE__, __LINE__);
+    union U u;
+    u.x.a = 2;
+    verify(2, u.x.a, __FILE__, __LINE__);
+    verify(2, u.x.b, __FILE__, __LINE__);
+  }
+  {
+    union U {
+      struct NAMED {
+        int a;
+        int b;
+      } x;
+    };
+    verify(8, sizeof(union U), __FILE__, __LINE__);
+    union U u;
+    u.x.a = 2;
+    u.x.b = 3;
+    verify(2, u.x.a, __FILE__, __LINE__);
+    verify(3, u.x.b, __FILE__, __LINE__);
+  }
+  {
+    union U {
+      int q;
+      struct {
+        int a;
+        int b;
+      };
+    };
+    verify(8, sizeof(union U), __FILE__, __LINE__);
+    union U u;
+    u.a = 2;
+    u.b = 3;
+    verify(2, u.a, __FILE__, __LINE__);
+    verify(3, u.b, __FILE__, __LINE__);
+    verify(2, u.q, __FILE__, __LINE__);
+  }
+
+  {
+    union U {
+      int q;
+      union {
+        int a;
+        int b;
+      };
+    };
+    verify(4, sizeof(union U), __FILE__, __LINE__);
+    union U u;
+    u.a = 12;
+    verify(12, u.b, __FILE__, __LINE__);
+    verify(12, u.q, __FILE__, __LINE__);
+  }
+
+  {
+    struct S {
+      long q;
+      union {
+        int a;
+        long b;
+      };
+    };
+    verify(16, sizeof(struct S), __FILE__, __LINE__);
+    struct S s;
+    s.a = 4;
+    verify(4, s.b, __FILE__, __LINE__);
+  }
+
+  {
+    struct S {
+      short q;
+      struct {
+        int a;
+        int b;
+      };
+    };
+    verify(12, sizeof(struct S), __FILE__, __LINE__);
+    struct S s;
+    s.a = 2;
+    s.b = 3;
+    verify(2, s.a, __FILE__, __LINE__);
+    verify(3, s.b, __FILE__, __LINE__);
+  }
   return 0;
 }

@@ -8,6 +8,7 @@ int ret5(int x, int y, int z) {
   return x + y + z;
 }
 
+int add12(int, int);
 int add12(int x, int y) {
   int a;
   a = 12;

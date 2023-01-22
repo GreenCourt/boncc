@@ -526,7 +526,7 @@ Variable *find_variable(Token *tok) {
 
 Variable *new_variable(Token *tok, Type *type, VariableKind kind, int prefix) {
   Variable *var = calloc(1, sizeof(Variable));
-  var->ident = tok->ident;
+  var->ident = tok ? tok->ident : NULL;
   var->type = type;
   var->kind = kind;
   var->token = tok;
@@ -687,9 +687,6 @@ void func(Type *type, Token *tok, int prefix) {
   f->ident = tok->ident;
   f->is_static = (prefix & IS_STATIC) != 0;
   f->params = new_vector(0, sizeof(Variable *));
-  assert(local_variable_offset == 0);
-  assert(current_scope == global_scope);
-  new_scope();
   expect(TK_LPAREN);
   if (!consume(TK_RPAREN)) {
     funcparam(f->params);
@@ -700,27 +697,49 @@ void func(Type *type, Token *tok, int prefix) {
     if (prev->params->size != f->params->size)
       error(&tok->pos, "conflicted function declaration");
     for (int i = 0; i < f->params->size; ++i) {
-      Type *ft = *(Type **)vector_get(f->params, i);
-      Type *pt = *(Type **)vector_get(prev->params, i);
+      Type *ft = (*(Variable **)vector_get(f->params, i))->type;
+      Type *pt = (*(Variable **)vector_get(prev->params, i))->type;
       if (!same_type(ft, pt))
         error(&tok->pos, "conflicted function declaration");
     }
   }
 
-  if (!consume(TK_LBRACE))
+  if (!consume(TK_LBRACE)) {
     expect(TK_SEMICOLON);
-  else if (prev && prev->body)
-    error(&tok->pos, "duplicated function definition");
-  else {
-    f->body = stmt_block();
-    f->offset = local_variable_offset;
+    return;
   }
+
+  if (prev && prev->body)
+    error(&tok->pos, "duplicated function definition");
+
+  if (prev) {
+    prev->params = f->params;
+    f = prev;
+  }
+
+  assert(local_variable_offset == 0);
+  assert(current_scope == global_scope);
+  new_scope();
+
+  // push params to local scope
+  for (int i = 0; i < f->params->size; ++i) {
+    Variable *var = *(Variable **)vector_get(f->params, i);
+    if (var->ident == NULL)
+      error(&tok->pos, "missing parameter name");
+    if (map_get(current_scope->variables, var->ident))
+      error(&tok->pos, "duplicated parameter identifier");
+    set_offset(var);
+    map_push(current_scope->variables, var->ident, var);
+  }
+
+  f->body = stmt_block();
+  f->offset = local_variable_offset;
   restore_scope();
   local_variable_offset = 0;
 }
 
 void funcparam(Vector *params) {
-  if(next_token->kind == TK_VOID && next_token->next->kind == TK_RPAREN) {
+  if (next_token->kind == TK_VOID && next_token->next->kind == TK_RPAREN) {
     // (void)
     expect(TK_VOID);
     return;
@@ -735,14 +754,14 @@ void funcparam(Vector *params) {
     Type *ty = consume_type_star(expect_type());
     if (ty->kind == TYPE_VOID)
       error(&tok_type->pos, "void type is not allowed");
-    Token *id = expect(TK_IDENT);
+
+    Token *id = consume(TK_IDENT);
     while (consume(TK_LBRACKET)) {
       consume(TK_NUM);       // currently not used
       ty = pointer_type(ty); // array as a pointer
       expect(TK_RBRACKET);
     }
-    Variable *var = new_local_variable(id, ty, prefix);
-    set_offset(var);
+    Variable *var = new_variable(id, ty, VK_LOCAL, prefix);
     vector_push(params, &var);
   } while (consume(TK_COMMA));
 }

@@ -20,6 +20,7 @@ varinit     = expr
               | "{" varinit ("," varinit)* ","? "}"
 func        = dec_prefix? type "*"* ident "(" funcparam? ")" (("{" stmt* "}") | ";")
 funcparam   = dec_prefix? type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
+              | void
 stmt        = ";"
               | expr ";"
               | "{" (declaration | stmt)* "}"
@@ -719,6 +720,11 @@ void func(Type *type, Token *tok, int prefix) {
 }
 
 void funcparam(Vector *params) {
+  if(next_token->kind == TK_VOID && next_token->next->kind == TK_RPAREN) {
+    // (void)
+    expect(TK_VOID);
+    return;
+  }
   do {
     Token *tok_prefix = next_token;
     int prefix = dec_prefix();

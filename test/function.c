@@ -36,7 +36,7 @@ int static_test1() {
   return a;
 }
 
-int static_test2() {
+int static_test2(void) {
   static int a = -2;
   a = a + 2;
   return a;

@@ -112,7 +112,7 @@ typedef enum {
 int dec_prefix();
 Node *declaration();
 void func(Type *type, Token *name, int prefix);
-void funcparam(Function *f);
+void funcparam(Type *ft);
 VariableInit *varinit();
 Node *stmt();
 Node *expr();
@@ -788,26 +788,20 @@ void func(Type *type, Token *tok, int prefix) {
     map_push(functions, tok->ident, f);
 
   f->token = tok;
-  f->type = type;
   f->ident = tok->ident;
   f->is_static = (prefix & IS_STATIC) != 0;
-  f->params = new_vector(0, sizeof(Variable *));
+  f->type = func_type();
+  f->type->return_type = type;
+  f->type->params = new_vector(0, sizeof(Variable *));
+
   expect(TK_LPAREN);
   if (!consume(TK_RPAREN)) {
-    funcparam(f);
+    funcparam(f->type);
     expect(TK_RPAREN);
   }
 
-  if (prev) {
-    if (prev->params->size != f->params->size || prev->is_variadic != f->is_variadic)
-      error(&tok->pos, "conflicted function declaration");
-    for (int i = 0; i < f->params->size; ++i) {
-      Type *ft = (*(Variable **)vector_get(f->params, i))->type;
-      Type *pt = (*(Variable **)vector_get(prev->params, i))->type;
-      if (!same_type(ft, pt))
-        error(&tok->pos, "conflicted function declaration");
-    }
-  }
+  if (prev && !same_type(prev->type, f->type))
+    error(&tok->pos, "conflicted function declaration");
 
   if (!consume(TK_LBRACE)) {
     expect(TK_SEMICOLON);
@@ -818,7 +812,7 @@ void func(Type *type, Token *tok, int prefix) {
     error(&tok->pos, "duplicated function definition");
 
   if (prev) {
-    prev->params = f->params;
+    prev->type = f->type;
     f = prev;
   }
 
@@ -827,8 +821,8 @@ void func(Type *type, Token *tok, int prefix) {
   new_scope();
 
   // push params to local scope
-  for (int i = 0; i < f->params->size; ++i) {
-    Variable *var = *(Variable **)vector_get(f->params, i);
+  for (int i = 0; i < f->type->params->size; ++i) {
+    Variable *var = *(Variable **)vector_get(f->type->params, i);
     if (var->ident == NULL)
       error(&tok->pos, "missing parameter name");
     if (map_get(current_scope->variables, var->ident))
@@ -843,7 +837,7 @@ void func(Type *type, Token *tok, int prefix) {
   local_variable_offset = 0;
 }
 
-void funcparam(Function *f) {
+void funcparam(Type *ft) {
   if (next_token->kind == TK_VOID && next_token->next->kind == TK_RPAREN) {
     // (void)
     expect(TK_VOID);
@@ -851,7 +845,7 @@ void funcparam(Function *f) {
   }
   do {
     if (consume(TK_3DOTS)) {
-      f->is_variadic = true;
+      ft->is_variadic = true;
       return;
     }
     Token *tok_prefix = next_token;
@@ -871,7 +865,7 @@ void funcparam(Function *f) {
       expect(TK_RBRACKET);
     }
     Variable *var = new_variable(id, ty, VK_LOCAL, prefix);
-    vector_push(f->params, &var);
+    vector_push(ft->params, &var);
   } while (consume(TK_COMMA));
 }
 
@@ -1603,11 +1597,12 @@ Node *primary() {
         // error(&tok->pos, "undeclared function: '%.*s'", tok->token_length, tok->pos.pos);
         fn = calloc(1, sizeof(Function));
         fn->ident = tok->ident;
-        fn->params = new_vector(0, sizeof(Variable *));
+        fn->type = func_type();
+        fn->type->params = new_vector(0, sizeof(Variable *));
       }
 
       node->func = fn;
-      node->type = node->func->type;
+      node->type = fn->type->return_type;
       node->args = new_vector(0, sizeof(Node *));
 
       if (consume(TK_RPAREN))
@@ -1617,12 +1612,12 @@ Node *primary() {
         Node *e = expr();
 
         // TODO
-        //if(!fn->is_variadic && fn->params->size == node->args->size)
+        //if(!fn->type->is_variadic && fn->type->params->size == node->args->size)
         //  error(&tok->pos, "too many arguments for function %*.s", tok->token_length, tok->pos.pos);
 
-        if (fn->params->size > node->args->size) {
+        if (fn->type->params->size > node->args->size) {
           // argument type conversion
-          Variable *p = *(Variable **)vector_get(fn->params, node->args->size);
+          Variable *p = *(Variable **)vector_get(fn->type->params, node->args->size);
           e = new_node_cast(tok, p->type, e);
         }
 

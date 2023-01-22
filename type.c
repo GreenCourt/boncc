@@ -39,6 +39,8 @@ char *type_text(TypeKind kind) {
     return "union";
   case TYPE_ENUM:
     return "enum";
+  case TYPE_FUNC:
+    return "function";
   }
   assert(false);
   return NULL;
@@ -119,6 +121,13 @@ Type *enum_type(bool is_unnamed) {
   return t;
 }
 
+Type *func_type() {
+  Type *t = calloc(1, sizeof(Type));
+  t->kind = TYPE_FUNC;
+  t->size = -1;
+  return t;
+}
+
 bool same_type(Type *a, Type *b) {
   assert(a);
   assert(b);
@@ -133,6 +142,21 @@ bool same_type(Type *a, Type *b) {
 
   if (a->kind == TYPE_ARRAY || a->kind == TYPE_PTR)
     return same_type(a->base, b->base);
+
+  if (a->kind == TYPE_FUNC) {
+    if (!same_type(a->return_type, b->return_type))
+      return false;
+
+    if (a->params->size != b->params->size || a->is_variadic != b->is_variadic)
+      return false;
+
+    for (int i = 0; i < a->params->size; ++i) {
+      Type *ap = (*(Variable **)vector_get(a->params, i))->type;
+      Type *bp = (*(Variable **)vector_get(b->params, i))->type;
+      if (!same_type(ap, bp))
+        return false;
+    }
+  }
 
   return true;
 }

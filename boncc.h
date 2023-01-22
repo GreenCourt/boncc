@@ -140,6 +140,7 @@ typedef enum { TYPE_VOID,
                TYPE_FLOAT,
                TYPE_DOUBLE,
                TYPE_LDOUBLE,
+               TYPE_FUNC,
 } TypeKind;
 
 typedef struct Type Type;
@@ -151,7 +152,11 @@ struct Type {
   int array_size;    // number of elements for TYPE_ARRAY
 
   bool is_unnamed;
-  Member *member; // TYPE_STRUCT
+  Member *member; // TYPE_STRUCT, TYPE_UNION
+
+  Type *return_type; // TYPE_FUNC
+  Vector *params;    // vectorof Variable* for TYPE_FUNC
+  bool is_variadic;  // TYPE_FUNC
 };
 
 typedef struct Node Node;
@@ -165,31 +170,27 @@ struct VariableInit {
 typedef enum { VK_GLOBAL,
                VK_LOCAL,
                VK_STRLIT } VariableKind;
-typedef struct Variable Variable;
-struct Variable {
+typedef struct Object Variable;
+typedef struct Object Function;
+typedef struct Object Object;
+struct Object { // variable or function
   Ident *ident;
-  VariableKind kind;
   Type *type;
-  Token *token;         // for error messages
-  int offset;           // only for VK_LOCAL
-  char *string_literal; // null terminated, only for VK_STRLIT
-  VariableInit *init;   // VK_GLOBAL, VK_LOCAL
+  Token *token; // for error messages
+  bool is_static;
+
+  // variable
+  VariableKind kind;
+  int offset;            // VK_LOCAL
+  char *string_literal;  // null terminated, only for VK_STRLIT
+  VariableInit *init;    // VK_GLOBAL, VK_LOCAL
+  Ident *internal_ident; // for static local
   bool is_const;
   bool is_extern;
-  bool is_static;
-  Ident *internal_ident; // for static local
-};
 
-typedef struct Function Function;
-struct Function {
-  Ident *ident;
-  Type *type;
-  Vector *params; // Variable*
+  // function
   Node *body;
-  Token *token;
-  bool is_static;
-  bool is_variadic;
-  int offset; // total offset
+  int total_offset;
 };
 
 typedef enum {
@@ -312,6 +313,7 @@ Type *array_type(Type *base, int len);
 Type *struct_type(bool is_unnamed);
 Type *union_type(bool is_unnamed);
 Type *enum_type(bool is_unnamed);
+Type *func_type();
 bool same_type(Type *a, Type *b);
 bool is_float(Type *type);
 bool is_integer(Type *type);

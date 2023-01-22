@@ -16,7 +16,7 @@ enumval     = indent ("=" expr)?
 typedef     = "typedef" type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")*)* ";"
 vardec      = "const"* ("static" | "extern")? "const"* type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
 varinit     = expr
-              | "{" varinit ("," varinit)* "}"
+              | "{" varinit ("," varinit)* ","? "}"
 func        = "static"? type "*"* ident "(" funcparam? ")" (("{" stmt* "}") | ";")
 funcparam   = type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
 stmt        = ";"
@@ -813,13 +813,20 @@ VariableInit *varinit() {
     if (tok)
       error(&tok->pos, "empty brace initializer is not allowed");
     init->vec = new_vector(0, sizeof(VariableInit *));
-    do {
+
+    while (true) {
       VariableInit *i = varinit();
       if (i->vec)
         init->nested = true;
       vector_push(init->vec, &i);
-    } while (consume(TK_COMMA));
-    expect(TK_RBRACE);
+      if (consume(TK_COMMA)) {
+        if (consume(TK_RBRACE))
+          break;
+      } else {
+        expect(TK_RBRACE);
+        break;
+      }
+    }
   } else {
     init->expr = expr();
   }

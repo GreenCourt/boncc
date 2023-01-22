@@ -770,6 +770,8 @@ Node *declaration() {
       error(&tok_static->pos, "invalid static");
     if (tok_extern)
       error(&tok_extern->pos, "invalid extern");
+    if (current_scope == global_scope)
+      error(&tk->pos, "unknown type");
     return NULL;
   }
 

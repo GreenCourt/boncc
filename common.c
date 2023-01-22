@@ -8,8 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-char *source_file_name;
-Token *next_token;
 Map *functions;
 Map *strings;
 Scope *global_scope;
@@ -17,6 +15,7 @@ Vector *static_local_variables;
 
 const char *token_text[] = {
     // corresponding to TokenKind
+    "#",
     "+",
     "-",
     "*",
@@ -112,8 +111,6 @@ void error(Position *pos, char *fmt, ...) {
     int sp = pos->pos - line_start + indent;
     fprintf(stderr, "%*s", sp, ""); // print spaces
     fprintf(stderr, "^ ");
-  } else {
-    fprintf(stderr, "%s: ", source_file_name);
   }
 
   vfprintf(stderr, fmt, ap);

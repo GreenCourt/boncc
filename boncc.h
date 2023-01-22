@@ -2,6 +2,7 @@
 #include <stdbool.h>
 
 typedef enum {
+  TK_HASH,      // #
   TK_PLUS,      // +
   TK_MINUS,     // -
   TK_STAR,      // *
@@ -106,6 +107,7 @@ struct Token {
   long long val;        // only for TK_NUM
   char *string_literal; // null terminated, only for TK_STR
   Type *type;           // TK_NUM
+  bool at_eol;
 };
 
 typedef struct Type Type;
@@ -278,8 +280,6 @@ void *map_geti(Map *map, int idx);
 void *map_get(Map *map, Ident *key);
 void map_push(Map *map, Ident *key, void *val);
 
-extern char *source_file_name;
-extern Token *next_token;
 extern Map *functions; // Function*
 extern Map *strings;   // Variable*
 extern Scope *global_scope;
@@ -291,8 +291,9 @@ void error(Position *pos, char *fmt, ...);
 char *read_file(char *path);
 bool same_ident(Ident *a, Ident *b);
 
-Token *tokenize(char *p);
-void program();
+Token *tokenize(char *input_path);
+Token *preprocess(Token *input);
+void parse(Token *input);
 void generate_code();
 
 char *type_text(TypeKind kind);

@@ -100,7 +100,6 @@ Node *new_node_array_set_val(Variable *var, int idx, int val);
 int eval(Node *node);
 // <-- node.c
 
-void program();
 Node *declaration();
 void func(Type *type, Token *name, bool is_static);
 void funcparam(Vector *params);
@@ -136,6 +135,7 @@ Type *consume_type_star(Type *type);
 Type *consume_array_brackets(Type *type);
 Node *init_multiple_local_variables(Vector *variables);
 
+static Token *next_token;
 static Scope *current_scope = NULL;
 static int local_variable_offset;
 static int label_index = 0;
@@ -605,20 +605,6 @@ Variable *new_string_literal(Token *tok) {
   var->type = array_type(base_type(TYPE_CHAR), array_length);
   map_push(strings, key, var);
   return var;
-}
-
-void program() {
-  functions = new_map();
-  strings = new_map();
-  static_local_variables = new_vector(0, sizeof(Variable *));
-  break_label = new_vector(0, sizeof(int));
-  continue_label = new_vector(0, sizeof(int));
-  switch_nodes = new_vector(0, sizeof(Node *));
-  assert(current_scope == NULL);
-  new_scope();
-  global_scope = current_scope;
-  while (!at_eof())
-    declaration();
 }
 
 Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static, bool is_extern, bool is_const) {
@@ -1561,4 +1547,20 @@ Node *postfix() {
     q = tail(p);
   }
   return p;
+}
+
+void parse(Token *input) {
+  assert(input);
+  next_token = input;
+  functions = new_map();
+  strings = new_map();
+  static_local_variables = new_vector(0, sizeof(Variable *));
+  break_label = new_vector(0, sizeof(int));
+  continue_label = new_vector(0, sizeof(int));
+  switch_nodes = new_vector(0, sizeof(Node *));
+  assert(current_scope == NULL);
+  new_scope();
+  global_scope = current_scope;
+  while (!at_eof())
+    declaration();
 }

@@ -39,22 +39,13 @@ static void new_token(TokenKind kind, Token **tail, Position *p, int len) {
     tok->ident->len = len;
   }
 
-  if (match(p->pos, "__FILE__")) {
-    tok->kind = TK_STR;
-    tok->string_literal = p->file_name;
-  }
-  if (match(p->pos, "__LINE__")) {
-    tok->kind = TK_NUM;
-    tok->val = p->line_number;
-    tok->type = base_type(TYPE_INT);
-  }
-
   (*tail)->next = tok;
   *tail = tok;
   advance(p, len);
 }
 
-Token *tokenize(char *src) {
+Token *tokenize(char *input_path) {
+  char *src = read_file(input_path);
   Token head;
   head.next = NULL;
   Token *tail = &head;
@@ -62,19 +53,14 @@ Token *tokenize(char *src) {
   Position p;
   p.line_number = 1;
   p.column_number = 1;
-  p.file_name = source_file_name;
+  p.file_name = input_path;
   p.pos = src;
 
   while (*p.pos) {
+    if (*p.pos == '\n')
+      tail->at_eol = true;
     if (isspace(*p.pos)) {
       advance(&p, 1);
-      continue;
-    }
-
-    if (*p.pos == '#') { // TODO: temporary ignore #include
-      advance(&p, 1);
-      while (*p.pos != '\n')
-        advance(&p, 1);
       continue;
     }
 
@@ -165,7 +151,9 @@ Token *tokenize(char *src) {
         TK_QUESTION,
         TK_COLON,
         TK_SEMICOLON,
-        TK_COMMA};
+        TK_COMMA,
+        TK_HASH,
+    };
 
     bool cont = false;
     for (int i = 0; i < (int)(sizeof(kinds) / sizeof(TokenKind)); ++i) {

@@ -125,6 +125,7 @@ Type *func_type() {
   Type *t = calloc(1, sizeof(Type));
   t->kind = TYPE_FUNC;
   t->size = -1;
+  t->params = new_vector(0, sizeof(Variable *));
   return t;
 }
 
@@ -151,8 +152,8 @@ bool same_type(Type *a, Type *b) {
       return false;
 
     for (int i = 0; i < a->params->size; ++i) {
-      Type *ap = (*(Variable **)vector_get(a->params, i))->type;
-      Type *bp = (*(Variable **)vector_get(b->params, i))->type;
+      Type *ap = *(Type **)vector_get(a->params, i);
+      Type *bp = *(Type **)vector_get(b->params, i);
       if (!same_type(ap, bp))
         return false;
     }

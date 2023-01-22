@@ -155,7 +155,7 @@ struct Type {
   Member *member; // TYPE_STRUCT, TYPE_UNION
 
   Type *return_type; // TYPE_FUNC
-  Vector *params;    // vectorof Variable* for TYPE_FUNC
+  Vector *params;    // vector of Type* for TYPE_FUNC
   bool is_variadic;  // TYPE_FUNC
 };
 
@@ -178,10 +178,10 @@ struct Object { // variable or function
   Type *type;
   Token *token; // for error messages
   bool is_static;
+  int offset; // VK_LOCAL, function
 
   // variable
   VariableKind kind;
-  int offset;            // VK_LOCAL
   char *string_literal;  // null terminated, only for VK_STRLIT
   VariableInit *init;    // VK_GLOBAL, VK_LOCAL
   Ident *internal_ident; // for static local
@@ -190,7 +190,7 @@ struct Object { // variable or function
 
   // function
   Node *body;
-  int total_offset;
+  Vector *params; // vector of Variable*
 };
 
 typedef enum {

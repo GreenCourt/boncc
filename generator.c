@@ -359,8 +359,8 @@ void gen_func(Function *func) {
 
   // move args to stack
   comment(NULL, "function arguments to stack");
-  for (int i = 0; i < func->type->params->size; ++i) {
-    Variable *v = *(Variable **)vector_get(func->type->params, i);
+  for (int i = 0; i < func->params->size; ++i) {
+    Variable *v = *(Variable **)vector_get(func->params, i);
     if (v->type->size == 1)
       writeline("  mov [rbp-%d], %s", v->offset, reg_args1[i]);
     else if (v->type->size == 2)

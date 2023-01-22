@@ -112,7 +112,7 @@ typedef enum {
 int dec_prefix();
 Node *declaration();
 void func(Type *type, Token *name, int prefix);
-void funcparam(Type *ft);
+bool funcparam(Vector *params);
 VariableInit *varinit();
 Node *stmt();
 Node *expr();
@@ -792,12 +792,17 @@ void func(Type *type, Token *tok, int prefix) {
   f->is_static = (prefix & IS_STATIC) != 0;
   f->type = func_type();
   f->type->return_type = type;
-  f->type->params = new_vector(0, sizeof(Variable *));
 
+  f->params = new_vector(0, sizeof(Variable *));
   expect(TK_LPAREN);
   if (!consume(TK_RPAREN)) {
-    funcparam(f->type);
+    f->type->is_variadic = funcparam(f->params);
     expect(TK_RPAREN);
+  }
+
+  for (int i = 0; i < f->params->size; ++i) {
+    Variable *var = *(Variable **)vector_get(f->params, i);
+    vector_push(f->type->params, &var->type);
   }
 
   if (prev && !same_type(prev->type, f->type))
@@ -812,7 +817,7 @@ void func(Type *type, Token *tok, int prefix) {
     error(&tok->pos, "duplicated function definition");
 
   if (prev) {
-    prev->type = f->type;
+    prev->params = f->params;
     f = prev;
   }
 
@@ -821,8 +826,8 @@ void func(Type *type, Token *tok, int prefix) {
   new_scope();
 
   // push params to local scope
-  for (int i = 0; i < f->type->params->size; ++i) {
-    Variable *var = *(Variable **)vector_get(f->type->params, i);
+  for (int i = 0; i < f->params->size; ++i) {
+    Variable *var = *(Variable **)vector_get(f->params, i);
     if (var->ident == NULL)
       error(&tok->pos, "missing parameter name");
     if (map_get(current_scope->variables, var->ident))
@@ -837,17 +842,19 @@ void func(Type *type, Token *tok, int prefix) {
   local_variable_offset = 0;
 }
 
-void funcparam(Type *ft) {
+bool funcparam(Vector *params) {
+  /*
+   * parse function parameters and push them into params
+   * return true if function is variadic
+   */
   if (next_token->kind == TK_VOID && next_token->next->kind == TK_RPAREN) {
     // (void)
     expect(TK_VOID);
-    return;
+    return false;
   }
   do {
-    if (consume(TK_3DOTS)) {
-      ft->is_variadic = true;
-      return;
-    }
+    if (consume(TK_3DOTS))
+      return true;
     Token *tok_prefix = next_token;
     int prefix = dec_prefix();
     if (prefix & (IS_STATIC | IS_EXTERN))
@@ -865,8 +872,9 @@ void funcparam(Type *ft) {
       expect(TK_RBRACKET);
     }
     Variable *var = new_variable(id, ty, VK_LOCAL, prefix);
-    vector_push(ft->params, &var);
+    vector_push(params, &var);
   } while (consume(TK_COMMA));
+  return false;
 }
 
 int dec_prefix() {
@@ -1598,7 +1606,6 @@ Node *primary() {
         fn = calloc(1, sizeof(Function));
         fn->ident = tok->ident;
         fn->type = func_type();
-        fn->type->params = new_vector(0, sizeof(Variable *));
       }
 
       node->func = fn;
@@ -1617,8 +1624,8 @@ Node *primary() {
 
         if (fn->type->params->size > node->args->size) {
           // argument type conversion
-          Variable *p = *(Variable **)vector_get(fn->type->params, node->args->size);
-          e = new_node_cast(tok, p->type, e);
+          Type *t = *(Type **)vector_get(fn->type->params, node->args->size);
+          e = new_node_cast(tok, t, e);
         }
 
         vector_push(node->args, &e);

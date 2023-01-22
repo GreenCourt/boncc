@@ -77,6 +77,8 @@ const char *token_text[] = {
     "char",
     "short",
     "long",
+    "float",
+    "double",
     "sizeof",
     "struct",
     "union",

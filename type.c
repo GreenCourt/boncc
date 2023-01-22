@@ -23,6 +23,12 @@ char *type_text(TypeKind kind) {
     return "unsigned short";
   case TYPE_ULONG:
     return "unsigned long";
+  case TYPE_FLOAT:
+    return "float";
+  case TYPE_DOUBLE:
+    return "double";
+  case TYPE_LDOUBLE:
+    return "long double";
   case TYPE_PTR:
     return "ptr";
   case TYPE_ARRAY:
@@ -55,11 +61,16 @@ Type *base_type(TypeKind kind) {
     break;
   case TYPE_INT:
   case TYPE_UINT:
+  case TYPE_FLOAT:
     t->size = 4;
     break;
   case TYPE_LONG:
   case TYPE_ULONG:
+  case TYPE_DOUBLE:
     t->size = 8;
+    break;
+  case TYPE_LDOUBLE:
+    t->size = 16;
     break;
   default:
     assert(false);
@@ -129,6 +140,18 @@ bool same_type(Type *a, Type *b) {
     return same_ident(a->ident, b->ident);
 
   return true;
+}
+
+bool is_float(Type *type) {
+  assert(type);
+  switch (type->kind) {
+  case TYPE_FLOAT:
+  case TYPE_DOUBLE:
+  case TYPE_LDOUBLE:
+    return true;
+  default:
+    return false;
+  }
 }
 
 bool is_integer(Type *type) {

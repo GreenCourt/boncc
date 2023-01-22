@@ -7,8 +7,9 @@
 /* BNF
 program     = declaration*
 declaration = func | vardec | (struct ";") | (enum ";") | typedef
-type        = "void" | int_type | struct | enum
+type        = "void" | int_type | float_type | struct | enum
 int_type    = ("signed" | "unsigned")? ("int" | "char" | ("short" "int"?) | ("long" "long"? "int"?))
+float_type  = "float" | ("long"? double "long"?)
 struct      = (("struct" | "union") ident ("{" member* "}")?) | (("struct" | "union") ident? "{" member* "}")
 member      = "const"* type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";"
 enum        = ("enum" ident ("{" enumval ("," enumval)* ","? "}")?) | ("enum" ident? "{" enumval ("," enumval)* ","? "}")
@@ -453,6 +454,8 @@ Type *consume_type() {
   int has_short = 0;
   int has_char = 0;
   int has_int = 0;
+  int has_float = 0;
+  int has_double = 0;
 
   Token *itok = NULL;
   while ((itok = consume(TK_UNSIGNED)) ||
@@ -460,45 +463,65 @@ Type *consume_type() {
          (itok = consume(TK_INT)) ||
          (itok = consume(TK_CHAR)) ||
          (itok = consume(TK_SHORT)) ||
-         (itok = consume(TK_LONG))) {
+         (itok = consume(TK_LONG)) ||
+         (itok = consume(TK_FLOAT)) ||
+         (itok = consume(TK_DOUBLE))) {
 
     switch (itok->kind) {
     case TK_SIGNED:
-      if (has_signed || has_unsigned)
-        error(&itok->pos, "conflicted signed/unsigned");
+      if (has_signed || has_unsigned || has_float || has_double)
+        error(&itok->pos, "conflicted type");
       has_signed = 1;
       break;
     case TK_UNSIGNED:
-      if (has_signed || has_unsigned)
-        error(&itok->pos, "conflicted signed/unsigned");
+      if (has_signed || has_unsigned || has_float || has_double)
+        error(&itok->pos, "conflicted type");
       has_unsigned = 1;
       break;
     case TK_CHAR:
-      if (has_int || has_short || has_long)
-        error(&itok->pos, "conflicted integer type");
+      if (has_int || has_short || has_long || has_float || has_double)
+        error(&itok->pos, "conflicted type");
       has_char = 1;
       break;
     case TK_INT:
-      if (has_int || has_char)
-        error(&itok->pos, "conflicted integer type");
+      if (has_int || has_char || has_float || has_double)
+        error(&itok->pos, "conflicted type");
       has_int = 1;
       break;
     case TK_SHORT:
-      if (has_char || has_short || has_long)
-        error(&itok->pos, "conflicted integer type");
+      if (has_char || has_short || has_long || has_float || has_double)
+        error(&itok->pos, "conflicted type");
       has_short = 1;
       break;
     case TK_LONG:
-      if (has_long == 2)
+      if (has_long == 2 || (has_double && has_long))
         error(&itok->pos, "too long");
-      if (has_short || has_char)
-        error(&itok->pos, "conflicted integer type");
+      if (has_short || has_char || has_float)
+        error(&itok->pos, "conflicted type");
       has_long++;
+      break;
+    case TK_FLOAT:
+      if (has_signed || has_unsigned || has_char || has_short || has_int || has_long || has_float || has_double)
+        error(&itok->pos, "conflicted type");
+      has_float = 1;
+      break;
+    case TK_DOUBLE:
+      if (has_signed || has_unsigned || has_char || has_short || has_int || has_float || has_double)
+        error(&itok->pos, "conflicted type");
+      if (has_long == 2)
+        error(&itok->pos, "too long double");
+      has_double = 1;
       break;
     default:
       assert(false);
     }
   }
+
+  if (has_float)
+    return base_type(TYPE_FLOAT);
+
+  if (has_double)
+    return base_type(has_long ? TYPE_LDOUBLE : TYPE_DOUBLE);
 
   if (has_char)
     return base_type(has_unsigned ? TYPE_UCHAR : TYPE_CHAR);

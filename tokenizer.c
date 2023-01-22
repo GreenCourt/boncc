@@ -130,6 +130,8 @@ Token *tokenize(char *input_path) {
         TK_CHAR,
         TK_SHORT,
         TK_LONG,
+        TK_FLOAT,
+        TK_DOUBLE,
         TK_SIZEOF,
         TK_STRUCT,
         TK_UNION,

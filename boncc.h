@@ -64,6 +64,8 @@ typedef enum {
   TK_CHAR,      // char
   TK_SHORT,     // short
   TK_LONG,      // long
+  TK_FLOAT,     // float
+  TK_DOUBLE,    // double
   TK_SIZEOF,    // sizeof
   TK_STRUCT,    // struct
   TK_UNION,     // union
@@ -133,7 +135,11 @@ typedef enum { TYPE_VOID,
                TYPE_UINT,
                TYPE_UCHAR,
                TYPE_USHORT,
-               TYPE_ULONG } TypeKind;
+               TYPE_ULONG,
+               TYPE_FLOAT,
+               TYPE_DOUBLE,
+               TYPE_LDOUBLE,
+} TypeKind;
 
 typedef struct Type Type;
 struct Type {
@@ -305,6 +311,7 @@ Type *struct_type(Ident *ident);
 Type *union_type(Ident *ident);
 Type *enum_type(Ident *ident);
 bool same_type(Type *a, Type *b);
+bool is_float(Type *type);
 bool is_integer(Type *type);
 bool is_unsigned(Type *type);
 bool is_signed(Type *type);

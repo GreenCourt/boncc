@@ -766,12 +766,12 @@ Node *declaration() {
   Token *tk = next_token;
   Type *type = consume_type();
   if (type == NULL) {
+    if (current_scope == global_scope)
+      error(&tk->pos, "unknown type");
     if (tok_static)
       error(&tok_static->pos, "invalid static");
     if (tok_extern)
       error(&tok_extern->pos, "invalid extern");
-    if (current_scope == global_scope)
-      error(&tk->pos, "unknown type");
     return NULL;
   }
 

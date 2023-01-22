@@ -174,5 +174,13 @@ int main() {
     verify(14, u2.s.a, __FILE__, __LINE__);
     verify(14, u2.t.c, __FILE__, __LINE__);
   }
+  {
+    struct S {
+      int x;
+      const int y;
+    } s;
+    s.x = 12;
+    verify(12, s.x, __FILE__, __LINE__);
+  }
   return 0;
 }

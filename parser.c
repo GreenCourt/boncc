@@ -10,7 +10,7 @@ declaration = func | vardec | (struct ";") | (enum ";") | typedef
 type        = "void" | int_type | struct | enum
 int_type    = ("signed" | "unsigned")? ("int" | "char" | ("short" "int"?) | ("long" "long"? "int"?))
 struct      = (("struct" | "union") ident ("{" member* "}")?) | (("struct" | "union") ident? "{" member* "}")
-member      = type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";"
+member      = "const"* type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";"
 enum        = ("enum" ident ("{" enumval ("," enumval)* ","? "}")?) | ("enum" ident? "{" enumval ("," enumval)* ","? "}")
 enumval     = indent ("=" expr)?
 typedef     = "typedef" type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")*)* ";"
@@ -299,6 +299,11 @@ Type *consume_struct(bool is_union) {
   int align = 0;
 
   while (!consume(TK_RBRACE)) {
+    Token *tok_prefix = next_token;
+    int prefix = dec_prefix();
+    if (prefix & (IS_STATIC | IS_EXTERN))
+      error(&tok_prefix->pos, "invalid storage class for a member");
+
     Token *tok_type = next_token;
     Type *base = consume_type();
     if (!base)
@@ -322,6 +327,7 @@ Type *consume_struct(bool is_union) {
       Member *m = calloc(1, sizeof(Member));
       m->ident = var_name->ident;
       m->type = type;
+      m->is_const = (prefix & IS_CONST) == IS_CONST;
 
       if (is_union) {
         m->offset = 0;

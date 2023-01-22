@@ -116,6 +116,7 @@ struct Member {
   Ident *ident;
   Type *type;
   int offset;
+  bool is_const;
   Member *next; // liked list
 };
 

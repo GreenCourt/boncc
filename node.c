@@ -375,6 +375,9 @@ Node *new_node_assign(Token *tok, Node *lhs, Node *rhs) {
   if (lhs->kind == ND_VAR && lhs->variable->is_const)
     error(tok ? &tok->pos : NULL, "cannot assignning to a const variable");
 
+  if (lhs->kind == ND_MEMBER && lhs->member->is_const)
+    error(tok ? &tok->pos : NULL, "cannot assignning to a const member");
+
   if (lhs->kind == ND_MEMBER && lhs->lhs->kind == ND_VAR) {
     assert(lhs->lhs->type->kind == TYPE_STRUCT || lhs->lhs->type->kind == TYPE_UNION);
     assert(lhs->lhs->variable->type->kind == TYPE_STRUCT || lhs->lhs->variable->type->kind == TYPE_UNION);

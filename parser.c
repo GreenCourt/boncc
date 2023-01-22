@@ -662,7 +662,7 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, bool is_static, bool 
         assert(type->size >= 0);
         assert(type->array_size >= 0);
       }
-    } else if (type->array_size < 0) {
+    } else if (!is_extern && type->array_size < 0) {
       error(&name->pos, "invalid array size");
     }
 

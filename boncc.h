@@ -47,6 +47,7 @@ typedef enum {
   TK_SEMICOLON, // ;
   TK_COMMA,     // ,
   TK_DOT,       // .
+  TK_3DOTS,     // ...
   TK_ARROW,     // ->
   TK_RETURN,    // return
   TK_IF,        // if
@@ -189,6 +190,7 @@ struct Function {
   Node *body;
   Token *token;
   bool is_static;
+  bool is_variadic;
   int offset; // total offset
 };
 
@@ -226,7 +228,7 @@ typedef enum {
   ND_DEFAULT,  // default
   ND_BREAK,    // break
   ND_CONTINUE, // continue
-  ND_BLOCK,    // {...}
+  ND_BLOCK,    // { }
   ND_CALL,     // call function
   ND_ADDR,     // &val
   ND_DEREF,    // *ptr

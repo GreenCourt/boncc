@@ -112,7 +112,7 @@ typedef enum {
 int dec_prefix();
 Node *declaration();
 void func(Type *type, Token *name, int prefix);
-void funcparam(Vector *params);
+void funcparam(Function *f);
 VariableInit *varinit();
 Node *stmt();
 Node *expr();
@@ -811,12 +811,12 @@ void func(Type *type, Token *tok, int prefix) {
   f->params = new_vector(0, sizeof(Variable *));
   expect(TK_LPAREN);
   if (!consume(TK_RPAREN)) {
-    funcparam(f->params);
+    funcparam(f);
     expect(TK_RPAREN);
   }
 
   if (prev) {
-    if (prev->params->size != f->params->size)
+    if (prev->params->size != f->params->size || prev->is_variadic != f->is_variadic)
       error(&tok->pos, "conflicted function declaration");
     for (int i = 0; i < f->params->size; ++i) {
       Type *ft = (*(Variable **)vector_get(f->params, i))->type;
@@ -860,13 +860,17 @@ void func(Type *type, Token *tok, int prefix) {
   local_variable_offset = 0;
 }
 
-void funcparam(Vector *params) {
+void funcparam(Function *f) {
   if (next_token->kind == TK_VOID && next_token->next->kind == TK_RPAREN) {
     // (void)
     expect(TK_VOID);
     return;
   }
   do {
+    if (consume(TK_3DOTS)) {
+      f->is_variadic = true;
+      return;
+    }
     Token *tok_prefix = next_token;
     int prefix = dec_prefix();
     if (prefix & (IS_STATIC | IS_EXTERN))
@@ -884,7 +888,7 @@ void funcparam(Vector *params) {
       expect(TK_RBRACKET);
     }
     Variable *var = new_variable(id, ty, VK_LOCAL, prefix);
-    vector_push(params, &var);
+    vector_push(f->params, &var);
   } while (consume(TK_COMMA));
 }
 
@@ -1613,7 +1617,7 @@ Node *primary() {
 
       if (fn == NULL) {
         // TODO
-        // error(&tok->pos, "undefined function: '%.*s'", tok->token_length, tok->pos.pos);
+        // error(&tok->pos, "undeclared function: '%.*s'", tok->token_length, tok->pos.pos);
         fn = calloc(1, sizeof(Function));
         fn->ident = tok->ident;
         fn->params = new_vector(0, sizeof(Variable *));
@@ -1630,10 +1634,10 @@ Node *primary() {
         Node *e = expr();
 
         // TODO
-        //if(fn->params->size == node->args->size)
+        //if(!fn->is_variadic && fn->params->size == node->args->size)
         //  error(&tok->pos, "too many arguments for function %*.s", tok->token_length, tok->pos.pos);
 
-        if (fn && fn->params->size > node->args->size) { // TODO remove this if
+        if (fn->params->size > node->args->size) {
           // argument type conversion
           Variable *p = *(Variable **)vector_get(fn->params, node->args->size);
           e = new_node_cast(tok, p->type, e);

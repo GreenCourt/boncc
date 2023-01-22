@@ -142,6 +142,7 @@ Token *tokenize(char *input_path) {
         TK_CONST,
         TK_SIGNED,
         TK_UNSIGNED,
+        TK_3DOTS,
         TK_ARROW,
         TK_INC,
         TK_DEC,

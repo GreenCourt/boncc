@@ -60,6 +60,7 @@ const char *token_text[] = {
     ";",
     ",",
     ".",
+    "...",
     "->",
     "return",
     "if",

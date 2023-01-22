@@ -467,8 +467,12 @@ Type *consume_enum() {
 }
 
 Type *consume_type_star(Type *type) {
-  while (consume(TK_STAR))
+  Token *tok = NULL;
+  while ((tok = consume(TK_STAR)) || (tok = consume(TK_CONST))) {
+    if (tok->kind == TK_CONST)
+      continue; // currently ignore const for a pointer
     type = pointer_type(type);
+  }
   return type;
 }
 

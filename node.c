@@ -91,6 +91,10 @@ Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
     error(tok ? &tok->pos : NULL, "invalid operands to binary + operator");
   if (!right_is_ptr && !is_integer(rhs->type))
     error(tok ? &tok->pos : NULL, "invalid operands to binary + operator");
+  if (left_is_ptr && lhs->type->base->size < 0)
+    error(tok ? &tok->pos : NULL, "incomplete type to binary + operator");
+  if (right_is_ptr && rhs->type->base->size < 0)
+    error(tok ? &tok->pos : NULL, "incomplete type to binary + operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   if (left_is_ptr) {
@@ -118,6 +122,10 @@ Node *new_node_sub(Token *tok, Node *lhs, Node *rhs) {
     error(tok ? &tok->pos : NULL, "invalid operands to binary - operator");
   if (!right_is_ptr && !is_integer(rhs->type))
     error(tok ? &tok->pos : NULL, "invalid operands to binary - operator");
+  if (left_is_ptr && lhs->type->base->size < 0)
+    error(tok ? &tok->pos : NULL, "incomplete type to binary + operator");
+  if (right_is_ptr && rhs->type->base->size < 0)
+    error(tok ? &tok->pos : NULL, "incomplete type to binary + operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   if (left_is_ptr && !right_is_ptr) {

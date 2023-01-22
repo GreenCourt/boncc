@@ -299,8 +299,7 @@ Type *consume_struct(bool is_union) {
       Type *type = consume_type_star(base);
 
       // struct S { struct S* p; }; is allowed
-      bool is_self_pointer = type->kind == TYPE_PTR && same_type(base, st);
-      if (!is_self_pointer && base->size < 0)
+      if (type->kind != TYPE_PTR && base->size < 0)
         error(&tok_type->pos, "incomplete type");
 
       if (type->kind == TYPE_VOID)
@@ -779,10 +778,10 @@ Node *declaration() {
     return new_node_nop();
   }
 
-  if (type->size < 0)
-    error(&tk->pos, "incomplete type");
-
   type = consume_type_star(type);
+
+  if (type->kind != TYPE_PTR && type->size < 0)
+    error(&tk->pos, "incomplete type");
 
   Token *id = expect(TK_IDENT);
 

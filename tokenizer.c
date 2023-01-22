@@ -79,6 +79,39 @@ Token *tokenize(char *input_path) {
       continue;
     }
 
+    // ignore some keywords
+    {
+      if (match(p.pos, "volatile")) {
+        // my compiler has no optimization mechanisms
+        advance(&p, 8);
+        continue;
+      }
+      if (match(p.pos, "__restrict")) {
+        advance(&p, 10);
+        continue;
+      }
+      if (match(p.pos, "__inline")) {
+        advance(&p, 8);
+        continue;
+      }
+      if (match(p.pos, "__extension__")) {
+        advance(&p, 13);
+        continue;
+      }
+      if (match(p.pos, "__attribute__")) {
+        advance(&p, 13);
+        while (*p.pos != ';')
+          advance(&p, 1);
+        continue;
+      }
+      if (match(p.pos, "__asm__")) {
+        advance(&p, 7);
+        while (*p.pos != ';')
+          advance(&p, 1);
+        continue;
+      }
+    }
+
     static const TokenKind kinds[] = {
         // ordering is important, e.g) "==" must be checked before "=".
         TK_RETURN,

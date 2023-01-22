@@ -405,5 +405,9 @@ int main() {
     const int x = 12;
     verify(12, x, __FILE__, __LINE__);
   }
+  {
+    int arr[12 + sizeof(int) * 2];
+    verify(80, sizeof(arr), __FILE__, __LINE__);
+  }
   return 0;
 }

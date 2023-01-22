@@ -521,10 +521,16 @@ Type *consume_type() {
 Type *consume_array_brackets(Type *type) {
   if (!consume(TK_LBRACKET))
     return type;
-  Token *num = consume(TK_NUM);
-  if (num && num->val < 0)
-    error(&num->pos, "invalid array size");
-  int size = num ? num->val : -1; // -1 will be assumed by rhs initializer
+  int size = -1; // -1 will be assumed by rhs initializer
+  if (next_token->kind != TK_RBRACKET) {
+    Token *tok_sz = next_token;
+    Node *expr_sz = expr();
+    if (expr_sz) {
+      size = eval(expr_sz);
+      if (size < 0)
+        error(&tok_sz->pos, "invalid array size");
+    }
+  }
   Token *r = expect(TK_RBRACKET);
   type = consume_array_brackets(type);
   if (type->size < 0)

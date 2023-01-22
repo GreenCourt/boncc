@@ -95,30 +95,27 @@ Type *array_type(Type *base, int len) {
   return t;
 }
 
-Type *struct_type(Ident *ident) {
-  assert(ident != NULL);
+Type *struct_type(bool is_unnamed) {
   Type *t = calloc(1, sizeof(Type));
   t->kind = TYPE_STRUCT;
-  t->ident = ident;
   t->size = -1;
+  t->is_unnamed = is_unnamed;
   return t;
 }
 
-Type *union_type(Ident *ident) {
-  assert(ident != NULL);
+Type *union_type(bool is_unnamed) {
   Type *t = calloc(1, sizeof(Type));
   t->kind = TYPE_UNION;
-  t->ident = ident;
   t->size = -1;
+  t->is_unnamed = is_unnamed;
   return t;
 }
 
-Type *enum_type(Ident *ident) {
-  assert(ident != NULL);
+Type *enum_type(bool is_unnamed) {
   Type *t = calloc(1, sizeof(Type));
   t->kind = TYPE_ENUM;
-  t->ident = ident;
   t->size = -1;
+  t->is_unnamed = is_unnamed;
   return t;
 }
 
@@ -127,17 +124,15 @@ bool same_type(Type *a, Type *b) {
   assert(b);
   if (a == b)
     return true;
-  while ((a->kind == TYPE_ARRAY || a->kind == TYPE_PTR) && (b->kind == TYPE_ARRAY || b->kind == TYPE_PTR)) {
-    if (a->kind != b->kind)
-      return false;
-    a = a->base;
-    b = b->base;
-  }
+
   if (a->kind != b->kind)
     return false;
 
-  if (a->kind == TYPE_ENUM || a->kind == TYPE_STRUCT || a->kind == TYPE_UNION)
-    return same_ident(a->ident, b->ident);
+  if (a->kind == TYPE_STRUCT || a->kind == TYPE_UNION || a->kind == TYPE_ENUM)
+    return a == b; // for user defined types, compare as pointers
+
+  if (a->kind == TYPE_ARRAY || a->kind == TYPE_PTR)
+    return same_type(a->base, b->base);
 
   return true;
 }

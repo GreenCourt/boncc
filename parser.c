@@ -250,8 +250,6 @@ Member *find_member(Type *st, Token *tok) {
 }
 
 Type *consume_struct(bool is_union) {
-  static int idx = 0;
-
   Token *tag = consume(TK_IDENT);
   Type *st = NULL;
 
@@ -263,8 +261,8 @@ Type *consume_struct(bool is_union) {
       if (st && st->size > 0)
         error(&tag->pos, "duplicated struct identifier");
       if (st == NULL) {
-        st = is_union ? union_type(tag->ident) : struct_type(tag->ident);
-        map_push(current_scope->structs, st->ident, st);
+        st = is_union ? union_type(false) : struct_type(false);
+        map_push(current_scope->structs, tag->ident, st);
       }
     } else {
       // declare struct/union
@@ -273,22 +271,15 @@ Type *consume_struct(bool is_union) {
       if (st && ((st->kind == TYPE_STRUCT && is_union) || (st->kind == TYPE_UNION && !is_union)))
         error(&tag->pos, "conflicted struct/union tag");
       if (st == NULL) {
-        st = is_union ? union_type(tag->ident) : struct_type(tag->ident);
-        map_push(current_scope->structs, st->ident, st);
+        st = is_union ? union_type(false) : struct_type(false);
+        map_push(current_scope->structs, tag->ident, st);
       }
       return st;
     }
   } else {
     // unnamed struct/union
     expect(TK_LBRACE);
-    Ident *ident = calloc(1, sizeof(Ident));
-    ident->name = calloc(20, sizeof(char));
-    sprintf(ident->name, ".struct%d", idx++);
-    ident->len = strlen(ident->name);
-
-    st = is_union ? union_type(ident) : struct_type(ident);
-    st->is_unnamed = true;
-    map_push(current_scope->structs, st->ident, st);
+    st = is_union ? union_type(true) : struct_type(true);
   }
 
   assert(st != NULL);
@@ -401,43 +392,35 @@ Type *consume_struct(bool is_union) {
 }
 
 Type *consume_enum() {
-  static int idx = 0;
-  Token *enum_name = consume(TK_IDENT);
+  Token *tag = consume(TK_IDENT);
   Type *et = NULL;
 
-  if (enum_name) {
+  if (tag) {
     // named enum
     if (consume(TK_LBRACE)) {
       // define enum
       // enum can be defined only for the current-scope
-      et = map_get(current_scope->enums, enum_name->ident);
+      et = map_get(current_scope->enums, tag->ident);
       if (et && et->size > 0)
-        error(&enum_name->pos, "duplicated enum identifier");
+        error(&tag->pos, "duplicated enum identifier");
       if (et == NULL) {
-        et = enum_type(enum_name->ident);
-        map_push(current_scope->enums, et->ident, et);
+        et = enum_type(false);
+        map_push(current_scope->enums, tag->ident, et);
       }
     } else {
       // declare enum
       // multipe time declaration is allowed
-      et = find_enum(enum_name->ident);
+      et = find_enum(tag->ident);
       if (et == NULL) {
-        et = enum_type(enum_name->ident);
-        map_push(current_scope->enums, et->ident, et);
+        et = enum_type(false);
+        map_push(current_scope->enums, tag->ident, et);
       }
       return et;
     }
   } else {
     // unnamed enum
     expect(TK_LBRACE);
-    Ident *enum_ident = calloc(1, sizeof(Ident));
-    enum_ident->name = calloc(20, sizeof(char));
-    sprintf(enum_ident->name, ".enum%d", idx++);
-    enum_ident->len = strlen(enum_ident->name);
-
-    et = enum_type(enum_ident);
-    et->is_unnamed = true;
-    map_push(current_scope->enums, et->ident, et);
+    et = enum_type(true);
   }
 
   assert(et != NULL);

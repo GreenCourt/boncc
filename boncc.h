@@ -151,8 +151,6 @@ struct Type {
   int array_size;    // number of elements for TYPE_ARRAY
 
   bool is_unnamed;
-
-  Ident *ident;
   Member *member; // TYPE_STRUCT
 };
 
@@ -311,9 +309,9 @@ char *type_text(TypeKind kind);
 Type *base_type(TypeKind kind);
 Type *pointer_type(Type *base);
 Type *array_type(Type *base, int len);
-Type *struct_type(Ident *ident);
-Type *union_type(Ident *ident);
-Type *enum_type(Ident *ident);
+Type *struct_type(bool is_unnamed);
+Type *union_type(bool is_unnamed);
+Type *enum_type(bool is_unnamed);
 bool same_type(Type *a, Type *b);
 bool is_float(Type *type);
 bool is_integer(Type *type);

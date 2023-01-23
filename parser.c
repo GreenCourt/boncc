@@ -156,9 +156,8 @@ static Vector *switch_nodes;   // stack of Node*
 void new_scope() {
   Scope *s = calloc(1, sizeof(Scope));
   s->prev = current_scope;
-  s->variables = new_map();
-  s->structs = new_map();
-  s->enums = new_map();
+  s->objects = new_map();
+  s->types = new_map();
   s->enum_elements = new_map();
   s->typedefs = new_map();
   current_scope = s;
@@ -204,10 +203,10 @@ Type *find_typedef(Ident *id) {
   return NULL;
 }
 
-Type *find_enum(Ident *id) {
+Type *find_type(Ident *id) {
   Scope *scope = current_scope;
   while (scope) {
-    Type *t = map_get(scope->enums, id);
+    Type *t = map_get(scope->types, id);
     if (t)
       return t;
     scope = scope->prev;
@@ -226,17 +225,6 @@ int *find_enum_element(Ident *id) {
   return NULL;
 }
 
-Type *find_struct(Ident *id) {
-  Scope *scope = current_scope;
-  while (scope) {
-    Type *t = map_get(scope->structs, id);
-    if (t)
-      return t;
-    scope = scope->prev;
-  }
-  return NULL;
-}
-
 Member *find_member(Type *st, Token *tok) {
   assert(st->kind == TYPE_STRUCT || st->kind == TYPE_UNION);
   assert(tok->kind == TK_IDENT);
@@ -249,7 +237,8 @@ Member *find_member(Type *st, Token *tok) {
   return NULL;
 }
 
-Type *consume_struct(bool is_union) {
+Type *consume_struct(TypeKind kind) {
+  assert(kind == TYPE_STRUCT || kind == TYPE_UNION);
   Token *tag = consume(TK_IDENT);
   Type *st = NULL;
 
@@ -257,29 +246,29 @@ Type *consume_struct(bool is_union) {
     if (consume(TK_LBRACE)) {
       // define struct/union
       // struct/union can be defined only for the current-scope
-      st = map_get(current_scope->structs, tag->ident);
-      if (st && st->size > 0)
-        error(&tag->pos, "duplicated struct identifier");
+      st = map_get(current_scope->types, tag->ident);
       if (st == NULL) {
-        st = is_union ? union_type(false) : struct_type(false);
-        map_push(current_scope->structs, tag->ident, st);
+        st = kind == TYPE_UNION ? union_type(false) : struct_type(false);
+        map_push(current_scope->types, tag->ident, st);
+      } else if (kind != st->kind || st->size > 0) {
+        error(&tag->pos, "conflicted type tag");
       }
     } else {
       // declare struct/union
       // multipe time declaration is allowed
-      st = find_struct(tag->ident);
-      if (st && ((st->kind == TYPE_STRUCT && is_union) || (st->kind == TYPE_UNION && !is_union)))
-        error(&tag->pos, "conflicted struct/union tag");
+      st = find_type(tag->ident);
       if (st == NULL) {
-        st = is_union ? union_type(false) : struct_type(false);
-        map_push(current_scope->structs, tag->ident, st);
+        st = kind == TYPE_UNION ? union_type(false) : struct_type(false);
+        map_push(current_scope->types, tag->ident, st);
+      } else if (kind != st->kind) {
+        error(&tag->pos, "conflicted type tag");
       }
       return st;
     }
   } else {
     // unnamed struct/union
     expect(TK_LBRACE);
-    st = is_union ? union_type(true) : struct_type(true);
+    st = kind == TYPE_UNION ? union_type(true) : struct_type(true);
   }
 
   assert(st != NULL);
@@ -310,7 +299,7 @@ Type *consume_struct(bool is_union) {
       expect(TK_SEMICOLON);
       // merge unnamed struct/union
       Member *child = base->member;
-      if (is_union) {
+      if (kind == TYPE_UNION) {
         if (offset < base->size)
           offset = base->size;
       } else if (base->kind == TYPE_STRUCT) {
@@ -364,7 +353,7 @@ Type *consume_struct(bool is_union) {
       m->type = type;
       m->is_const = (prefix & IS_CONST) == IS_CONST;
 
-      if (is_union) {
+      if (kind == TYPE_UNION) {
         m->offset = 0;
         if (offset < type->size)
           offset = type->size;
@@ -400,20 +389,22 @@ Type *consume_enum() {
     if (consume(TK_LBRACE)) {
       // define enum
       // enum can be defined only for the current-scope
-      et = map_get(current_scope->enums, tag->ident);
-      if (et && et->size > 0)
-        error(&tag->pos, "duplicated enum identifier");
+      et = map_get(current_scope->types, tag->ident);
       if (et == NULL) {
         et = enum_type(false);
-        map_push(current_scope->enums, tag->ident, et);
+        map_push(current_scope->types, tag->ident, et);
+      } else if (et->kind != TYPE_ENUM || et->size > 0) {
+        error(&tag->pos, "conflicted type tag");
       }
     } else {
       // declare enum
       // multipe time declaration is allowed
-      et = find_enum(tag->ident);
+      et = find_type(tag->ident);
       if (et == NULL) {
         et = enum_type(false);
-        map_push(current_scope->enums, tag->ident, et);
+        map_push(current_scope->types, tag->ident, et);
+      } else if (et->kind != TYPE_ENUM) {
+        error(&tag->pos, "conflicted type tag");
       }
       return et;
     }
@@ -471,10 +462,10 @@ Type *consume_type() {
     return base_type(TYPE_VOID);
 
   if (consume(TK_STRUCT))
-    return consume_struct(false);
+    return consume_struct(TYPE_STRUCT);
 
   if (consume(TK_UNION))
-    return consume_struct(true);
+    return consume_struct(TYPE_UNION);
 
   if (consume(TK_ENUM))
     return consume_enum();
@@ -618,18 +609,18 @@ void expect_typedef() {
 
 bool at_eof() { return next_token->kind == TK_EOF; }
 
-Variable *find_variable(Token *tok) {
+Object *find_object(Token *tok) {
   Scope *scope = current_scope;
   while (scope) {
-    Variable *var = map_get(scope->variables, tok->ident);
-    if (var)
-      return var;
+    Object *obj = map_get(scope->objects, tok->ident);
+    if (obj)
+      return obj;
     scope = scope->prev;
   }
   return NULL;
 }
 
-Variable *new_variable(Token *tok, Type *type, VariableKind kind, int prefix) {
+Variable *new_variable(Token *tok, Type *type, ObjectKind kind, int prefix) {
   Variable *var = calloc(1, sizeof(Variable));
   var->ident = tok ? tok->ident : NULL;
   var->type = type;
@@ -642,10 +633,10 @@ Variable *new_variable(Token *tok, Type *type, VariableKind kind, int prefix) {
 }
 
 Variable *new_local_variable(Token *tok, Type *type, int prefix) {
-  if (map_get(current_scope->variables, tok->ident))
+  if (map_get(current_scope->objects, tok->ident))
     error(&tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, VK_LOCAL, prefix);
-  map_push(current_scope->variables, var->ident, var);
+  Variable *var = new_variable(tok, type, OBJ_LVAR, prefix);
+  map_push(current_scope->objects, var->ident, var);
 
   static int idx = 0;
   if (prefix & IS_STATIC) {
@@ -663,17 +654,17 @@ Variable *new_local_variable(Token *tok, Type *type, int prefix) {
 }
 
 void set_offset(Variable *var) {
-  assert(var->kind == VK_LOCAL);
+  assert(var->kind == OBJ_LVAR);
   assert(var->offset == 0);
   var->offset = local_variable_offset + var->type->size;
   local_variable_offset = var->offset;
 }
 
 Variable *new_global(Token *tok, Type *type, int prefix) {
-  if (map_get(global_scope->variables, tok->ident))
+  if (map_get(global_scope->objects, tok->ident))
     error(&tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, VK_GLOBAL, prefix);
-  map_push(global_scope->variables, var->ident, var);
+  Variable *var = new_variable(tok, type, OBJ_GVAR, prefix);
+  map_push(global_scope->objects, var->ident, var);
   return var;
 }
 
@@ -694,7 +685,7 @@ Variable *new_string_literal(Token *tok) {
   var->ident->name = calloc(15, sizeof(char));
   sprintf(var->ident->name, ".LC%d", idx++);
   var->ident->len = strlen(var->ident->name);
-  var->kind = VK_STRLIT;
+  var->kind = OBJ_STRLIT;
   var->string_literal = tok->string_literal;
   var->token = tok;
   var->is_static = true;
@@ -720,7 +711,7 @@ Variable *new_string_literal(Token *tok) {
   return var;
 }
 
-Vector *vardec(Type *type, Token *name, VariableKind kind, int prefix) {
+Vector *vardec(Type *type, Token *name, ObjectKind kind, int prefix) {
   Type *base = type;
   while (base->kind == TYPE_ARRAY || base->kind == TYPE_PTR)
     base = base->base;
@@ -735,9 +726,9 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, int prefix) {
     type = consume_array_brackets(type);
     Variable *var = NULL;
 
-    if (kind == VK_GLOBAL)
+    if (kind == OBJ_GVAR)
       var = new_global(name, type, prefix);
-    else if (kind == VK_LOCAL)
+    else if (kind == OBJ_LVAR)
       var = new_local_variable(name, type, prefix);
     else
       assert(false);
@@ -750,7 +741,7 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, int prefix) {
         if (var->init->vec == NULL) {
           if (type->base->kind != TYPE_CHAR) {
             error(&name->pos, "invalid initializer for an array");
-          } else if (var->init->expr->kind != ND_VAR || var->init->expr->variable->kind != VK_STRLIT) {
+          } else if (var->init->expr->kind != ND_VAR || var->init->expr->variable->kind != OBJ_STRLIT) {
             error(&name->pos, "invalid initializer for an array");
           } else if (type->array_size < 0) {
             type->array_size = var->init->expr->variable->type->array_size;
@@ -767,7 +758,7 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, int prefix) {
       error(&name->pos, "invalid array size");
     }
 
-    if (kind == VK_LOCAL && !is_static && !is_extern)
+    if (kind == OBJ_LVAR && !is_static && !is_extern)
       set_offset(var);
 
     vector_push(variables, &var);
@@ -783,10 +774,14 @@ Vector *vardec(Type *type, Token *name, VariableKind kind, int prefix) {
 void func(Type *type, Token *tok, int prefix) {
   Function *f = calloc(1, sizeof(Function));
 
-  Function *prev = map_get(functions, tok->ident);
-  if (prev == NULL)
-    map_push(functions, tok->ident, f);
+  Function *prev = map_get(global_scope->objects, tok->ident);
+  if (prev && prev->kind != OBJ_FUNC)
+    error(&tok->pos, "duplicated identifier");
 
+  if (prev == NULL)
+    map_push(global_scope->objects, tok->ident, f);
+
+  f->kind = OBJ_FUNC;
   f->token = tok;
   f->ident = tok->ident;
   f->is_static = (prefix & IS_STATIC) != 0;
@@ -830,10 +825,10 @@ void func(Type *type, Token *tok, int prefix) {
     Variable *var = *(Variable **)vector_get(f->params, i);
     if (var->ident == NULL)
       error(&tok->pos, "missing parameter name");
-    if (map_get(current_scope->variables, var->ident))
+    if (map_get(current_scope->objects, var->ident))
       error(&tok->pos, "duplicated parameter identifier");
     set_offset(var);
-    map_push(current_scope->variables, var->ident, var);
+    map_push(current_scope->objects, var->ident, var);
   }
 
   f->body = stmt_block();
@@ -871,7 +866,7 @@ bool funcparam(Vector *params) {
       ty = pointer_type(ty); // array as a pointer
       expect(TK_RBRACKET);
     }
-    Variable *var = new_variable(id, ty, VK_LOCAL, prefix);
+    Variable *var = new_variable(id, ty, OBJ_LVAR, prefix);
     vector_push(params, &var);
   } while (consume(TK_COMMA));
   return false;
@@ -937,9 +932,9 @@ Node *declaration() {
     return NULL;
   }
 
-  VariableKind kind = current_scope == global_scope ? VK_GLOBAL : VK_LOCAL;
+  ObjectKind kind = current_scope == global_scope ? OBJ_GVAR : OBJ_LVAR;
   Vector *vars = vardec(type, id, kind, prefix);
-  if (kind == VK_GLOBAL)
+  if (kind == OBJ_GVAR)
     return NULL;
   if (prefix & IS_STATIC)
     return new_node_nop();
@@ -988,7 +983,7 @@ Node *init_local_variable(Variable *var, VariableInit *init, Type *type, int arr
     node->blk_stmts = new_vector(0, sizeof(Node *));
 
     if (init->expr) {
-      if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == VK_STRLIT) {
+      if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == OBJ_STRLIT) {
         // initilize the array as a string
         char *lit = init->expr->variable->string_literal;
         if (type->array_size != (int)strlen(lit) + 1)
@@ -1307,7 +1302,7 @@ Node *stmt_for() {
 
       type = consume_type_star(type);
       Token *name = expect(TK_IDENT);
-      Vector *vars = vardec(type, name, VK_LOCAL, 0);
+      Vector *vars = vardec(type, name, OBJ_LVAR, 0);
       node->init = init_multiple_local_variables(vars);
     } else {
       node->init = expr();
@@ -1598,7 +1593,9 @@ Node *primary() {
       node->kind = ND_CALL;
       node->token = tok;
 
-      Function *fn = map_get(functions, tok->ident);
+      Function *fn = map_get(global_scope->objects, tok->ident);
+      if (fn && fn->kind != OBJ_FUNC)
+        error(&tok->pos, "'%.*s' is not a function", tok->ident->len, tok->ident->name);
 
       if (fn == NULL) {
         // TODO
@@ -1636,9 +1633,11 @@ Node *primary() {
     } else if ((enum_val = find_enum_element(tok->ident))) { // enum value
       return new_node_num(tok, *enum_val, base_type(TYPE_INT));
     } else { // variable
-      Variable *var = find_variable(tok);
+      Variable *var = find_object(tok);
       if (!var)
         error(&tok->pos, "undefined identifier: '%.*s'", tok->token_length, tok->pos.pos);
+      if (var->kind == OBJ_FUNC)
+        error(&tok->pos, "'%.*s' is a function", tok->token_length, tok->pos.pos);
       return new_node_var(tok, var);
     }
   }
@@ -1709,7 +1708,6 @@ Node *postfix() {
 void parse(Token *input) {
   assert(input);
   next_token = input;
-  functions = new_map();
   strings = new_map();
   static_local_variables = new_vector(0, sizeof(Variable *));
   break_label = new_vector(0, sizeof(int));

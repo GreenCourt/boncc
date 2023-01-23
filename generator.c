@@ -44,7 +44,7 @@ void gen_address(Node *node) {
     gen(node->lhs);
     return;
   case ND_VAR:
-    if (node->variable->kind == VK_LOCAL) {
+    if (node->variable->kind == OBJ_LVAR) {
       if (node->variable->is_static) {
         comment(NULL, "gen_address ND_VAR static-local: %.*s", node->variable->ident->len, node->variable->ident->name);
         writeline("  lea rax, %.*s[rip]", node->variable->internal_ident->len, node->variable->internal_ident->name);
@@ -55,10 +55,10 @@ void gen_address(Node *node) {
         comment(NULL, "gen_address ND_VAR local: %.*s", node->variable->ident->len, node->variable->ident->name);
         writeline("  lea rax, [rbp-%d]", node->variable->offset);
       }
-    } else if (node->variable->kind == VK_GLOBAL) {
+    } else if (node->variable->kind == OBJ_GVAR) {
       comment(NULL, "gen_address ND_VAR global: %.*s", node->variable->ident->len, node->variable->ident->name);
       writeline("  lea rax, %.*s[rip]", node->variable->ident->len, node->variable->ident->name);
-    } else if (node->variable->kind == VK_STRLIT) {
+    } else if (node->variable->kind == OBJ_STRLIT) {
       comment(NULL, "gen_address ND_VAR strlit: \"%s\"", node->variable->string_literal);
       writeline("  lea rax, %.*s[rip]", node->variable->ident->len, node->variable->ident->name);
     } else
@@ -234,7 +234,7 @@ void gen_global_init(VariableInit *init, Type *type) {
 
   if (type->kind == TYPE_ARRAY) {
     if (init->expr) {
-      if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == VK_STRLIT) {
+      if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == OBJ_STRLIT) {
         // initilize the array as a string
         Variable *lit = init->expr->variable;
         if (type->array_size != lit->type->array_size)
@@ -284,7 +284,7 @@ void gen_global_init(VariableInit *init, Type *type) {
       init = *(VariableInit **)vector_get(init->vec, 0);
     }
     assert(init->expr);
-    if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == VK_STRLIT) {
+    if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == OBJ_STRLIT) {
       // initilize the pointer to a string-literal
       writeline("  .quad %.*s", init->expr->variable->ident->len, init->expr->variable->ident->name);
       return;
@@ -901,8 +901,10 @@ void generate_code(FILE *output_stream) {
   }
 
   // global variables
-  for (int i = 0; i < global_scope->variables->size; i++) {
-    Variable *v = map_geti(global_scope->variables, i);
+  for (int i = 0; i < global_scope->objects->size; i++) {
+    Variable *v = map_geti(global_scope->objects, i);
+    if (v->kind != OBJ_GVAR)
+      continue;
     if (v->is_extern)
       continue;
     writeline(".data");
@@ -917,7 +919,7 @@ void generate_code(FILE *output_stream) {
   // static local variables
   for (int i = 0; i < static_local_variables->size; i++) {
     Variable *v = *(Variable **)vector_get(static_local_variables, i);
-    assert(v->kind == VK_LOCAL);
+    assert(v->kind == OBJ_LVAR);
     assert(v->is_static);
     assert(v->internal_ident);
     writeline(".data");
@@ -928,8 +930,10 @@ void generate_code(FILE *output_stream) {
 
   // functions
   writeline(".text");
-  for (int i = 0; i < functions->size; i++) {
-    Function *f = map_geti(functions, i);
+  for (int i = 0; i < global_scope->objects->size; i++) {
+    Function *f = map_geti(global_scope->objects, i);
+    if (f->kind != OBJ_FUNC)
+      continue;
     gen_func(f);
   }
   ostream = NULL;

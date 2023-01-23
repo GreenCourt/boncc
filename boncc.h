@@ -167,9 +167,11 @@ struct VariableInit {
   bool nested; // true if vec is nested
 };
 
-typedef enum { VK_GLOBAL,
-               VK_LOCAL,
-               VK_STRLIT } VariableKind;
+typedef enum { OBJ_GVAR,
+               OBJ_LVAR,
+               OBJ_STRLIT,
+               OBJ_FUNC,
+} ObjectKind;
 typedef struct Object Variable;
 typedef struct Object Function;
 typedef struct Object Object;
@@ -177,13 +179,13 @@ struct Object { // variable or function
   Ident *ident;
   Type *type;
   Token *token; // for error messages
+  ObjectKind kind;
   bool is_static;
-  int offset; // VK_LOCAL, function
+  int offset; // OBJ_LVAR, OBJ_FUNC
 
   // variable
-  VariableKind kind;
-  char *string_literal;  // null terminated, only for VK_STRLIT
-  VariableInit *init;    // VK_GLOBAL, VK_LOCAL
+  char *string_literal;  // null terminated, only for OBJ_STRLIT
+  VariableInit *init;    // OBJ_GVAR, OBJ_LVAR
   Ident *internal_ident; // for static local
   bool is_const;
   bool is_extern;
@@ -278,9 +280,8 @@ typedef struct Vector Map;
 typedef struct Scope Scope;
 struct Scope {
   Scope *prev;
-  Map *variables;     // Variable*
-  Map *structs;       // Type*
-  Map *enums;         // Type*
+  Map *objects;       // Object*
+  Map *types;         // Type*
   Map *enum_elements; // int*
   Map *typedefs;      // Type*
 };
@@ -290,9 +291,8 @@ void *map_geti(Map *map, int idx);
 void *map_get(Map *map, Ident *key);
 void map_push(Map *map, Ident *key, void *val);
 
-extern Map *functions; // Function*
-extern Map *strings;   // Variable*
 extern Scope *global_scope;
+extern Map *strings;                   // Variable*
 extern Vector *static_local_variables; // Variable*
 
 bool is_alphabet(char c);

@@ -15,12 +15,12 @@ member      = "const"* type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "
 enum        = ("enum" ident ("{" enumval ("," enumval)* ","? "}")?) | ("enum" ident? "{" enumval ("," enumval)* ","? "}")
 enumval     = indent ("=" expr)?
 typedef     = "typedef" type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")*)* ";"
-dec_prefix  = ("const" | "static" | "extern")*
-vardec      = dec_prefix? type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
+qualifier   = ("const" | "static" | "extern")*
+vardec      = qualifier? type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
 varinit     = expr
               | "{" varinit ("," varinit)* ","? "}"
-func        = dec_prefix? type "*"* ident "(" funcparam? ")" (("{" stmt* "}") | ";")
-funcparam   = dec_prefix? type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
+func        = qualifier? type "*"* ident "(" funcparam? ")" (("{" stmt* "}") | ";")
+funcparam   = qualifier? type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
               | void
 stmt        = ";"
               | expr ";"
@@ -107,11 +107,11 @@ typedef enum {
   IS_STATIC = 1,
   IS_CONST = 2,
   IS_EXTERN = 4,
-} DeclarationPrefix;
+} Qualifier;
 
-int dec_prefix();
+int consume_qualifier();
 Node *declaration();
-void func(Type *type, Token *name, int prefix);
+void func(Type *type, Token *name, int qualifier);
 bool funcparam(Vector *params);
 VariableInit *varinit();
 Node *stmt();
@@ -281,10 +281,10 @@ Type *consume_struct(TypeKind kind) {
   int align = 0;
 
   while (!consume(TK_RBRACE)) {
-    Token *tok_prefix = next_token;
-    int prefix = dec_prefix();
-    if (prefix & (IS_STATIC | IS_EXTERN))
-      error(&tok_prefix->pos, "invalid storage class for a member");
+    Token *tok_qualifier = next_token;
+    int qualifier = consume_qualifier();
+    if (qualifier & (IS_STATIC | IS_EXTERN))
+      error(&tok_qualifier->pos, "invalid storage class for a member");
 
     Token *tok_type = next_token;
     Type *base = consume_type();
@@ -351,7 +351,7 @@ Type *consume_struct(TypeKind kind) {
       Member *m = calloc(1, sizeof(Member));
       m->ident = member_name->ident;
       m->type = type;
-      m->is_const = (prefix & IS_CONST) == IS_CONST;
+      m->is_const = (qualifier & IS_CONST) == IS_CONST;
 
       if (kind == TYPE_UNION) {
         m->offset = 0;
@@ -620,26 +620,26 @@ Object *find_object(Token *tok) {
   return NULL;
 }
 
-Variable *new_variable(Token *tok, Type *type, ObjectKind kind, int prefix) {
+Variable *new_variable(Token *tok, Type *type, ObjectKind kind, int qualifier) {
   Variable *var = calloc(1, sizeof(Variable));
   var->ident = tok ? tok->ident : NULL;
   var->type = type;
   var->kind = kind;
   var->token = tok;
-  var->is_static = (prefix & IS_STATIC) != 0;
-  var->is_extern = (prefix & IS_EXTERN) != 0;
-  var->is_const = (prefix & IS_CONST) != 0;
+  var->is_static = (qualifier & IS_STATIC) != 0;
+  var->is_extern = (qualifier & IS_EXTERN) != 0;
+  var->is_const = (qualifier & IS_CONST) != 0;
   return var;
 }
 
-Variable *new_local_variable(Token *tok, Type *type, int prefix) {
+Variable *new_local_variable(Token *tok, Type *type, int qualifier) {
   if (map_get(current_scope->objects, tok->ident))
     error(&tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, OBJ_LVAR, prefix);
+  Variable *var = new_variable(tok, type, OBJ_LVAR, qualifier);
   map_push(current_scope->objects, var->ident, var);
 
   static int idx = 0;
-  if (prefix & IS_STATIC) {
+  if (qualifier & IS_STATIC) {
     vector_push(static_local_variables, &var);
 
     // give internal ident
@@ -660,10 +660,10 @@ void set_offset(Variable *var) {
   local_variable_offset = var->offset;
 }
 
-Variable *new_global(Token *tok, Type *type, int prefix) {
+Variable *new_global(Token *tok, Type *type, int qualifier) {
   if (map_get(global_scope->objects, tok->ident))
     error(&tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, OBJ_GVAR, prefix);
+  Variable *var = new_variable(tok, type, OBJ_GVAR, qualifier);
   map_push(global_scope->objects, var->ident, var);
   return var;
 }
@@ -711,13 +711,13 @@ Variable *new_string_literal(Token *tok) {
   return var;
 }
 
-Vector *vardec(Type *type, Token *name, ObjectKind kind, int prefix) {
+Vector *vardec(Type *type, Token *name, ObjectKind kind, int qualifier) {
   Type *base = type;
   while (base->kind == TYPE_ARRAY || base->kind == TYPE_PTR)
     base = base->base;
 
-  bool is_static = (prefix & IS_STATIC) != 0;
-  bool is_extern = (prefix & IS_EXTERN) != 0;
+  bool is_static = (qualifier & IS_STATIC) != 0;
+  bool is_extern = (qualifier & IS_EXTERN) != 0;
 
   Vector *variables = new_vector(0, sizeof(Variable *));
   while (true) {
@@ -727,9 +727,9 @@ Vector *vardec(Type *type, Token *name, ObjectKind kind, int prefix) {
     Variable *var = NULL;
 
     if (kind == OBJ_GVAR)
-      var = new_global(name, type, prefix);
+      var = new_global(name, type, qualifier);
     else if (kind == OBJ_LVAR)
-      var = new_local_variable(name, type, prefix);
+      var = new_local_variable(name, type, qualifier);
     else
       assert(false);
 
@@ -771,7 +771,7 @@ Vector *vardec(Type *type, Token *name, ObjectKind kind, int prefix) {
   return variables;
 }
 
-void func(Type *type, Token *tok, int prefix) {
+void func(Type *type, Token *tok, int qualifier) {
   Function *f = calloc(1, sizeof(Function));
 
   Function *prev = map_get(global_scope->objects, tok->ident);
@@ -784,7 +784,7 @@ void func(Type *type, Token *tok, int prefix) {
   f->kind = OBJ_FUNC;
   f->token = tok;
   f->ident = tok->ident;
-  f->is_static = (prefix & IS_STATIC) != 0;
+  f->is_static = (qualifier & IS_STATIC) != 0;
   f->type = func_type();
   f->type->return_type = type;
 
@@ -850,10 +850,10 @@ bool funcparam(Vector *params) {
   do {
     if (consume(TK_3DOTS))
       return true;
-    Token *tok_prefix = next_token;
-    int prefix = dec_prefix();
-    if (prefix & (IS_STATIC | IS_EXTERN))
-      error(&tok_prefix->pos, "invalid storage class for funcparam");
+    Token *tok_qualifier = next_token;
+    int qualifier = consume_qualifier();
+    if (qualifier & (IS_STATIC | IS_EXTERN))
+      error(&tok_qualifier->pos, "invalid storage class for funcparam");
 
     Token *tok_type = next_token;
     Type *ty = consume_type_star(expect_type());
@@ -866,32 +866,32 @@ bool funcparam(Vector *params) {
       ty = pointer_type(ty); // array as a pointer
       expect(TK_RBRACKET);
     }
-    Variable *var = new_variable(id, ty, OBJ_LVAR, prefix);
+    Variable *var = new_variable(id, ty, OBJ_LVAR, qualifier);
     vector_push(params, &var);
   } while (consume(TK_COMMA));
   return false;
 }
 
-int dec_prefix() {
-  int prefix = 0;
+int consume_qualifier() {
+  int qualifier = 0;
   Token *tok = NULL;
   while ((tok = consume(TK_CONST)) || (tok = consume(TK_STATIC)) || (tok = consume(TK_EXTERN))) {
     if (tok->kind == TK_CONST) {
-      prefix |= IS_CONST;
+      qualifier |= IS_CONST;
       continue;
     }
 
-    if (prefix & (IS_STATIC | IS_EXTERN))
+    if (qualifier & (IS_STATIC | IS_EXTERN))
       error(&tok->pos, "conflicted storage class");
 
     if (tok->kind == TK_STATIC)
-      prefix |= IS_STATIC;
+      qualifier |= IS_STATIC;
 
     if (tok->kind == TK_EXTERN)
-      prefix |= IS_EXTERN;
+      qualifier |= IS_EXTERN;
   }
 
-  return prefix;
+  return qualifier;
 }
 
 Node *declaration() {
@@ -900,21 +900,21 @@ Node *declaration() {
     return new_node_nop();
   }
 
-  Token *tok_prefix = next_token;
-  int prefix = dec_prefix();
+  Token *tok_qualifier = next_token;
+  int qualifier = consume_qualifier();
 
   Token *tk = next_token;
   Type *type = consume_type();
   if (type == NULL) {
     if (current_scope == global_scope)
       error(&tk->pos, "unknown type");
-    if (prefix)
-      error(&tok_prefix->pos, "invalid prefix");
+    if (qualifier)
+      error(&tok_qualifier->pos, "invalid qualifier");
     return NULL;
   }
 
   if ((type->kind == TYPE_STRUCT || type->kind == TYPE_UNION || type->kind == TYPE_ENUM) && consume(TK_SEMICOLON)) {
-    // type declaration only (prefix is allowed)
+    // type declaration only (qualifier is allowed)
     return new_node_nop();
   }
 
@@ -928,15 +928,15 @@ Node *declaration() {
   if (next_token->kind == TK_LPAREN) {
     if (current_scope != global_scope)
       error(&id->pos, "function declaration is only allowed in global scope");
-    func(type, id, prefix);
+    func(type, id, qualifier);
     return NULL;
   }
 
   ObjectKind kind = current_scope == global_scope ? OBJ_GVAR : OBJ_LVAR;
-  Vector *vars = vardec(type, id, kind, prefix);
+  Vector *vars = vardec(type, id, kind, qualifier);
   if (kind == OBJ_GVAR)
     return NULL;
-  if (prefix & IS_STATIC)
+  if (qualifier & IS_STATIC)
     return new_node_nop();
   Node *node = init_multiple_local_variables(vars);
   if (node == NULL)

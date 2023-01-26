@@ -112,7 +112,7 @@ typedef enum {
 int consume_qualifier();
 Node *declaration();
 void func(Type *type, Token *name, int qualifier);
-bool funcparam(Vector *params);
+void funcparam(Type *ft);
 VariableInit *varinit();
 Node *stmt();
 Node *expr();
@@ -351,7 +351,7 @@ Type *consume_struct(TypeKind kind) {
       Member *m = calloc(1, sizeof(Member));
       m->ident = member_name->ident;
       m->type = type;
-      m->is_const = (qualifier & IS_CONST) == IS_CONST;
+      m->type->is_const = (qualifier & IS_CONST) == IS_CONST;
 
       if (kind == TYPE_UNION) {
         m->offset = 0;
@@ -442,10 +442,15 @@ Type *consume_enum() {
 
 Type *consume_type_star(Type *type) {
   Token *tok = NULL;
+  bool is_const = false;
   while ((tok = consume(TK_STAR)) || (tok = consume(TK_CONST))) {
-    if (tok->kind == TK_CONST)
-      continue; // currently ignore const for a pointer
-    type = pointer_type(type);
+    if (tok->kind == TK_CONST) {
+      is_const = true;
+    } else {
+      type = pointer_type(type);
+      type->is_const = is_const;
+      is_const = false;
+    }
   }
   return type;
 }
@@ -622,13 +627,13 @@ Object *find_object(Token *tok) {
 
 Variable *new_variable(Token *tok, Type *type, ObjectKind kind, int qualifier) {
   Variable *var = calloc(1, sizeof(Variable));
-  var->ident = tok ? tok->ident : NULL;
+  assert(tok);
+  var->ident = tok->ident;
   var->type = type;
   var->kind = kind;
   var->token = tok;
   var->is_static = (qualifier & IS_STATIC) != 0;
   var->is_extern = (qualifier & IS_EXTERN) != 0;
-  var->is_const = (qualifier & IS_CONST) != 0;
   return var;
 }
 
@@ -690,7 +695,6 @@ Variable *new_string_literal(Token *tok) {
   var->token = tok;
   var->is_static = true;
   var->is_extern = false;
-  var->is_const = true;
 
   // Because of escaped charactors, actual array length is not always equal to (strlen(var->string_literal) + 1).
   int len = strlen(var->string_literal);
@@ -791,13 +795,8 @@ void func(Type *type, Token *tok, int qualifier) {
   f->params = new_vector(0, sizeof(Variable *));
   expect(TK_LPAREN);
   if (!consume(TK_RPAREN)) {
-    f->type->is_variadic = funcparam(f->params);
+    funcparam(f->type);
     expect(TK_RPAREN);
-  }
-
-  for (int i = 0; i < f->params->size; ++i) {
-    Variable *var = *(Variable **)vector_get(f->params, i);
-    vector_push(f->type->params, &var->type);
   }
 
   if (prev && !same_type(prev->type, f->type))
@@ -812,7 +811,7 @@ void func(Type *type, Token *tok, int qualifier) {
     error(&tok->pos, "duplicated function definition");
 
   if (prev) {
-    prev->params = f->params;
+    prev->type = f->type;
     f = prev;
   }
 
@@ -821,14 +820,15 @@ void func(Type *type, Token *tok, int qualifier) {
   new_scope();
 
   // push params to local scope
-  for (int i = 0; i < f->params->size; ++i) {
-    Variable *var = *(Variable **)vector_get(f->params, i);
-    if (var->ident == NULL)
+  for (int i = 0; i < f->type->params->size; ++i) {
+    Type *ty = *(Type **)vector_get(f->type->params, i);
+    if (ty->objdec == NULL)
       error(&tok->pos, "missing parameter name");
-    if (map_get(current_scope->objects, var->ident))
+    if (map_get(current_scope->objects, ty->objdec->ident))
       error(&tok->pos, "duplicated parameter identifier");
+    Variable *var = new_local_variable(ty->objdec, ty, 0);
     set_offset(var);
-    map_push(current_scope->objects, var->ident, var);
+    vector_push(f->params, &var);
   }
 
   f->body = stmt_block();
@@ -837,19 +837,17 @@ void func(Type *type, Token *tok, int qualifier) {
   local_variable_offset = 0;
 }
 
-bool funcparam(Vector *params) {
-  /*
-   * parse function parameters and push them into params
-   * return true if function is variadic
-   */
+void funcparam(Type *ft) {
   if (next_token->kind == TK_VOID && next_token->next->kind == TK_RPAREN) {
     // (void)
     expect(TK_VOID);
-    return false;
+    return;
   }
   do {
-    if (consume(TK_3DOTS))
-      return true;
+    if (consume(TK_3DOTS)) {
+      ft->is_variadic = true;
+      return;
+    }
     Token *tok_qualifier = next_token;
     int qualifier = consume_qualifier();
     if (qualifier & (IS_STATIC | IS_EXTERN))
@@ -857,19 +855,21 @@ bool funcparam(Vector *params) {
 
     Token *tok_type = next_token;
     Type *ty = consume_type_star(expect_type());
+
+    ty->is_const = (qualifier & IS_CONST) != 0;
+
     if (ty->kind == TYPE_VOID)
       error(&tok_type->pos, "void type is not allowed");
 
-    Token *id = consume(TK_IDENT);
+    ty->objdec = consume(TK_IDENT);
     while (consume(TK_LBRACKET)) {
       consume(TK_NUM);       // currently not used
       ty = pointer_type(ty); // array as a pointer
       expect(TK_RBRACKET);
     }
-    Variable *var = new_variable(id, ty, OBJ_LVAR, qualifier);
-    vector_push(params, &var);
+    vector_push(ft->params, &ty);
   } while (consume(TK_COMMA));
-  return false;
+  return;
 }
 
 int consume_qualifier() {

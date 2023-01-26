@@ -119,7 +119,6 @@ struct Member {
   Ident *ident;
   Type *type;
   int offset;
-  bool is_const;
   Member *next; // liked list
 };
 
@@ -147,12 +146,15 @@ typedef struct Type Type;
 struct Type {
   TypeKind kind;
   int size; // sizeof
+  bool is_const;
 
   struct Type *base; // only for TYPE_PTR and TYPE_ARRAY
   int array_size;    // number of elements for TYPE_ARRAY
 
-  bool is_unnamed;
-  Member *member; // TYPE_STRUCT, TYPE_UNION
+  bool is_unnamed; // TYPE_STRUCT, TYPE_UNION, TYPE_ENUM
+  Member *member;  // TYPE_STRUCT, TYPE_UNION
+
+  Token *objdec; // used for declaration
 
   Type *return_type; // TYPE_FUNC
   Vector *params;    // vector of Type* for TYPE_FUNC
@@ -187,7 +189,6 @@ struct Object { // variable or function
   char *string_literal;  // null terminated, only for OBJ_STRLIT
   VariableInit *init;    // OBJ_GVAR, OBJ_LVAR
   Ident *internal_ident; // for static local
-  bool is_const;
   bool is_extern;
 
   // function

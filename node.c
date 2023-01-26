@@ -372,17 +372,17 @@ Node *new_node_assign_ignore_const(Token *tok, Node *lhs, Node *rhs) {
 }
 
 Node *new_node_assign(Token *tok, Node *lhs, Node *rhs) {
-  if (lhs->kind == ND_VAR && lhs->variable->is_const)
+  if (lhs->kind == ND_VAR && lhs->variable->type->is_const)
     error(tok ? &tok->pos : NULL, "cannot assignning to a const variable");
 
-  if (lhs->kind == ND_MEMBER && lhs->member->is_const)
+  if (lhs->kind == ND_MEMBER && lhs->member->type->is_const)
     error(tok ? &tok->pos : NULL, "cannot assignning to a const member");
 
   if (lhs->kind == ND_MEMBER && lhs->lhs->kind == ND_VAR) {
     assert(lhs->lhs->type->kind == TYPE_STRUCT || lhs->lhs->type->kind == TYPE_UNION);
     assert(lhs->lhs->variable->type->kind == TYPE_STRUCT || lhs->lhs->variable->type->kind == TYPE_UNION);
     assert(lhs->lhs->type->kind == lhs->lhs->variable->type->kind);
-    if (lhs->lhs->variable->is_const)
+    if (lhs->lhs->variable->type->is_const)
       error(tok ? &tok->pos : NULL, "cannot assignning to a const variable");
   }
 

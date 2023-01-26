@@ -84,6 +84,7 @@ Type *pointer_type(Type *base) {
   Type *t = calloc(1, sizeof(Type));
   t->kind = TYPE_PTR;
   t->base = base;
+  t->objdec = base->objdec;
   t->size = 8;
   return t;
 }
@@ -92,6 +93,7 @@ Type *array_type(Type *base, int len) {
   Type *t = calloc(1, sizeof(Type));
   t->kind = TYPE_ARRAY;
   t->base = base;
+  t->objdec = base->objdec;
   t->array_size = len;
   t->size = base->size * len;
   return t;

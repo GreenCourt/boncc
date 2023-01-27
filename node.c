@@ -85,16 +85,13 @@ Node *new_node_mod(Token *tok, Node *lhs, Node *rhs) {
 Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
-  if (left_is_ptr && right_is_ptr)
-    error(tok ? &tok->pos : NULL, "invalid operands to binary + operator (pointer and pointer)");
-  if (!left_is_ptr && !is_integer(lhs->type))
+  if ((left_is_ptr && right_is_ptr) ||
+      (!left_is_ptr && !is_integer(lhs->type)) ||
+      (!right_is_ptr && !is_integer(rhs->type)) ||
+      (left_is_ptr && lhs->type->base->size < 0) ||
+      (right_is_ptr && rhs->type->base->size < 0) ||
+      is_funcptr(lhs->type) || is_funcptr(rhs->type))
     error(tok ? &tok->pos : NULL, "invalid operands to binary + operator");
-  if (!right_is_ptr && !is_integer(rhs->type))
-    error(tok ? &tok->pos : NULL, "invalid operands to binary + operator");
-  if (left_is_ptr && lhs->type->base->size < 0)
-    error(tok ? &tok->pos : NULL, "incomplete type to binary + operator");
-  if (right_is_ptr && rhs->type->base->size < 0)
-    error(tok ? &tok->pos : NULL, "incomplete type to binary + operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   if (left_is_ptr) {
@@ -116,16 +113,13 @@ Node *new_node_sub(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
 
-  if (!left_is_ptr && right_is_ptr)
+  if ((!left_is_ptr && right_is_ptr) ||
+      (!left_is_ptr && !is_integer(lhs->type)) ||
+      (!right_is_ptr && !is_integer(rhs->type)) ||
+      (left_is_ptr && lhs->type->base->size < 0) ||
+      (right_is_ptr && rhs->type->base->size < 0) ||
+      is_funcptr(lhs->type) || is_funcptr(rhs->type))
     error(tok ? &tok->pos : NULL, "invalid operands to binary - operator");
-  if (!left_is_ptr && !is_integer(lhs->type))
-    error(tok ? &tok->pos : NULL, "invalid operands to binary - operator");
-  if (!right_is_ptr && !is_integer(rhs->type))
-    error(tok ? &tok->pos : NULL, "invalid operands to binary - operator");
-  if (left_is_ptr && lhs->type->base->size < 0)
-    error(tok ? &tok->pos : NULL, "incomplete type to binary + operator");
-  if (right_is_ptr && rhs->type->base->size < 0)
-    error(tok ? &tok->pos : NULL, "incomplete type to binary + operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   if (left_is_ptr && !right_is_ptr) {
@@ -148,17 +142,12 @@ Node *new_node_eq(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_zero = lhs->kind == ND_NUM && lhs->val == 0;
   bool right_is_zero = rhs->kind == ND_NUM && rhs->val == 0;
 
-  if (!is_integer(lhs->type) && left_is_ptr)
+  if ((!is_integer(lhs->type) && !left_is_ptr) ||
+      (!is_integer(rhs->type) && !right_is_ptr) ||
+      (left_is_ptr && (!right_is_ptr && !right_is_zero)) ||
+      (right_is_ptr && (!left_is_ptr && !left_is_zero)) ||
+      (left_is_ptr && right_is_ptr && !same_type(lhs->type->base, rhs->type->base)))
     error(tok ? &tok->pos : NULL, "invalid operands to == operator");
-
-  if (!is_integer(rhs->type) && right_is_ptr)
-    error(tok ? &tok->pos : NULL, "invalid operands to == operator");
-
-  if (left_is_ptr && (!right_is_ptr && !right_is_zero))
-    error(tok ? &tok->pos : NULL, "invalid operands to == operator (pointer and non-pointer)");
-
-  if (right_is_ptr && (!left_is_ptr && !left_is_zero))
-    error(tok ? &tok->pos : NULL, "invalid operands to == operator (pointer and non-pointer)");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
@@ -174,17 +163,12 @@ Node *new_node_ne(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_zero = lhs->kind == ND_NUM && lhs->val == 0;
   bool right_is_zero = rhs->kind == ND_NUM && rhs->val == 0;
 
-  if (!is_integer(lhs->type) && left_is_ptr)
-    error(tok ? &tok->pos : NULL, "invalid operands to == operator");
-
-  if (!is_integer(rhs->type) && right_is_ptr)
-    error(tok ? &tok->pos : NULL, "invalid operands to == operator");
-
-  if (left_is_ptr && (!right_is_ptr && !right_is_zero))
-    error(tok ? &tok->pos : NULL, "invalid operands to == operator (pointer and non-pointer)");
-
-  if (right_is_ptr && (!left_is_ptr && !left_is_zero))
-    error(tok ? &tok->pos : NULL, "invalid operands to == operator (pointer and non-pointer)");
+  if ((!is_integer(lhs->type) && !left_is_ptr) ||
+      (!is_integer(rhs->type) && !right_is_ptr) ||
+      (left_is_ptr && (!right_is_ptr && !right_is_zero)) ||
+      (right_is_ptr && (!left_is_ptr && !left_is_zero)) ||
+      (left_is_ptr && right_is_ptr && !same_type(lhs->type->base, rhs->type->base)))
+    error(tok ? &tok->pos : NULL, "invalid operands to != operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
@@ -198,13 +182,11 @@ Node *new_node_lt(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
 
-  if (!is_integer(lhs->type) && left_is_ptr)
-    error(tok ? &tok->pos : NULL, "invalid operands to relational operator");
-
-  if (!is_integer(rhs->type) && right_is_ptr)
-    error(tok ? &tok->pos : NULL, "invalid operands to relational operator");
-
-  if (left_is_ptr != right_is_ptr)
+  if ((!is_integer(lhs->type) && !left_is_ptr) ||
+      (!is_integer(rhs->type) && !right_is_ptr) ||
+      (left_is_ptr != right_is_ptr) ||
+      (left_is_ptr && right_is_ptr && !same_type(lhs->type->base, rhs->type->base)) ||
+      is_funcptr(lhs->type) || is_funcptr(rhs->type))
     error(tok ? &tok->pos : NULL, "invalid operands to relational operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
@@ -219,13 +201,11 @@ Node *new_node_le(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
 
-  if (!is_integer(lhs->type) && left_is_ptr)
-    error(tok ? &tok->pos : NULL, "invalid operands to relational operator");
-
-  if (!is_integer(rhs->type) && right_is_ptr)
-    error(tok ? &tok->pos : NULL, "invalid operands to relational operator");
-
-  if (left_is_ptr != right_is_ptr)
+  if ((!is_integer(lhs->type) && !left_is_ptr) ||
+      (!is_integer(rhs->type) && !right_is_ptr) ||
+      (left_is_ptr != right_is_ptr) ||
+      (left_is_ptr && right_is_ptr && !same_type(lhs->type->base, rhs->type->base)) ||
+      is_funcptr(lhs->type) || is_funcptr(rhs->type))
     error(tok ? &tok->pos : NULL, "invalid operands to relational operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
@@ -248,6 +228,10 @@ Node *new_node_addr(Token *tok, Node *operand) {
 Node *new_node_deref(Token *tok, Node *operand) {
   if ((operand->type->kind != TYPE_PTR) && (operand->type->kind != TYPE_ARRAY))
     error(tok ? &tok->pos : NULL, "invalid unary * operand");
+
+  if (operand->kind == ND_VAR && operand->variable->kind == OBJ_FUNC)
+    return operand;
+
   Type *type = operand->type->base;
   Node *node = new_node(ND_DEREF, operand, NULL, type);
   node->token = tok;
@@ -266,9 +250,8 @@ Node *new_node_lognot(Token *tok, Node *operand) {
 Node *new_node_logand(Token *tok, Node *lhs, Node *rhs, int label_index) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
-  if (!left_is_ptr && !is_integer(lhs->type))
-    error(tok ? &tok->pos : NULL, "invalid operands to binary && operator");
-  if (!right_is_ptr && !is_integer(rhs->type))
+  if ((!left_is_ptr && !is_integer(lhs->type)) ||
+      (!right_is_ptr && !is_integer(rhs->type)))
     error(tok ? &tok->pos : NULL, "invalid operands to binary && operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
@@ -283,9 +266,8 @@ Node *new_node_logand(Token *tok, Node *lhs, Node *rhs, int label_index) {
 Node *new_node_logor(Token *tok, Node *lhs, Node *rhs, int label_index) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
-  if (!left_is_ptr && !is_integer(lhs->type))
-    error(tok ? &tok->pos : NULL, "invalid operands to binary && operator");
-  if (!right_is_ptr && !is_integer(rhs->type))
+  if ((!left_is_ptr && !is_integer(lhs->type)) ||
+      (!right_is_ptr && !is_integer(rhs->type)))
     error(tok ? &tok->pos : NULL, "invalid operands to binary && operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
@@ -361,11 +343,17 @@ Node *new_node_bitnot(Token *tok, Node *operand) {
 }
 
 Node *new_node_assign_ignore_const(Token *tok, Node *lhs, Node *rhs) {
-  if (lhs->type->kind == TYPE_STRUCT || lhs->type->kind == TYPE_UNION || rhs->type->kind == TYPE_STRUCT || rhs->type->kind == TYPE_UNION)
+  if (lhs->type->kind == TYPE_STRUCT || lhs->type->kind == TYPE_UNION ||
+      rhs->type->kind == TYPE_STRUCT || rhs->type->kind == TYPE_UNION)
     error(tok ? &tok->pos : NULL, "assignning to/from struct/union is currentry not supported");
+
+  if (lhs->kind == ND_VAR && lhs->variable->kind == OBJ_FUNC)
+    error(tok ? &tok->pos : NULL, "function cannot be a left-value");
+
   Type *type = lhs->type;
   while (type->kind == TYPE_ARRAY)
     type = type->base;
+  rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_ASSIGN, lhs, rhs, type);
   node->token = tok;
   return node;
@@ -393,10 +381,12 @@ Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int lab
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
 
-  if (left_is_ptr != right_is_ptr)
+  if ((left_is_ptr != right_is_ptr) ||
+      (left_is_ptr && right_is_ptr && !same_type(lhs->type->base, rhs->type->base)))
     error(tok ? &tok->pos : NULL, "invalid operands to conditional operator");
 
-  if (lhs->type->kind == TYPE_STRUCT || lhs->type->kind == TYPE_UNION || rhs->type->kind == TYPE_STRUCT || rhs->type->kind == TYPE_UNION)
+  if (lhs->type->kind == TYPE_STRUCT || lhs->type->kind == TYPE_UNION ||
+      rhs->type->kind == TYPE_STRUCT || rhs->type->kind == TYPE_UNION)
     error(tok ? &tok->pos : NULL, "struct/union is currentry not supported for conditional operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
@@ -425,7 +415,7 @@ Node *new_node_var(Token *tok, Variable *var) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_VAR;
   node->variable = var;
-  node->type = var->type;
+  node->type = var->type->kind == TYPE_FUNC ? pointer_type(var->type) : var->type;
   node->token = tok;
   return node;
 }

@@ -95,5 +95,18 @@ int main() {
     a = add3(1, 5, 6);
     verify(12, a, __FILE__, __LINE__);
   }
+  {
+    int (*p_add2)(int, int) = add2;
+    int (*p_add3)(int, int, int) = add3;
+    int (*p_fib)(int) = fib;
+    int (*p_foo)() = foo;
+    verify(6, p_add2(2, 4), __FILE__, __LINE__);
+    verify(12, p_add3(2, 4, 6), __FILE__, __LINE__);
+    verify(8, p_fib(6), __FILE__, __LINE__);
+    verify(12, p_foo(), __FILE__, __LINE__);
+
+    void (*p_voidfunc)(int) = voidfunc;
+    p_voidfunc(12);
+  }
   return 0;
 }

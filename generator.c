@@ -61,6 +61,9 @@ void gen_address(Node *node) {
     } else if (node->variable->kind == OBJ_STRLIT) {
       comment(NULL, "gen_address ND_VAR strlit: \"%s\"", node->variable->string_literal);
       writeline("  lea rax, %.*s[rip]", node->variable->ident->len, node->variable->ident->name);
+    } else if (node->variable->kind == OBJ_FUNC) {
+      comment(NULL, "gen_address ND_VAR function: %.*s", node->variable->ident->len, node->variable->ident->name);
+      writeline("  lea rax, %.*s[rip]", node->variable->ident->len, node->variable->ident->name);
     } else
       assert(false);
     return;
@@ -70,7 +73,7 @@ void gen_address(Node *node) {
     writeline("  add rax, %d", node->member->offset);
     return;
   default:
-    error(&node->token->pos, "left-value must be a variable");
+    error(&node->token->pos, "failed to generate address");
   }
 }
 
@@ -195,6 +198,7 @@ void gen_block(Node *node) {
 }
 
 void gen_call(Node *node) {
+  assert(is_funcptr(node->lhs->type));
   int sz = node->args->size;
   if (sz > 6)
     error(NULL, "maximum number of argument is currently 6");
@@ -215,13 +219,27 @@ void gen_call(Node *node) {
   writeline("  mov rax, rsp");
   writeline("  and rax, 15"); // rax % 16 == rax & 0xF
   writeline("  jnz .Lcall%d", l);
-  writeline("  mov al, 0");
-  writeline("  call %.*s", node->func->ident->len, node->func->ident->name);
+  if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC) {
+    writeline("  mov al, 0");
+    writeline("  call %.*s", node->lhs->variable->ident->len, node->lhs->variable->ident->name);
+  } else {
+    gen(node->lhs);
+    writeline("  mov r10, rax");
+    writeline("  mov al, 0");
+    writeline("  call r10");
+  }
   writeline("  jmp .Lend_call%d", l);
   writeline(".Lcall%d:", l);
   writeline("  sub rsp, 8");
-  writeline("  mov al, 0");
-  writeline("  call %.*s", node->func->ident->len, node->func->ident->name);
+  if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC) {
+    writeline("  mov al, 0");
+    writeline("  call %.*s", node->lhs->variable->ident->len, node->lhs->variable->ident->name);
+  } else {
+    gen(node->lhs);
+    writeline("  mov r10, rax");
+    writeline("  mov al, 0");
+    writeline("  call r10");
+  }
   writeline("  add rsp, 8");
   writeline(".Lend_call%d:", l);
 }
@@ -615,7 +633,10 @@ void gen_cast(Node *node) {
 void gen(Node *node) {
   switch (node->kind) {
   case ND_CALL:
-    comment(node->token, "ND_CALL %.*s", node->func->ident->len, node->func->ident->name);
+    if (node->lhs->kind == ND_VAR)
+      comment(node->token, "ND_CALL %.*s", node->lhs->variable->ident->len, node->lhs->variable->ident->name);
+    else
+      comment(node->token, "ND_CALL");
     gen_call(node);
     return;
   case ND_BLOCK:
@@ -675,7 +696,8 @@ void gen(Node *node) {
   case ND_VAR:
     comment(node->token, "ND_VAR");
     gen_address(node);
-    load(node->type);
+    if (node->variable->kind != OBJ_FUNC)
+      load(node->type);
     return;
   case ND_ASSIGN:
     comment(node->token, "ND_ASSIGN");

@@ -143,7 +143,7 @@ int main() {
     one()[a] = 2;
     int *p;
     p = a;
-    verify(3, p[zero(0)] + p[one()], __FILE__, __LINE__);
+    verify(3, p[zero()] + p[one()], __FILE__, __LINE__);
   }
   {
     int x[2];

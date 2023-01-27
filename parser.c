@@ -7,20 +7,24 @@
 /* BNF
 program     = declaration*
 declaration = func | vardec | (struct ";") | (enum ";") | typedef
+declarator  = "*"* ident dectail?
+              | "*"* "(" declarator ")" dectail?
+dectail     = ("[" num "]")*
+              | "(" funcparam? ")"
 type        = "void" | int_type | float_type | struct | enum
 int_type    = ("signed" | "unsigned")? ("int" | "char" | ("short" "int"?) | ("long" "long"? "int"?))
 float_type  = "float" | ("long"? double "long"?)
 struct      = (("struct" | "union") ident ("{" member* "}")?) | (("struct" | "union") ident? "{" member* "}")
-member      = "const"* type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")* )* ";"
+member      = "const"* type declarator ("," declarator )* ";"
 enum        = ("enum" ident ("{" enumval ("," enumval)* ","? "}")?) | ("enum" ident? "{" enumval ("," enumval)* ","? "}")
 enumval     = indent ("=" expr)?
-typedef     = "typedef" type "*"* ident ("[" num "]")* ("," "*"* ident ("[" num "]")*)* ";"
+typedef     = "typedef" type declarator ("," declarator)* ";"
 qualifier   = ("const" | "static" | "extern")*
-vardec      = qualifier? type "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?  ("," "*"* ident ("[" "]")? ("[" num "]")* ("=" varinit)?)* ";"
+vardec      = qualifier? type declarator ("=" varinit)?  ("," declarator ("=" varinit)?)* ";"
 varinit     = expr
               | "{" varinit ("," varinit)* ","? "}"
-func        = qualifier? type "*"* ident "(" funcparam? ")" (("{" stmt* "}") | ";")
-funcparam   = qualifier? type "*"* ident ("[" num? "]")* ("," type "*"* ident ("[" num? "]")* )*
+func        = qualifier? type declarator (("{" stmt* "}") | ";")
+funcparam   = qualifier? type declarator ("," type declarator )*
               | void
 stmt        = ";"
               | expr ";"
@@ -61,9 +65,12 @@ unary       = postfix
               | ("~" unary)
               | ("(" type ")" unary)
 postfix     = primary tail*
-tail        =  ("[" expr "]") | ("." ident) | ("->" ident) | ("++") | ("--")
+tail        =  ("[" expr "]")
+               | ("." ident)
+               | ("->" ident)
+               | ("++") | ("--")
+               | ("(" (expr ("," expr)*)? ")")
 primary     = "(" expr ")"
-              | ident ("(" (expr ("," expr)*)? ")")?
               | ident
               | num
               | str
@@ -111,7 +118,8 @@ typedef enum {
 
 int consume_qualifier();
 Node *declaration();
-void func(Type *type, Token *name, int qualifier);
+Type *declarator(Type *base);
+void func(Type *type, int qualifier);
 void funcparam(Type *ft);
 VariableInit *varinit();
 Node *stmt();
@@ -290,6 +298,7 @@ Type *consume_struct(TypeKind kind) {
     Type *base = consume_type();
     if (!base)
       error(&tok_type->pos, "invalid member type");
+    base->is_const = (qualifier & IS_CONST) == IS_CONST;
 
     if (next_token->kind == TK_SEMICOLON) {
       if (base->kind != TYPE_STRUCT && base->kind != TYPE_UNION)
@@ -334,7 +343,7 @@ Type *consume_struct(TypeKind kind) {
     }
 
     do {
-      Type *type = consume_type_star(base);
+      Type *type = declarator(base);
 
       // struct S { struct S* p; }; is allowed
       if (type->kind != TYPE_PTR && base->size < 0)
@@ -343,15 +352,15 @@ Type *consume_struct(TypeKind kind) {
       if (type->kind == TYPE_VOID)
         error(&tok_type->pos, "void type is not allowed");
 
-      Token *member_name = expect(TK_IDENT);
-      type = consume_array_brackets(type);
       if (type->kind == TYPE_ARRAY && type->size < 0)
-        error(&member_name->pos, "invalid member array size");
+        error(&type->objdec->pos, "invalid member array size");
+
+      if (type->kind == TYPE_FUNC)
+        error(&tok_type->pos, "function type is not allowed");
 
       Member *m = calloc(1, sizeof(Member));
-      m->ident = member_name->ident;
+      m->ident = type->objdec->ident;
       m->type = type;
-      m->type->is_const = (qualifier & IS_CONST) == IS_CONST;
 
       if (kind == TYPE_UNION) {
         m->offset = 0;
@@ -598,16 +607,14 @@ Type *expect_type() {
 void expect_typedef() {
   Type *base = expect_type();
   do {
-    Type *type = consume_type_star(base);
-    Token *name = expect(TK_IDENT);
-    type = consume_array_brackets(type);
-    Type *pre = map_get(current_scope->typedefs, name->ident);
+    Type *type = declarator(base);
+    Type *pre = map_get(current_scope->typedefs, type->objdec->ident);
 
     // multiple typedef for same type is allowed
     if (pre && !same_type(type, pre))
-      error(&name->pos, "duplicated typedef identifier");
+      error(&type->objdec->pos, "duplicated typedef identifier");
     if (!pre)
-      map_push(current_scope->typedefs, name->ident, type);
+      map_push(current_scope->typedefs, type->objdec->ident, type);
   } while (consume(TK_COMMA));
   expect(TK_SEMICOLON);
 }
@@ -615,6 +622,8 @@ void expect_typedef() {
 bool at_eof() { return next_token->kind == TK_EOF; }
 
 Object *find_object(Token *tok) {
+  assert(tok);
+  assert(tok->ident);
   Scope *scope = current_scope;
   while (scope) {
     Object *obj = map_get(scope->objects, tok->ident);
@@ -625,22 +634,25 @@ Object *find_object(Token *tok) {
   return NULL;
 }
 
-Variable *new_variable(Token *tok, Type *type, ObjectKind kind, int qualifier) {
+Variable *new_variable(Type *type, ObjectKind kind, int qualifier) {
+  assert(type->objdec);
+  assert(type->objdec->ident);
   Variable *var = calloc(1, sizeof(Variable));
-  assert(tok);
-  var->ident = tok->ident;
+  var->ident = type->objdec->ident;
   var->type = type;
   var->kind = kind;
-  var->token = tok;
+  var->token = type->objdec;
   var->is_static = (qualifier & IS_STATIC) != 0;
   var->is_extern = (qualifier & IS_EXTERN) != 0;
   return var;
 }
 
-Variable *new_local_variable(Token *tok, Type *type, int qualifier) {
-  if (map_get(current_scope->objects, tok->ident))
-    error(&tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, OBJ_LVAR, qualifier);
+Variable *new_local_variable(Type *type, int qualifier) {
+  assert(type->objdec);
+  assert(type->objdec->ident);
+  if (map_get(current_scope->objects, type->objdec->ident))
+    error(&type->objdec->pos, "duplicated identifier");
+  Variable *var = new_variable(type, OBJ_LVAR, qualifier);
   map_push(current_scope->objects, var->ident, var);
 
   static int idx = 0;
@@ -665,10 +677,12 @@ void set_offset(Variable *var) {
   local_variable_offset = var->offset;
 }
 
-Variable *new_global(Token *tok, Type *type, int qualifier) {
-  if (map_get(global_scope->objects, tok->ident))
-    error(&tok->pos, "duplicated identifier");
-  Variable *var = new_variable(tok, type, OBJ_GVAR, qualifier);
+Variable *new_global(Type *type, int qualifier) {
+  assert(type->objdec);
+  assert(type->objdec->ident);
+  if (map_get(global_scope->objects, type->objdec->ident))
+    error(&type->objdec->pos, "duplicated identifier");
+  Variable *var = new_variable(type, OBJ_GVAR, qualifier);
   map_push(global_scope->objects, var->ident, var);
   return var;
 }
@@ -715,10 +729,18 @@ Variable *new_string_literal(Token *tok) {
   return var;
 }
 
-Vector *vardec(Type *type, Token *name, ObjectKind kind, int qualifier) {
+Vector *vardec(Type *type, ObjectKind kind, int qualifier) {
+  assert(type->objdec);
+
   Type *base = type;
-  while (base->kind == TYPE_ARRAY || base->kind == TYPE_PTR)
-    base = base->base;
+  while (base->kind == TYPE_ARRAY || base->kind == TYPE_PTR || base->kind == TYPE_FUNC) {
+    if (base->base)
+      base = base->base;
+    else if (base->return_type)
+      base = base->return_type;
+    else
+      assert(false);
+  }
 
   bool is_static = (qualifier & IS_STATIC) != 0;
   bool is_extern = (qualifier & IS_EXTERN) != 0;
@@ -726,27 +748,27 @@ Vector *vardec(Type *type, Token *name, ObjectKind kind, int qualifier) {
   Vector *variables = new_vector(0, sizeof(Variable *));
   while (true) {
     if (type->kind == TYPE_VOID)
-      error(&name->pos, "void type is not allowed");
-    type = consume_array_brackets(type);
+      error(&type->objdec->pos, "void type is not allowed");
+    if (type->kind == TYPE_FUNC)
+      error(&type->objdec->pos, "func type is not allowed");
     Variable *var = NULL;
-
     if (kind == OBJ_GVAR)
-      var = new_global(name, type, qualifier);
+      var = new_global(type, qualifier);
     else if (kind == OBJ_LVAR)
-      var = new_local_variable(name, type, qualifier);
+      var = new_local_variable(type, qualifier);
     else
       assert(false);
 
     if (consume(TK_ASSIGN)) {
       if (is_extern)
-        error(&name->pos, "cannot initialize extern variable");
+        error(&type->objdec->pos, "cannot initialize extern variable");
       var->init = varinit();
       if (type->kind == TYPE_ARRAY) {
         if (var->init->vec == NULL) {
           if (type->base->kind != TYPE_CHAR) {
-            error(&name->pos, "invalid initializer for an array");
+            error(&type->objdec->pos, "invalid initializer for an array");
           } else if (var->init->expr->kind != ND_VAR || var->init->expr->variable->kind != OBJ_STRLIT) {
-            error(&name->pos, "invalid initializer for an array");
+            error(&type->objdec->pos, "invalid initializer for an array");
           } else if (type->array_size < 0) {
             type->array_size = var->init->expr->variable->type->array_size;
             type->size = var->init->expr->variable->type->size;
@@ -759,7 +781,7 @@ Vector *vardec(Type *type, Token *name, ObjectKind kind, int qualifier) {
         assert(type->array_size >= 0);
       }
     } else if (!is_extern && type->array_size < 0) {
-      error(&name->pos, "invalid array size");
+      error(&type->objdec->pos, "invalid array size");
     }
 
     if (kind == OBJ_LVAR && !is_static && !is_extern)
@@ -768,39 +790,32 @@ Vector *vardec(Type *type, Token *name, ObjectKind kind, int qualifier) {
     vector_push(variables, &var);
     if (!consume(TK_COMMA))
       break;
-    type = consume_type_star(base);
-    name = expect(TK_IDENT);
+    type = declarator(base);
   }
   expect(TK_SEMICOLON);
   return variables;
 }
 
-void func(Type *type, Token *tok, int qualifier) {
+void func(Type *type, int qualifier) {
+  assert(type->objdec);
+  assert(type->objdec->ident);
+
   Function *f = calloc(1, sizeof(Function));
-
-  Function *prev = map_get(global_scope->objects, tok->ident);
-  if (prev && prev->kind != OBJ_FUNC)
-    error(&tok->pos, "duplicated identifier");
-
-  if (prev == NULL)
-    map_push(global_scope->objects, tok->ident, f);
-
+  f->type = type;
   f->kind = OBJ_FUNC;
-  f->token = tok;
-  f->ident = tok->ident;
+  f->token = type->objdec;
+  f->ident = type->objdec->ident;
   f->is_static = (qualifier & IS_STATIC) != 0;
-  f->type = func_type();
-  f->type->return_type = type;
 
-  f->params = new_vector(0, sizeof(Variable *));
-  expect(TK_LPAREN);
-  if (!consume(TK_RPAREN)) {
-    funcparam(f->type);
-    expect(TK_RPAREN);
-  }
+  Function *prev = map_get(global_scope->objects, f->ident);
+  if (prev && prev->kind != OBJ_FUNC)
+    error(&type->objdec->pos, "duplicated identifier");
 
   if (prev && !same_type(prev->type, f->type))
-    error(&tok->pos, "conflicted function declaration");
+    error(&type->objdec->pos, "conflicted function declaration");
+
+  if (prev == NULL)
+    map_push(global_scope->objects, f->ident, f);
 
   if (!consume(TK_LBRACE)) {
     expect(TK_SEMICOLON);
@@ -808,7 +823,7 @@ void func(Type *type, Token *tok, int qualifier) {
   }
 
   if (prev && prev->body)
-    error(&tok->pos, "duplicated function definition");
+    error(&type->objdec->pos, "duplicated function definition");
 
   if (prev) {
     prev->type = f->type;
@@ -820,13 +835,14 @@ void func(Type *type, Token *tok, int qualifier) {
   new_scope();
 
   // push params to local scope
+  f->params = new_vector(0, sizeof(Variable *));
   for (int i = 0; i < f->type->params->size; ++i) {
     Type *ty = *(Type **)vector_get(f->type->params, i);
     if (ty->objdec == NULL)
-      error(&tok->pos, "missing parameter name");
+      error(&type->objdec->pos, "missing parameter name");
     if (map_get(current_scope->objects, ty->objdec->ident))
-      error(&tok->pos, "duplicated parameter identifier");
-    Variable *var = new_local_variable(ty->objdec, ty, 0);
+      error(&type->objdec->pos, "duplicated parameter identifier");
+    Variable *var = new_local_variable(ty, 0);
     set_offset(var);
     vector_push(f->params, &var);
   }
@@ -854,19 +870,20 @@ void funcparam(Type *ft) {
       error(&tok_qualifier->pos, "invalid storage class for funcparam");
 
     Token *tok_type = next_token;
-    Type *ty = consume_type_star(expect_type());
-
+    Type *ty = expect_type();
     ty->is_const = (qualifier & IS_CONST) != 0;
+
+    ty = declarator(ty);
 
     if (ty->kind == TYPE_VOID)
       error(&tok_type->pos, "void type is not allowed");
 
-    ty->objdec = consume(TK_IDENT);
-    while (consume(TK_LBRACKET)) {
-      consume(TK_NUM);       // currently not used
-      ty = pointer_type(ty); // array as a pointer
-      expect(TK_RBRACKET);
-    }
+    if (ty->kind == TYPE_FUNC)
+      error(&tok_type->pos, "func type is not allowed");
+
+    if (ty->kind == TYPE_ARRAY)
+      ty = pointer_type(ty->base); // array as a pointer
+
     vector_push(ft->params, &ty);
   } while (consume(TK_COMMA));
   return;
@@ -894,6 +911,71 @@ int consume_qualifier() {
   return qualifier;
 }
 
+Type *combine_dectype(Type *mid, Type *tail) {
+  assert(mid);
+  assert(tail);
+  assert(tail->kind != TYPE_NONE);
+
+  switch (mid->kind) {
+  case TYPE_NONE:
+    tail->objdec = mid->objdec;
+    return tail;
+  case TYPE_PTR:
+    assert(mid->base->objdec);
+    mid->base = combine_dectype(mid->base, tail);
+    assert(mid->base->objdec);
+    mid->objdec = mid->base->objdec;
+    return mid;
+  case TYPE_ARRAY:
+    mid->base = combine_dectype(mid->base, tail);
+    assert(mid->base->objdec);
+    mid->objdec = mid->base->objdec;
+    mid->size = mid->base->size * mid->array_size;
+    return mid;
+  case TYPE_FUNC:
+    mid->return_type = combine_dectype(mid->return_type, tail);
+    assert(mid->return_type->objdec);
+    mid->objdec = mid->return_type->objdec;
+    return mid;
+  default:
+    assert(false);
+  }
+  return mid;
+}
+
+Type *dectail(Type *base) {
+  if (next_token->kind == TK_LBRACKET)
+    return consume_array_brackets(base);
+
+  if (consume(TK_LPAREN)) {
+    Type *ft = func_type(base);
+    if (!consume(TK_RPAREN)) {
+      funcparam(ft);
+      expect(TK_RPAREN);
+    }
+    return ft;
+  }
+  return base;
+}
+
+Type *declarator(Type *base) {
+  Type *type = consume_type_star(base);
+
+  if (consume(TK_LPAREN)) {
+    Type dummy;
+    dummy.objdec = NULL;
+    dummy.kind = TYPE_NONE;
+    dummy.size = 0;
+    Type *mid = declarator(&dummy);
+    expect(TK_RPAREN);
+    Type *tail = dectail(base);
+    return combine_dectype(mid, tail);
+  }
+
+  type->objdec = base->objdec = consume(TK_IDENT);
+  return dectail(type);
+}
+
 Node *declaration() {
   if (consume(TK_TYPEDEF)) {
     expect_typedef();
@@ -918,22 +1000,17 @@ Node *declaration() {
     return new_node_nop();
   }
 
-  type = consume_type_star(type);
+  type = declarator(type);
 
-  if (type->kind != TYPE_PTR && type->size < 0)
-    error(&tk->pos, "incomplete type");
-
-  Token *id = expect(TK_IDENT);
-
-  if (next_token->kind == TK_LPAREN) {
+  if (type->kind == TYPE_FUNC) {
     if (current_scope != global_scope)
-      error(&id->pos, "function declaration is only allowed in global scope");
-    func(type, id, qualifier);
+      error(&tk->pos, "function declaration is only allowed in global scope");
+    func(type, qualifier);
     return NULL;
   }
 
   ObjectKind kind = current_scope == global_scope ? OBJ_GVAR : OBJ_LVAR;
-  Vector *vars = vardec(type, id, kind, qualifier);
+  Vector *vars = vardec(type, kind, qualifier);
   if (kind == OBJ_GVAR)
     return NULL;
   if (qualifier & IS_STATIC)
@@ -1300,9 +1377,8 @@ Node *stmt_for() {
       if (type->size < 0)
         error(&tok->pos, "incomplete type");
 
-      type = consume_type_star(type);
-      Token *name = expect(TK_IDENT);
-      Vector *vars = vardec(type, name, OBJ_LVAR, 0);
+      type = declarator(type);
+      Vector *vars = vardec(type, OBJ_LVAR, 0);
       node->init = init_multiple_local_variables(vars);
     } else {
       node->init = expr();
@@ -1587,59 +1663,14 @@ Node *primary() {
 
   Token *tok;
   if ((tok = consume(TK_IDENT))) {
-    int *enum_val;
-    if (consume(TK_LPAREN)) { // function call
-      Node *node = calloc(1, sizeof(Node));
-      node->kind = ND_CALL;
-      node->token = tok;
-
-      Function *fn = map_get(global_scope->objects, tok->ident);
-      if (fn && fn->kind != OBJ_FUNC)
-        error(&tok->pos, "'%.*s' is not a function", tok->ident->len, tok->ident->name);
-
-      if (fn == NULL) {
-        // TODO
-        // error(&tok->pos, "undeclared function: '%.*s'", tok->token_length, tok->pos.pos);
-        fn = calloc(1, sizeof(Function));
-        fn->ident = tok->ident;
-        fn->type = func_type();
-      }
-
-      node->func = fn;
-      node->type = fn->type->return_type;
-      node->args = new_vector(0, sizeof(Node *));
-
-      if (consume(TK_RPAREN))
-        return node;
-
-      do {
-        Node *e = expr();
-
-        // TODO
-        //if(!fn->type->is_variadic && fn->type->params->size == node->args->size)
-        //  error(&tok->pos, "too many arguments for function %*.s", tok->token_length, tok->pos.pos);
-
-        if (fn->type->params->size > node->args->size) {
-          // argument type conversion
-          Type *t = *(Type **)vector_get(fn->type->params, node->args->size);
-          e = new_node_cast(tok, t, e);
-        }
-
-        vector_push(node->args, &e);
-      } while (consume(TK_COMMA));
-
-      expect(TK_RPAREN);
-      return node;
-    } else if ((enum_val = find_enum_element(tok->ident))) { // enum value
+    int *enum_val = find_enum_element(tok->ident);
+    if (enum_val)
       return new_node_num(tok, *enum_val, base_type(TYPE_INT));
-    } else { // variable
-      Variable *var = find_object(tok);
-      if (!var)
-        error(&tok->pos, "undefined identifier: '%.*s'", tok->token_length, tok->pos.pos);
-      if (var->kind == OBJ_FUNC)
-        error(&tok->pos, "'%.*s' is a function", tok->token_length, tok->pos.pos);
-      return new_node_var(tok, var);
-    }
+
+    Variable *var = find_object(tok);
+    if (!var)
+      error(&tok->pos, "undefined identifier: '%.*s'", tok->token_length, tok->pos.pos);
+    return new_node_var(tok, var);
   }
 
   if ((tok = consume(TK_STR))) {
@@ -1663,6 +1694,7 @@ Node *tail(Node *x) {
   }
 
   Token *op = next_token;
+
   if (consume(TK_DOT)) {
     // struct member access (x.y)
     if (x->type == NULL || (x->type->kind != TYPE_STRUCT && x->type->kind != TYPE_UNION))
@@ -1673,6 +1705,7 @@ Node *tail(Node *x) {
       error(&y->pos, "unknown struct member");
     return new_node_member(op, x, member);
   }
+
   if (consume(TK_ARROW)) {
     // struct member access
     // x->y is (*x).y
@@ -1684,13 +1717,53 @@ Node *tail(Node *x) {
       error(&y->pos, "unknown struct member");
     return new_node_member(op, new_node_deref(NULL, x), member);
   }
+
   if (consume(TK_INC)) {
     // (x = x + 1) - 1
     return new_node_sub(NULL, new_node_assign(NULL, x, new_node_add(NULL, x, new_node_num(NULL, 1, x->type))), new_node_num(NULL, 1, x->type));
   }
+
   if (consume(TK_DEC)) {
     // (x = x - 1) + 1
     return new_node_add(NULL, new_node_assign(NULL, x, new_node_sub(NULL, x, new_node_num(NULL, 1, x->type))), new_node_num(NULL, 1, x->type));
+  }
+
+  if (consume(TK_LPAREN)) {
+    // function call
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_CALL;
+    node->token = op;
+
+    if (!is_funcptr(x->type))
+      error(&op->pos, "not a function");
+
+    Type *f = x->type->base;
+
+    node->lhs = x;
+    node->type = f->return_type;
+    node->args = new_vector(0, sizeof(Node *));
+
+    if (consume(TK_RPAREN))
+      return node;
+
+    do {
+      Node *e = expr();
+
+      // TODO
+      if (!f->is_variadic && f->params->size == node->args->size)
+        error(&op->pos, "too many arguments");
+
+      if (f->params->size > node->args->size) {
+        // argument type conversion
+        Type *t = *(Type **)vector_get(f->params, node->args->size);
+        e = new_node_cast(op, t, e);
+      }
+
+      vector_push(node->args, &e);
+    } while (consume(TK_COMMA));
+
+    expect(TK_RPAREN);
+    return node;
   }
   return x;
 }

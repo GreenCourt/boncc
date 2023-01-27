@@ -140,6 +140,7 @@ typedef enum { TYPE_VOID,
                TYPE_DOUBLE,
                TYPE_LDOUBLE,
                TYPE_FUNC,
+               TYPE_NONE, // internally used for declarator
 } TypeKind;
 
 typedef struct Type Type;
@@ -270,8 +271,7 @@ struct Node {
 
   Vector *blk_stmts; // statements in ND_BLOCK
 
-  Function *func; // ND_CALL
-  Vector *args;   // ND_CALL
+  Vector *args; // ND_CALL
 
   Member *member; // ND_MEMBER
 };
@@ -314,10 +314,11 @@ Type *array_type(Type *base, int len);
 Type *struct_type(bool is_unnamed);
 Type *union_type(bool is_unnamed);
 Type *enum_type(bool is_unnamed);
-Type *func_type();
+Type *func_type(Type *return_type);
 bool same_type(Type *a, Type *b);
 bool is_float(Type *type);
 bool is_integer(Type *type);
 bool is_unsigned(Type *type);
 bool is_signed(Type *type);
+bool is_funcptr(Type *type);
 Type *implicit_type_conversion(Type *l, Type *r);

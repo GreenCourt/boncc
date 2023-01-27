@@ -41,6 +41,8 @@ char *type_text(TypeKind kind) {
     return "enum";
   case TYPE_FUNC:
     return "function";
+  case TYPE_NONE:
+    return "none";
   }
   assert(false);
   return NULL;
@@ -123,11 +125,13 @@ Type *enum_type(bool is_unnamed) {
   return t;
 }
 
-Type *func_type() {
+Type *func_type(Type *return_type) {
   Type *t = calloc(1, sizeof(Type));
   t->kind = TYPE_FUNC;
-  t->size = -1;
+  t->size = 0;
   t->params = new_vector(0, sizeof(Variable *));
+  t->return_type = return_type;
+  t->objdec = return_type->objdec;
   return t;
 }
 
@@ -220,6 +224,10 @@ bool is_unsigned(Type *type) {
   default:
     return false;
   }
+}
+
+bool is_funcptr(Type *type) {
+  return type->kind == TYPE_PTR && type->base->kind == TYPE_FUNC;
 }
 
 Type *implicit_type_conversion(Type *l, Type *r) {

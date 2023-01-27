@@ -345,15 +345,11 @@ Type *consume_struct(TypeKind kind) {
     do {
       Type *type = declarator(base);
 
-      // struct S { struct S* p; }; is allowed
-      if (type->kind != TYPE_PTR && base->size < 0)
+      if (type->size < 0)
         error(&tok_type->pos, "incomplete type");
 
       if (type->kind == TYPE_VOID)
         error(&tok_type->pos, "void type is not allowed");
-
-      if (type->kind == TYPE_ARRAY && type->size < 0)
-        error(&type->objdec->pos, "invalid member array size");
 
       if (type->kind == TYPE_FUNC)
         error(&tok_type->pos, "function type is not allowed");

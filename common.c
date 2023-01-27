@@ -80,6 +80,7 @@ const char *token_text[] = {
     "long",
     "float",
     "double",
+    "_Bool",
     "sizeof",
     "struct",
     "union",

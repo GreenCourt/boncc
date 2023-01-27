@@ -29,6 +29,8 @@ char *type_text(TypeKind kind) {
     return "double";
   case TYPE_LDOUBLE:
     return "long double";
+  case TYPE_BOOL:
+    return "_Bool";
   case TYPE_PTR:
     return "ptr";
   case TYPE_ARRAY:
@@ -53,10 +55,9 @@ Type *base_type(TypeKind kind) {
   t->kind = kind;
   switch (kind) {
   case TYPE_VOID:
-    t->size = 1;
-    break;
   case TYPE_CHAR:
   case TYPE_UCHAR:
+  case TYPE_BOOL:
     t->size = 1;
     break;
   case TYPE_SHORT:
@@ -192,6 +193,7 @@ bool is_integer(Type *type) {
   case TYPE_USHORT:
   case TYPE_ULONG:
   case TYPE_ENUM:
+  case TYPE_BOOL:
     return true;
   default:
     return false;

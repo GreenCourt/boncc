@@ -262,5 +262,17 @@ int main() {
     verify(4, D, __FILE__, __LINE__);
     verify(5, E, __FILE__, __LINE__);
   }
+  {
+    _Bool x = 12;
+    verify(1, x, __FILE__, __LINE__);
+    x = 0;
+    verify(0, x, __FILE__, __LINE__);
+    x = 1;
+    verify(1, x, __FILE__, __LINE__);
+    int a = 123;
+    verify(1, (_Bool)a, __FILE__, __LINE__);
+    a = 0;
+    verify(0, (_Bool)a, __FILE__, __LINE__);
+  }
   return 0;
 }

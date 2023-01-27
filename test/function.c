@@ -55,6 +55,10 @@ int static_enum() {
   return d;
 }
 
+_Bool retbool(int a) {
+  return a;
+}
+
 int main() {
   verify(12, add3(1, 5, 6), __FILE__, __LINE__);
   verify(5, ret5(1, 5, 6), __FILE__, __LINE__);
@@ -107,6 +111,11 @@ int main() {
 
     void (*p_voidfunc)(int) = voidfunc;
     p_voidfunc(12);
+  }
+  {
+    verify(1, retbool(12), __FILE__, __LINE__);
+    verify(1, retbool(1), __FILE__, __LINE__);
+    verify(0, retbool(0), __FILE__, __LINE__);
   }
   return 0;
 }

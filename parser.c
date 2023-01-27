@@ -11,7 +11,7 @@ declarator  = "*"* ident dectail?
               | "*"* "(" declarator ")" dectail?
 dectail     = ("[" num "]")*
               | "(" funcparam? ")"
-type        = "void" | int_type | float_type | struct | enum
+type        = "void" | "_Bool" | int_type | float_type | struct | enum
 int_type    = ("signed" | "unsigned")? ("int" | "char" | ("short" "int"?) | ("long" "long"? "int"?))
 float_type  = "float" | ("long"? double "long"?)
 struct      = (("struct" | "union") ident ("{" member* "}")?) | (("struct" | "union") ident? "{" member* "}")
@@ -155,7 +155,7 @@ Node *init_multiple_local_variables(Vector *variables);
 
 static Token *next_token;
 static Scope *current_scope = NULL;
-static int local_variable_offset;
+static Function *current_function;
 static int label_index = 0;
 static Vector *continue_label; // stack of int
 static Vector *break_label;    // stack of int
@@ -471,6 +471,9 @@ Type *consume_type() {
   if (consume(TK_VOID))
     return base_type(TYPE_VOID);
 
+  if (consume(TK_BOOL))
+    return base_type(TYPE_BOOL);
+
   if (consume(TK_STRUCT))
     return consume_struct(TYPE_STRUCT);
 
@@ -669,8 +672,8 @@ Variable *new_local_variable(Type *type, int qualifier) {
 void set_offset(Variable *var) {
   assert(var->kind == OBJ_LVAR);
   assert(var->offset == 0);
-  var->offset = local_variable_offset + var->type->size;
-  local_variable_offset = var->offset;
+  var->offset = current_function->offset + var->type->size;
+  current_function->offset = var->offset;
 }
 
 Variable *new_global(Type *type, int qualifier) {
@@ -826,7 +829,9 @@ void func(Type *type, int qualifier) {
     f = prev;
   }
 
-  assert(local_variable_offset == 0);
+  assert(current_function == NULL);
+  current_function = f;
+
   assert(current_scope == global_scope);
   new_scope();
 
@@ -844,9 +849,8 @@ void func(Type *type, int qualifier) {
   }
 
   f->body = stmt_block();
-  f->offset = local_variable_offset;
   restore_scope();
-  local_variable_offset = 0;
+  current_function = NULL;
 }
 
 void funcparam(Type *ft) {
@@ -1238,6 +1242,7 @@ Node *stmt() {
     node->kind = ND_RETURN;
     if (!consume(TK_SEMICOLON)) {
       node->lhs = expr();
+      node->lhs = new_node_cast(tok, current_function->type->return_type, node->lhs);
       expect(TK_SEMICOLON);
     }
     return node;
@@ -1745,7 +1750,6 @@ Node *tail(Node *x) {
     do {
       Node *e = expr();
 
-      // TODO
       if (!f->is_variadic && f->params->size == node->args->size)
         error(&op->pos, "too many arguments");
 

@@ -67,6 +67,7 @@ typedef enum {
   TK_LONG,      // long
   TK_FLOAT,     // float
   TK_DOUBLE,    // double
+  TK_BOOL,      // _Bool
   TK_SIZEOF,    // sizeof
   TK_STRUCT,    // struct
   TK_UNION,     // union
@@ -139,6 +140,7 @@ typedef enum { TYPE_VOID,
                TYPE_FLOAT,
                TYPE_DOUBLE,
                TYPE_LDOUBLE,
+               TYPE_BOOL,
                TYPE_FUNC,
                TYPE_NONE, // internally used for declarator
 } TypeKind;

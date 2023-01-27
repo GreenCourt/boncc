@@ -342,16 +342,20 @@ void gen_global_init(VariableInit *init, Type *type) {
     int val = eval(init->expr);
     switch (type->kind) {
     case TYPE_LONG:
+    case TYPE_ULONG:
       writeline("  .quad %d", val);
       break;
     case TYPE_INT:
+    case TYPE_UINT:
     case TYPE_ENUM:
       writeline("  .long %d", val);
       break;
     case TYPE_SHORT:
+    case TYPE_USHORT:
       writeline("  .value %d", val);
       break;
     case TYPE_CHAR:
+    case TYPE_BOOL:
       writeline("  .byte %d", val);
       break;
     default:
@@ -417,6 +421,16 @@ void gen_cast(Node *node) {
 
   if (from->kind == TYPE_ENUM && to->kind == TYPE_INT)
     return;
+
+  if (from->kind == TYPE_BOOL)
+    return;
+
+  if (to->kind == TYPE_BOOL) {
+    writeline("  cmp rax, 0");
+    writeline("  setne al");
+    writeline("  movzb rax, al");
+    return;
+  }
 
   if (from->kind == TYPE_CHAR) {
     switch (to->kind) {

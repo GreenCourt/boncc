@@ -382,9 +382,11 @@ Node *new_node_assign(Token *tok, Node *lhs, Node *rhs) {
 Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int label_index) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+  bool left_is_voidptr = left_is_ptr && lhs->type->base->kind == TYPE_VOID;
+  bool right_is_voidptr = right_is_ptr && rhs->type->base->kind == TYPE_VOID;
 
   if ((left_is_ptr != right_is_ptr) ||
-      (left_is_ptr && right_is_ptr && !same_type(lhs->type->base, rhs->type->base)))
+      (left_is_ptr && right_is_ptr && !left_is_voidptr && !right_is_voidptr && !same_type(lhs->type->base, rhs->type->base)))
     error(tok ? &tok->pos : NULL, "invalid operands to conditional operator");
 
   if ((is_struct_union(lhs->type) || is_struct_union(rhs->type)) && !same_type(lhs->type, rhs->type))

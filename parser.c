@@ -656,9 +656,9 @@ Variable *new_local_variable(Type *type, int qualifier) {
   if (prev) {
     if ((!is_extern && !prev->is_extern) || !same_type(type, prev->type))
       error(&type->objdec->pos, "conflicted identifier");
-    if(!is_extern) {
+    if (!is_extern) {
       assert(prev->is_extern);
-      if(is_static)
+      if (is_static)
         error(&type->objdec->pos, "conflicted storage class");
       prev->is_extern = false;
     }
@@ -701,9 +701,9 @@ Variable *new_global(Type *type, int qualifier) {
   if (prev) {
     if ((!is_extern && !prev->is_extern) || !same_type(type, prev->type))
       error(&type->objdec->pos, "conflicted identifier");
-    if(!is_extern) {
+    if (!is_extern) {
       assert(prev->is_extern);
-      if(is_static)
+      if (is_static)
         error(&type->objdec->pos, "conflicted storage class");
       prev->is_extern = false;
     }
@@ -1646,11 +1646,11 @@ Node *unary() {
   }
   if (consume(TK_INC)) {
     Node *u = unary();
-    return new_node_assign(NULL, u, new_node_add(NULL, u, new_node_num(NULL, 1, u->type)));
+    return new_node_assign(NULL, u, new_node_add(NULL, u, new_node_num(NULL, 1, base_type(TYPE_INT))));
   }
   if (consume(TK_DEC)) {
     Node *u = unary();
-    return new_node_assign(NULL, u, new_node_sub(NULL, u, new_node_num(NULL, 1, u->type)));
+    return new_node_assign(NULL, u, new_node_sub(NULL, u, new_node_num(NULL, 1, base_type(TYPE_INT))));
   }
 
   if (consume(TK_PLUS))
@@ -1748,12 +1748,12 @@ Node *tail(Node *x) {
 
   if (consume(TK_INC)) {
     // (x = x + 1) - 1
-    return new_node_sub(NULL, new_node_assign(NULL, x, new_node_add(NULL, x, new_node_num(NULL, 1, x->type))), new_node_num(NULL, 1, x->type));
+    return new_node_sub(NULL, new_node_assign(NULL, x, new_node_add(NULL, x, new_node_num(NULL, 1, base_type(TYPE_INT)))), new_node_num(NULL, 1, base_type(TYPE_INT)));
   }
 
   if (consume(TK_DEC)) {
     // (x = x - 1) + 1
-    return new_node_add(NULL, new_node_assign(NULL, x, new_node_sub(NULL, x, new_node_num(NULL, 1, x->type))), new_node_num(NULL, 1, x->type));
+    return new_node_add(NULL, new_node_assign(NULL, x, new_node_sub(NULL, x, new_node_num(NULL, 1, base_type(TYPE_INT)))), new_node_num(NULL, 1, base_type(TYPE_INT)));
   }
 
   if (consume(TK_LPAREN)) {

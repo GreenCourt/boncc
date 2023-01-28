@@ -300,5 +300,16 @@ int main() {
     p = a;
     verify(3, *p + *(p + 1), __FILE__, __LINE__);
   }
+  {
+    int a[2];
+    int *p = a;
+    a[0] = 1;
+    a[1] = 2;
+    verify(1, *p++, __FILE__, __LINE__);
+    verify(2, *p--, __FILE__, __LINE__);
+    verify(2, *++p, __FILE__, __LINE__);
+    verify(1, *--p, __FILE__, __LINE__);
+    verify(1, *p, __FILE__, __LINE__);
+  }
   return 0;
 }

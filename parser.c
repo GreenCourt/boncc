@@ -649,13 +649,27 @@ Variable *new_variable(Type *type, ObjectKind kind, int qualifier) {
 Variable *new_local_variable(Type *type, int qualifier) {
   assert(type->objdec);
   assert(type->objdec->ident);
-  if (map_get(current_scope->objects, type->objdec->ident))
-    error(&type->objdec->pos, "duplicated identifier");
+  bool is_extern = qualifier & IS_EXTERN;
+  bool is_static = qualifier & IS_STATIC;
+
+  Variable *prev = map_get(current_scope->objects, type->objdec->ident);
+  if (prev) {
+    if ((!is_extern && !prev->is_extern) || !same_type(type, prev->type))
+      error(&type->objdec->pos, "conflicted identifier");
+    if(!is_extern) {
+      assert(prev->is_extern);
+      if(is_static)
+        error(&type->objdec->pos, "conflicted storage class");
+      prev->is_extern = false;
+    }
+    return prev;
+  }
+
   Variable *var = new_variable(type, OBJ_LVAR, qualifier);
   map_push(current_scope->objects, var->ident, var);
 
   static int idx = 0;
-  if (qualifier & IS_STATIC) {
+  if (is_static) {
     vector_push(static_local_variables, &var);
 
     // give internal ident
@@ -679,8 +693,23 @@ void set_offset(Variable *var) {
 Variable *new_global(Type *type, int qualifier) {
   assert(type->objdec);
   assert(type->objdec->ident);
-  if (map_get(global_scope->objects, type->objdec->ident))
-    error(&type->objdec->pos, "duplicated identifier");
+
+  bool is_extern = qualifier & IS_EXTERN;
+  bool is_static = qualifier & IS_STATIC;
+
+  Variable *prev = map_get(global_scope->objects, type->objdec->ident);
+  if (prev) {
+    if ((!is_extern && !prev->is_extern) || !same_type(type, prev->type))
+      error(&type->objdec->pos, "conflicted identifier");
+    if(!is_extern) {
+      assert(prev->is_extern);
+      if(is_static)
+        error(&type->objdec->pos, "conflicted storage class");
+      prev->is_extern = false;
+    }
+    return prev;
+  }
+
   Variable *var = new_variable(type, OBJ_GVAR, qualifier);
   map_push(global_scope->objects, var->ident, var);
   return var;
@@ -841,8 +870,6 @@ void func(Type *type, int qualifier) {
     Type *ty = *(Type **)vector_get(f->type->params, i);
     if (ty->objdec == NULL)
       error(&type->objdec->pos, "missing parameter name");
-    if (map_get(current_scope->objects, ty->objdec->ident))
-      error(&type->objdec->pos, "duplicated parameter identifier");
     Variable *var = new_local_variable(ty, 0);
     set_offset(var);
     vector_push(f->params, &var);

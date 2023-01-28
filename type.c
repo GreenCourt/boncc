@@ -237,6 +237,10 @@ bool is_funcptr(Type *type) {
   return type->kind == TYPE_PTR && type->base->kind == TYPE_FUNC;
 }
 
+bool is_struct_union(Type *type) {
+  return type->kind == TYPE_STRUCT || type->kind == TYPE_UNION;
+}
+
 Type *implicit_type_conversion(Type *l, Type *r) {
   if (l->kind == TYPE_ARRAY)
     return pointer_type(l->base);

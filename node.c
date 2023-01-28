@@ -348,16 +348,8 @@ Node *new_node_bitnot(Token *tok, Node *operand) {
 }
 
 Node *new_node_assign_ignore_const(Token *tok, Node *lhs, Node *rhs) {
-  if (lhs->type->kind == TYPE_STRUCT || lhs->type->kind == TYPE_UNION ||
-      rhs->type->kind == TYPE_STRUCT || rhs->type->kind == TYPE_UNION) {
-
-    if (!same_type(lhs->type, rhs->type))
-      error(tok ? &tok->pos : NULL, "unmatched type");
-
-    Node *node = new_node(ND_ASSIGN, lhs, rhs, lhs->type);
-    node->token = tok;
-    return node;
-  }
+  if ((is_struct_union(lhs->type) || is_struct_union(rhs->type)) && !same_type(lhs->type, rhs->type))
+    error(tok ? &tok->pos : NULL, "unmatched type");
 
   if (lhs->kind == ND_VAR && lhs->variable->kind == OBJ_FUNC)
     error(tok ? &tok->pos : NULL, "function cannot be a left-value");
@@ -365,7 +357,10 @@ Node *new_node_assign_ignore_const(Token *tok, Node *lhs, Node *rhs) {
   Type *type = lhs->type;
   while (type->kind == TYPE_ARRAY)
     type = type->base;
-  rhs = new_node_cast(NULL, type, rhs);
+
+  if (!is_struct_union(lhs->type))
+    rhs = new_node_cast(NULL, type, rhs);
+
   Node *node = new_node(ND_ASSIGN, lhs, rhs, type);
   node->token = tok;
   return node;
@@ -378,13 +373,8 @@ Node *new_node_assign(Token *tok, Node *lhs, Node *rhs) {
   if (lhs->kind == ND_MEMBER && lhs->member->type->is_const)
     error(tok ? &tok->pos : NULL, "cannot assignning to a const member");
 
-  if (lhs->kind == ND_MEMBER && lhs->lhs->kind == ND_VAR) {
-    assert(lhs->lhs->type->kind == TYPE_STRUCT || lhs->lhs->type->kind == TYPE_UNION);
-    assert(lhs->lhs->variable->type->kind == TYPE_STRUCT || lhs->lhs->variable->type->kind == TYPE_UNION);
-    assert(lhs->lhs->type->kind == lhs->lhs->variable->type->kind);
-    if (lhs->lhs->variable->type->is_const)
-      error(tok ? &tok->pos : NULL, "cannot assignning to a const variable");
-  }
+  if (lhs->kind == ND_MEMBER && lhs->lhs->kind == ND_VAR && lhs->lhs->variable->type->is_const)
+    error(tok ? &tok->pos : NULL, "cannot assignning to a const variable");
 
   return new_node_assign_ignore_const(tok, lhs, rhs);
 }
@@ -397,22 +387,15 @@ Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int lab
       (left_is_ptr && right_is_ptr && !same_type(lhs->type->base, rhs->type->base)))
     error(tok ? &tok->pos : NULL, "invalid operands to conditional operator");
 
-  if (lhs->type->kind == TYPE_STRUCT || lhs->type->kind == TYPE_UNION ||
-      rhs->type->kind == TYPE_STRUCT || rhs->type->kind == TYPE_UNION) {
+  if ((is_struct_union(lhs->type) || is_struct_union(rhs->type)) && !same_type(lhs->type, rhs->type))
+    error(tok ? &tok->pos : NULL, "unmatched type");
 
-    if (!same_type(lhs->type, rhs->type))
-      error(tok ? &tok->pos : NULL, "unmatched type");
-
-    Node *node = new_node(ND_COND, lhs, rhs, lhs->type);
-    node->condition = cond;
-    node->token = tok;
-    node->label_index = label_index;
-    return node;
+  if (!is_struct_union(lhs->type)) {
+    Type *type = implicit_type_conversion(lhs->type, rhs->type);
+    lhs = new_node_cast(NULL, type, lhs);
+    rhs = new_node_cast(NULL, type, rhs);
   }
 
-  Type *type = implicit_type_conversion(lhs->type, rhs->type);
-  lhs = new_node_cast(NULL, type, lhs);
-  rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_COND, lhs, rhs, lhs->type);
   node->condition = cond;
   node->token = tok;
@@ -422,7 +405,7 @@ Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int lab
 
 Node *new_node_member(Token *tok, Node *x, Member *y) {
   // struct member access (x.y)
-  assert(x->type->kind == TYPE_STRUCT || x->type->kind == TYPE_UNION);
+  assert(is_struct_union(x->type));
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_MEMBER;
   node->type = y->type;

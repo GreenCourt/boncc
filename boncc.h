@@ -325,4 +325,5 @@ bool is_scalar(Type *type);
 bool is_unsigned(Type *type);
 bool is_signed(Type *type);
 bool is_funcptr(Type *type);
+bool is_struct_union(Type *type);
 Type *implicit_type_conversion(Type *l, Type *r);

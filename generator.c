@@ -82,7 +82,7 @@ void load(Type *type) {
   // dest : the address from stack top
   comment(NULL, "load %s", type_text(type->kind), type->size);
 
-  if (type->kind == TYPE_ARRAY || type->kind == TYPE_STRUCT || type->kind == TYPE_UNION)
+  if (type->kind == TYPE_ARRAY || is_struct_union(type))
     return; // nothing todo
   if (type->size == 1)
     writeline("  mov%cx rax, byte ptr [rax]", is_unsigned(type) ? 'z' : 's');
@@ -103,7 +103,7 @@ void store(Type *type) {
 
   writeline("  pop rdi");
 
-  if (type->kind == TYPE_STRUCT || type->kind == TYPE_UNION) {
+  if (is_struct_union(type)) {
     // src  : the struct/union that rax is pointing to
     // dest : the struct/union that the address popped from stack is pointing to
     for (int i = 0; i < type->size; i++) {

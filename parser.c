@@ -234,7 +234,7 @@ int *find_enum_element(Ident *id) {
 }
 
 Member *find_member(Type *st, Token *tok) {
-  assert(st->kind == TYPE_STRUCT || st->kind == TYPE_UNION);
+  assert(is_struct_union(st));
   assert(tok->kind == TK_IDENT);
   Member *member = st->member;
   while (member) {
@@ -301,7 +301,7 @@ Type *consume_struct(TypeKind kind) {
     base->is_const = (qualifier & IS_CONST) == IS_CONST;
 
     if (next_token->kind == TK_SEMICOLON) {
-      if (base->kind != TYPE_STRUCT && base->kind != TYPE_UNION)
+      if (!is_struct_union(base))
         error(&tok_type->pos, "identifier required for the member");
       if (!base->is_unnamed)
         error(&tok_type->pos, "identifier required for the member");
@@ -1157,7 +1157,7 @@ Node *init_local_variable(Variable *var, VariableInit *init, Type *type, int arr
       return new_node_array_set_expr(var, array_index_offset, init->expr);
     } else
       return new_node_assign_ignore_const(NULL, new_node_var(NULL, var), init->expr);
-  } else if (type->kind == TYPE_STRUCT || type->kind == TYPE_UNION) {
+  } else if (is_struct_union(type)) {
     if (init->vec)
       error(NULL, "unimplemented error at %s:%d", __FILE__, __LINE__);
     assert(init->expr);
@@ -1730,8 +1730,8 @@ Node *tail(Node *x) {
 
   if (consume(TK_DOT)) {
     // struct member access (x.y)
-    if (x->type == NULL || (x->type->kind != TYPE_STRUCT && x->type->kind != TYPE_UNION))
-      error(&op->pos, "not a struct");
+    if (x->type == NULL || !is_struct_union(x->type))
+      error(&op->pos, "not a struct/union");
     Token *y = expect(TK_IDENT);
     Member *member = find_member(x->type, y);
     if (member == NULL)
@@ -1742,8 +1742,8 @@ Node *tail(Node *x) {
   if (consume(TK_ARROW)) {
     // struct member access
     // x->y is (*x).y
-    if (x->type == NULL || x->type->kind != TYPE_PTR || (x->type->base->kind != TYPE_STRUCT && x->type->base->kind != TYPE_UNION))
-      error(&op->pos, "not a struct pointer");
+    if (x->type == NULL || x->type->kind != TYPE_PTR || !is_struct_union(x->type->base))
+      error(&op->pos, "not a struct/union pointer");
     Token *y = expect(TK_IDENT);
     Member *member = find_member(x->type->base, y);
     if (member == NULL)

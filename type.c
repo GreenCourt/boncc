@@ -48,7 +48,7 @@ char *type_text(TypeKind kind) {
   }
   assert(false);
   return NULL;
-};
+}
 
 Type *base_type(TypeKind kind) {
   Type *t = calloc(1, sizeof(Type));

@@ -321,6 +321,7 @@ Type *func_type(Type *return_type);
 bool same_type(Type *a, Type *b);
 bool is_float(Type *type);
 bool is_integer(Type *type);
+bool is_scalar(Type *type);
 bool is_unsigned(Type *type);
 bool is_signed(Type *type);
 bool is_funcptr(Type *type);

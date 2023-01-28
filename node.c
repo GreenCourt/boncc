@@ -9,7 +9,7 @@ Node *new_node_nop() {
 }
 
 Node *new_node_num(Token *tok, long long val, Type *type) {
-  assert(is_integer(type) || type->kind == TYPE_PTR);
+  assert(is_scalar(type));
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_NUM;
   node->val = val;
@@ -22,11 +22,11 @@ Node *new_node_cast(Token *tok, Type *type, Node *operand) {
   if (type->kind == TYPE_ARRAY)
     error(tok ? &tok->pos : NULL, "invalid type casting to array type");
 
-  if (type->kind != TYPE_PTR && !is_integer(type))
+  if (!is_scalar(type))
     error(tok ? &tok->pos : NULL, "invalid type casting");
 
   bool op_is_ptr = operand->type->kind == TYPE_PTR || operand->type->kind == TYPE_ARRAY;
-  if (!op_is_ptr && !is_integer(operand->type))
+  if (!op_is_ptr && !is_scalar(operand->type))
     error(tok ? &tok->pos : NULL, "invalid type casting");
 
   if (same_type(type, operand->type))
@@ -86,8 +86,8 @@ Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   if ((left_is_ptr && right_is_ptr) ||
-      (!left_is_ptr && !is_integer(lhs->type)) ||
-      (!right_is_ptr && !is_integer(rhs->type)) ||
+      (!left_is_ptr && !is_scalar(lhs->type)) ||
+      (!right_is_ptr && !is_scalar(rhs->type)) ||
       (left_is_ptr && lhs->type->base->size < 0) ||
       (right_is_ptr && rhs->type->base->size < 0) ||
       is_funcptr(lhs->type) || is_funcptr(rhs->type))
@@ -114,8 +114,8 @@ Node *new_node_sub(Token *tok, Node *lhs, Node *rhs) {
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
 
   if ((!left_is_ptr && right_is_ptr) ||
-      (!left_is_ptr && !is_integer(lhs->type)) ||
-      (!right_is_ptr && !is_integer(rhs->type)) ||
+      (!left_is_ptr && !is_scalar(lhs->type)) ||
+      (!right_is_ptr && !is_scalar(rhs->type)) ||
       (left_is_ptr && lhs->type->base->size < 0) ||
       (right_is_ptr && rhs->type->base->size < 0) ||
       is_funcptr(lhs->type) || is_funcptr(rhs->type))
@@ -144,8 +144,8 @@ Node *new_node_eq(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_voidptr = left_is_ptr && lhs->type->base->kind == TYPE_VOID;
   bool right_is_voidptr = right_is_ptr && rhs->type->base->kind == TYPE_VOID;
 
-  if ((!is_integer(lhs->type) && !left_is_ptr) ||
-      (!is_integer(rhs->type) && !right_is_ptr) ||
+  if ((!is_scalar(lhs->type) && !left_is_ptr) ||
+      (!is_scalar(rhs->type) && !right_is_ptr) ||
       (left_is_ptr && (!right_is_ptr && !right_is_zero)) ||
       (right_is_ptr && (!left_is_ptr && !left_is_zero)) ||
       (left_is_ptr && right_is_ptr && !left_is_voidptr && !right_is_voidptr && !same_type(lhs->type->base, rhs->type->base)))
@@ -167,8 +167,8 @@ Node *new_node_ne(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_voidptr = left_is_ptr && lhs->type->base->kind == TYPE_VOID;
   bool right_is_voidptr = right_is_ptr && rhs->type->base->kind == TYPE_VOID;
 
-  if ((!is_integer(lhs->type) && !left_is_ptr) ||
-      (!is_integer(rhs->type) && !right_is_ptr) ||
+  if ((!is_scalar(lhs->type) && !left_is_ptr) ||
+      (!is_scalar(rhs->type) && !right_is_ptr) ||
       (left_is_ptr && (!right_is_ptr && !right_is_zero)) ||
       (right_is_ptr && (!left_is_ptr && !left_is_zero)) ||
       (left_is_ptr && right_is_ptr && !left_is_voidptr && !right_is_voidptr && !same_type(lhs->type->base, rhs->type->base)))
@@ -186,8 +186,8 @@ Node *new_node_lt(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
 
-  if ((!is_integer(lhs->type) && !left_is_ptr) ||
-      (!is_integer(rhs->type) && !right_is_ptr) ||
+  if ((!is_scalar(lhs->type) && !left_is_ptr) ||
+      (!is_scalar(rhs->type) && !right_is_ptr) ||
       (left_is_ptr != right_is_ptr) ||
       (left_is_ptr && right_is_ptr && !same_type(lhs->type->base, rhs->type->base)) ||
       is_funcptr(lhs->type) || is_funcptr(rhs->type))
@@ -205,8 +205,8 @@ Node *new_node_le(Token *tok, Node *lhs, Node *rhs) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
 
-  if ((!is_integer(lhs->type) && !left_is_ptr) ||
-      (!is_integer(rhs->type) && !right_is_ptr) ||
+  if ((!is_scalar(lhs->type) && !left_is_ptr) ||
+      (!is_scalar(rhs->type) && !right_is_ptr) ||
       (left_is_ptr != right_is_ptr) ||
       (left_is_ptr && right_is_ptr && !same_type(lhs->type->base, rhs->type->base)) ||
       is_funcptr(lhs->type) || is_funcptr(rhs->type))
@@ -244,7 +244,7 @@ Node *new_node_deref(Token *tok, Node *operand) {
 
 Node *new_node_lognot(Token *tok, Node *operand) {
   bool is_ptr = operand->type->kind == TYPE_PTR || operand->type->kind == TYPE_ARRAY;
-  if (!is_integer(operand->type) && !is_ptr)
+  if (!is_scalar(operand->type) && !is_ptr)
     error(tok ? &tok->pos : NULL, "invalid operand to unary ! operator");
   Node *node = new_node(ND_LOGNOT, operand, NULL, base_type(TYPE_INT));
   node->token = tok;
@@ -254,8 +254,8 @@ Node *new_node_lognot(Token *tok, Node *operand) {
 Node *new_node_logand(Token *tok, Node *lhs, Node *rhs, int label_index) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
-  if ((!left_is_ptr && !is_integer(lhs->type)) ||
-      (!right_is_ptr && !is_integer(rhs->type)))
+  if ((!left_is_ptr && !is_scalar(lhs->type)) ||
+      (!right_is_ptr && !is_scalar(rhs->type)))
     error(tok ? &tok->pos : NULL, "invalid operands to binary && operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
@@ -270,8 +270,8 @@ Node *new_node_logand(Token *tok, Node *lhs, Node *rhs, int label_index) {
 Node *new_node_logor(Token *tok, Node *lhs, Node *rhs, int label_index) {
   bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
-  if ((!left_is_ptr && !is_integer(lhs->type)) ||
-      (!right_is_ptr && !is_integer(rhs->type)))
+  if ((!left_is_ptr && !is_scalar(lhs->type)) ||
+      (!right_is_ptr && !is_scalar(rhs->type)))
     error(tok ? &tok->pos : NULL, "invalid operands to binary && operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);

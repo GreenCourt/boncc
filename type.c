@@ -200,6 +200,11 @@ bool is_integer(Type *type) {
   }
 }
 
+bool is_scalar(Type *type) {
+  assert(type);
+  return is_integer(type) || is_float(type) || type->kind == TYPE_PTR;
+}
+
 bool is_signed(Type *type) {
   assert(type);
   switch (type->kind) {

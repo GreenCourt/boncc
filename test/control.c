@@ -2,19 +2,13 @@ void verify(int expected, int actual, char *file_name, int line_number);
 
 int main() {
   {
-    int a;
-    a = 3;
+    int a = 3;
     int r;
     if (a == 3)
       r = a + 2;
     else
       r = a;
     verify(5, r, __FILE__, __LINE__);
-  }
-  {
-    int a;
-    a = 3;
-    int r;
     if (a < 3)
       r = a + 2;
     else
@@ -22,48 +16,36 @@ int main() {
     verify(3, r, __FILE__, __LINE__);
   }
   {
-    int b;
-    b = 0;
-    int a;
-    for (a = 0; a < 10; a = a + 1)
+    int b = 0;
+    for (int a = 0; a < 10; a++)
       b = a * 2;
     verify(18, b, __FILE__, __LINE__);
   }
   {
-    int a;
-    a = 0;
+    int a = 0;
     for (; a < 10;)
       a = a + 1;
-    a;
     verify(10, a, __FILE__, __LINE__);
   }
   {
-    int a;
-    a = 0;
-    int b;
-    b = 0;
-    for (; a < 10;) {
-      a = a + 1;
-      b = b + 2;
-    }
-    b;
+    int a = 0;
+    int b = 0;
+    for (; a < 10;)
+      a = a + 1, b = b + 2;
     verify(20, b, __FILE__, __LINE__);
   }
   {
-    int a;
-    a = 0;
-    int b;
-    b = 0;
+    int a = 0;
+    int b = 0;
     while (a < 10) {
       a = a + 1;
       b = b + 2;
     }
-    b;
     verify(20, b, __FILE__, __LINE__);
   }
   {
     int s = 0;
-    for (int i = 1; i <= 10; i = i + 1)
+    for (int i = 1; i <= 10; i++)
       s = s + i;
     verify(55, s, __FILE__, __LINE__);
   }
@@ -79,9 +61,9 @@ int main() {
   {
     // break, continue
     int outer = 0;
-    for (int i = 0; i <= 10; i = i + 1) {
+    for (int i = 0; i <= 10; ++i) {
       int s = 0;
-      for (int j = 0; j < 100; j = j + 1) {
+      for (int j = 0; j < 100; j++) {
         s = s + j;
         if (j == 10)
           break;

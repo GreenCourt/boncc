@@ -10,14 +10,12 @@ int ret5(int x, int y, int z) {
 
 int add12(int, int);
 int add12(int x, int y) {
-  int a;
-  a = 12;
+  int a =12;
   return a + x + y;
 }
 
 int fib(int a) {
-  int r;
-  r = 0;
+  int r = 0;
   if (a == 0)
     return 0;
   else if (a == 1)
@@ -33,13 +31,13 @@ void voidfunc(int a) {
 
 int static_test1() {
   static int a = 0;
-  a = a + 1;
+  a++;
   return a;
 }
 
 int static_test2(void) {
   static int a = -2;
-  a = a + 2;
+  a += 2;
   return a;
 }
 
@@ -85,18 +83,15 @@ int main() {
   verify(12, static_enum(), __FILE__, __LINE__);
 
   {
-    int a;
-    a = foo();
+    int a = foo();
     verify(12, a, __FILE__, __LINE__);
   }
   {
-    int a;
-    a = add2(1, 5);
+    int a = add2(1, 5);
     verify(6, a, __FILE__, __LINE__);
   }
   {
-    int a;
-    a = add3(1, 5, 6);
+    int a = add3(1, 5, 6);
     verify(12, a, __FILE__, __LINE__);
   }
   {

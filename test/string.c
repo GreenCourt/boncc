@@ -49,8 +49,7 @@ cdef"),
   verify(24, sizeof(global_array_of_char_ptr), __FILE__, __LINE__);
 
   {
-    char *x;
-    x = "abc";
+    char *x = "abc";
     verify(97, x[0], __FILE__, __LINE__);
     verify(0, x[3], __FILE__, __LINE__);
     verify(8, sizeof(x), __FILE__, __LINE__);

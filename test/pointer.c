@@ -48,65 +48,28 @@ int main() {
   verify(12, **(pp_array[1][1] - 4), __FILE__, __LINE__);
 
   {
-    int x;
-    x = 3;
-    int *y;
-    y = &x;
+    int x = 3;
+    int *y = &x;
+    int **z = &y;
     verify(3, *y, __FILE__, __LINE__);
-  }
-  {
-    int x;
-    x = 3;
-    int y;
-    y = 5;
-    int *z;
-    z = &y + 1;
-    verify(3, *z, __FILE__, __LINE__);
-  }
-  {
-    int x;
-    x = 3;
-    int *y;
-    y = &x;
-    int **z;
-    z = &y;
     verify(3, **z, __FILE__, __LINE__);
+    *y = 4;
+    verify(4, x, __FILE__, __LINE__);
+    **z = 2;
+    verify(2, x, __FILE__, __LINE__);
   }
   {
-    int x;
-    int *y;
-    y = &x;
-    *y = 3;
-    verify(3, x, __FILE__, __LINE__);
-  }
-  {
-    int x;
-    int *y;
-    y = &x;
-    int **z;
-    z = &y;
-    **z = 3;
-    verify(3, x, __FILE__, __LINE__);
-  }
-  {
-    int x;
-    x = 12;
-    int *p;
-    p = &x;
-    int **q;
-    q = &p;
+    int x = 12;
+    int *p = &x;
+    int **q = &p;
     verify(12, *&*&**q, __FILE__, __LINE__);
   }
   {
     int a[2];
     *a = 1;
     *(a + 1) = 2;
-    int *p;
-    p = a;
+    int *p = a;
     verify(3, *p + *(p + 1), __FILE__, __LINE__);
-  }
-  {
-    int a[2];
     verify(1, &a[1] - &a[0], __FILE__, __LINE__);
   }
   {
@@ -115,40 +78,34 @@ int main() {
   }
   {
     int a[2];
-    int *x;
-    int *y;
-    x = a;
-    y = &a[1];
+    int *x = a;
+    int *y = &a[1];
     verify(1, y - x, __FILE__, __LINE__);
   }
   {
     int a[2];
     a[0] = 1;
     a[1] = 2;
-    int *p;
-    p = a;
+    int *p = a;
     verify(3, p[0] + p[1], __FILE__, __LINE__);
   }
   {
     int a[2];
     0 [a] = 1;
     (2 - 1)[a] = 2;
-    int *p;
-    p = a;
+    int *p = a;
     verify(3, p[0] + p[1], __FILE__, __LINE__);
   }
   {
     int a[2];
     zero()[a] = 1;
     one()[a] = 2;
-    int *p;
-    p = a;
+    int *p = a;
     verify(3, p[zero()] + p[one()], __FILE__, __LINE__);
   }
   {
     int x[2];
-    int *y;
-    y = &x;
+    int *y = &x;
     *y = 3;
     verify(3, *x, __FILE__, __LINE__);
   }
@@ -158,20 +115,11 @@ int main() {
     *(x + 1) = 4;
     *(x + 2) = 5;
     verify(3, *x, __FILE__, __LINE__);
-  }
-  {
-    int x[3];
-    *x = 3;
-    *(x + 1) = 4;
-    *(x + 2) = 5;
     verify(4, *(x + 1), __FILE__, __LINE__);
-  }
-  {
-    int x[3];
-    *x = 3;
-    *(x + 1) = 4;
-    *(x + 2) = 5;
     verify(5, *(x + 2), __FILE__, __LINE__);
+    verify(3, x[0], __FILE__, __LINE__);
+    verify(4, x[1], __FILE__, __LINE__);
+    verify(5, x[2], __FILE__, __LINE__);
   }
   {
     int x[3];
@@ -179,54 +127,20 @@ int main() {
     x[1] = 4;
     x[2] = 5;
     verify(3, x[0], __FILE__, __LINE__);
-  }
-  {
-    int x[3];
-    *x = 3;
-    x[1] = 4;
-    x[2] = 5;
     verify(4, x[1], __FILE__, __LINE__);
-  }
-  {
-    int x[3];
-    *x = 3;
-    x[1] = 4;
-    x[2] = 5;
-    verify(3, *x, __FILE__, __LINE__);
-  }
-  {
-    int x[3];
-    *x = 3;
-    x[1] = 4;
-    x[2] = 5;
+    verify(5, x[2], __FILE__, __LINE__);
+    verify(3, *(x), __FILE__, __LINE__);
     verify(4, *(x + 1), __FILE__, __LINE__);
-  }
-  {
-    int x[3];
-    *x = 3;
-    x[1] = 4;
-    x[2] = 5;
     verify(5, *(x + 2), __FILE__, __LINE__);
-  }
-  {
-    int x[3];
-    *x = 3;
-    x[1] = 4;
-    x[2] = 5;
-    verify(5, *(x + 2), __FILE__, __LINE__);
-  }
-  {
-    int x[3];
-    *x = 3;
-    x[1] = 4;
-    2 [x] = 5;
-    verify(5, *(x + 2), __FILE__, __LINE__);
+    2 [x] = 6;
+    verify(6, *(x + 2), __FILE__, __LINE__);
   }
   {
     int a[2];
     a[0] = 1;
     a[1] = 2;
     f(a);
+    verify(1, a[0], __FILE__, __LINE__);
     verify(12, a[1], __FILE__, __LINE__);
   }
   {
@@ -235,60 +149,28 @@ int main() {
     a[1] = 2;
     g(a);
     verify(12, a[0], __FILE__, __LINE__);
+    verify(2, a[1], __FILE__, __LINE__);
   }
   {
     int x[2][3];
-    int *y;
-    y = x;
+    int *y = x;
     y[0] = 0;
-    verify(0, **x, __FILE__, __LINE__);
-  }
-  {
-    int x[2][3];
-    int *y;
-    y = x;
-    y[0] = 0;
-    verify(0, x[0][0], __FILE__, __LINE__);
-  }
-  {
-    int x[2][3];
-    int *y;
-    y = x;
     y[1] = 1;
-    verify(1, x[0][1], __FILE__, __LINE__);
-  }
-  {
-    int x[2][3];
-    int *y;
-    y = x;
     y[2] = 2;
-    verify(2, x[0][2], __FILE__, __LINE__);
-  }
-  {
-    int x[2][3];
-    int *y;
-    y = x;
     y[3] = 3;
-    verify(3, x[1][0], __FILE__, __LINE__);
-  }
-  {
-    int x[2][3];
-    int *y;
-    y = x;
     y[4] = 4;
-    verify(4, x[1][1], __FILE__, __LINE__);
-  }
-  {
-    int x[2][3];
-    int *y;
-    y = x;
     y[5] = 5;
+    verify(0, **x, __FILE__, __LINE__);
+    verify(0, x[0][0], __FILE__, __LINE__);
+    verify(1, x[0][1], __FILE__, __LINE__);
+    verify(2, x[0][2], __FILE__, __LINE__);
+    verify(3, x[1][0], __FILE__, __LINE__);
+    verify(4, x[1][1], __FILE__, __LINE__);
     verify(5, x[1][2], __FILE__, __LINE__);
   }
   {
     int x[2][2][2];
-    int *y;
-    y = x;
+    int *y = x;
     y[5] = 5;
     verify(5, x[1][0][1], __FILE__, __LINE__);
   }
@@ -296,8 +178,7 @@ int main() {
     char a[2];
     *a = 1;
     *(a + 1) = 2;
-    char *p;
-    p = a;
+    char *p = a;
     verify(3, *p + *(p + 1), __FILE__, __LINE__);
   }
   {

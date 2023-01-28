@@ -130,30 +130,18 @@ int main() {
     verify(14, a + b / 2, __FILE__, __LINE__);
   }
   { // block scope
-    int a;
-    a = 7;
+    int a = 7;
     {
-      int a;
-      a = 3;
-      int b;
-      b = 5 * 6 - 8;
+      int a = 3;
+      int b = 5 * 6 - 8;
       verify(14, a + b / 2, __FILE__, __LINE__);
     }
     verify(7, a, __FILE__, __LINE__);
   }
   {
-    int aaa;
-    aaa = 3;
-    int bb;
-    bb = 5 * 6 - 8;
+    int aaa = 3;
+    int bb = 5 * 6 - 8;
     verify(14, aaa + bb / 2, __FILE__, __LINE__);
-  }
-  {
-    int aaa;
-    aaa = 3;
-    int bb;
-    bb = 5 * 6 - 8;
-    aaa + bb / 2;
     verify(5, aaa + 2, __FILE__, __LINE__);
   }
   {
@@ -197,46 +185,23 @@ int main() {
     verify(12, y, __FILE__, __LINE__);
   }
   {
-    char x;
-    x = 20;
+    char x = 20;
     verify(20, x, __FILE__, __LINE__);
   }
   {
     char x[3];
     x[0] = -1;
     x[1] = 2;
-    int y;
-    y = 4;
+    int y = 4;
     verify(3, x[0] + y, __FILE__, __LINE__);
-  }
-  {
-    char x[3];
-    x[0] = -1;
-    x[1] = 2;
-    int y;
-    y = 4;
     verify(6, x[1] + y, __FILE__, __LINE__);
-  }
-  {
-    char x[3];
-    x[0] = -1;
-    x[1] = 2;
     verify(1, x[0] + x[1], __FILE__, __LINE__);
+    char *p = &x[0];
+    verify(2, *(p + 1), __FILE__, __LINE__);
   }
   {
     int a = 3 * 2 + 1;
     verify(7, a, __FILE__, __LINE__);
-  }
-  {
-    char a = 3 * 2 + 1;
-    verify(7, a, __FILE__, __LINE__);
-  }
-  {
-    char x[3];
-    x[0] = -1;
-    x[1] = 2;
-    char *p = &x[0];
-    verify(2, *(p + 1), __FILE__, __LINE__);
   }
   {
     int x[3] = {1, 2};

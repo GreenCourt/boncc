@@ -141,12 +141,14 @@ Node *new_node_eq(Token *tok, Node *lhs, Node *rhs) {
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   bool left_is_zero = lhs->kind == ND_NUM && lhs->val == 0;
   bool right_is_zero = rhs->kind == ND_NUM && rhs->val == 0;
+  bool left_is_voidptr = left_is_ptr && lhs->type->base->kind == TYPE_VOID;
+  bool right_is_voidptr = right_is_ptr && rhs->type->base->kind == TYPE_VOID;
 
   if ((!is_integer(lhs->type) && !left_is_ptr) ||
       (!is_integer(rhs->type) && !right_is_ptr) ||
       (left_is_ptr && (!right_is_ptr && !right_is_zero)) ||
       (right_is_ptr && (!left_is_ptr && !left_is_zero)) ||
-      (left_is_ptr && right_is_ptr && !same_type(lhs->type->base, rhs->type->base)))
+      (left_is_ptr && right_is_ptr && !left_is_voidptr && !right_is_voidptr && !same_type(lhs->type->base, rhs->type->base)))
     error(tok ? &tok->pos : NULL, "invalid operands to == operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
@@ -162,12 +164,14 @@ Node *new_node_ne(Token *tok, Node *lhs, Node *rhs) {
   bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   bool left_is_zero = lhs->kind == ND_NUM && lhs->val == 0;
   bool right_is_zero = rhs->kind == ND_NUM && rhs->val == 0;
+  bool left_is_voidptr = left_is_ptr && lhs->type->base->kind == TYPE_VOID;
+  bool right_is_voidptr = right_is_ptr && rhs->type->base->kind == TYPE_VOID;
 
   if ((!is_integer(lhs->type) && !left_is_ptr) ||
       (!is_integer(rhs->type) && !right_is_ptr) ||
       (left_is_ptr && (!right_is_ptr && !right_is_zero)) ||
       (right_is_ptr && (!left_is_ptr && !left_is_zero)) ||
-      (left_is_ptr && right_is_ptr && !same_type(lhs->type->base, rhs->type->base)))
+      (left_is_ptr && right_is_ptr && !left_is_voidptr && !right_is_voidptr && !same_type(lhs->type->base, rhs->type->base)))
     error(tok ? &tok->pos : NULL, "invalid operands to != operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);

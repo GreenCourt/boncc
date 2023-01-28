@@ -216,5 +216,44 @@ int main() {
     verify(5, x, __FILE__, __LINE__);
     verify(12, y, __FILE__, __LINE__);
   }
+  {
+    int x = -1;
+    if (0, 0, 0, 5)
+      x = 3;
+    verify(3, x, __FILE__, __LINE__);
+    if (2, 3, 4, 0)
+      x = 4;
+    verify(3, x, __FILE__, __LINE__);
+  }
+  {
+    int x = -1;
+    while (0, x) {
+      verify(-1, x, __FILE__, __LINE__);
+      x = 0;
+    }
+    verify(0, x, __FILE__, __LINE__);
+  }
+  {
+    int x = -4;
+    do {
+      verify(1, x < 0, __FILE__, __LINE__);
+      x++;
+    } while (1, 2, 3, x);
+    verify(0, x, __FILE__, __LINE__);
+  }
+  {
+    int x = -4;
+    do {
+      verify(1, x < 0, __FILE__, __LINE__);
+      x++;
+    } while (1, 2, 3, x);
+    verify(0, x, __FILE__, __LINE__);
+  }
+  {
+    int x, y;
+    for (x = 2, y = 3; 1, x < 10; x++, y++) {
+      verify(1, y - x, __FILE__, __LINE__);
+    }
+  }
   return 0;
 }

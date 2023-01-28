@@ -934,6 +934,11 @@ void gen(Node *node) {
     comment(node->token, "ND_CAST %s --> %s", type_text(node->lhs->type->kind), type_text(node->type->kind));
     gen_cast(node);
     return;
+  case ND_COMMA:
+    comment(node->token, "ND_COMMA");
+    gen(node->lhs);
+    gen(node->rhs);
+    return;
   default:
     assert(false);
   }

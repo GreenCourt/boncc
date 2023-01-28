@@ -17,11 +17,11 @@ float_type  = "float" | ("long"? double "long"?)
 struct      = (("struct" | "union") ident ("{" member* "}")?) | (("struct" | "union") ident? "{" member* "}")
 member      = "const"* type declarator ("," declarator )* ";"
 enum        = ("enum" ident ("{" enumval ("," enumval)* ","? "}")?) | ("enum" ident? "{" enumval ("," enumval)* ","? "}")
-enumval     = indent ("=" expr)?
+enumval     = indent ("=" assign)?
 typedef     = "typedef" type declarator ("," declarator)* ";"
 qualifier   = ("const" | "static" | "extern")*
 vardec      = qualifier? type declarator ("=" varinit)?  ("," declarator ("=" varinit)?)* ";"
-varinit     = expr
+varinit     = assign
               | "{" varinit ("," varinit)* ","? "}"
 func        = qualifier? type declarator (("{" stmt* "}") | ";")
 funcparam   = qualifier? type declarator ("," type declarator )*
@@ -39,7 +39,8 @@ stmt        = ";"
               | "switch" "(" expr ")" stmt
               | "case" expr ":" stmt
               | "default" ":" stmt
-expr        = assign
+expr        = comma
+comma       = assign ("," comma)?
 assign      = condtional (("=" | "+=" | "-=" | "*=" | "/=" | "%=" | "^=" | "&=" | "|=" | "<<=" | ">>=" ) assign)?
 conditional = logor ("?" expr ":" conditional)?
 logor       = logand ("||" logand)*
@@ -69,7 +70,7 @@ tail        =  ("[" expr "]")
                | ("." ident)
                | ("->" ident)
                | ("++") | ("--")
-               | ("(" (expr ("," expr)*)? ")")
+               | ("(" (assign ("," assign)*)? ")")
 primary     = "(" expr ")"
               | ident
               | num
@@ -99,6 +100,7 @@ Node *new_node_bitand(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_bitor(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_bitxor(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_bitnot(Token *tok, Node *lhs);
+Node *new_node_comma(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_assign(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_assign_ignore_const(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int label_index);
@@ -124,6 +126,7 @@ void funcparam(Type *ft);
 VariableInit *varinit();
 Node *stmt();
 Node *expr();
+Node *comma();
 Node *assign();
 Node *conditional();
 Node *logor();
@@ -429,7 +432,7 @@ Type *consume_enum() {
       error(&id->pos, "duplicated identifier for enum element");
 
     if (consume(TK_ASSIGN))
-      val = eval(expr()) - 1;
+      val = eval(assign()) - 1;
     int *v = calloc(1, sizeof(int));
     *v = ++val;
     map_push(current_scope->enum_elements, id->ident, v);
@@ -1070,7 +1073,7 @@ VariableInit *varinit() {
       }
     }
   } else {
-    init->expr = expr();
+    init->expr = assign();
   }
   return init;
 }
@@ -1460,7 +1463,15 @@ Node *stmt_switch() {
   return node;
 }
 
-Node *expr() { return assign(); }
+Node *expr() { return comma(); }
+
+Node *comma() {
+  Node *node = assign();
+  Token *tok = next_token;
+  if (consume(TK_COMMA))
+    return new_node_comma(tok, node, comma());
+  return node;
+}
 
 Node *assign() {
   Node *node = conditional();
@@ -1780,7 +1791,7 @@ Node *tail(Node *x) {
       return node;
 
     do {
-      Node *e = expr();
+      Node *e = assign();
 
       if (!f->is_variadic && f->params->size == node->args->size)
         error(&op->pos, "too many arguments");

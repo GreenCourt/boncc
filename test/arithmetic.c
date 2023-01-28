@@ -212,6 +212,19 @@ int main() {
       char *y = x + 1;
       verify(0, y[-1], __FILE__, __LINE__);
     }
+    {
+      int x = 5, y = 3;
+      verify(9, (7, 2, 3, 9), __FILE__, __LINE__);
+      verify(1, (x = 2, y = 1), __FILE__, __LINE__);
+      verify(2, x, __FILE__, __LINE__);
+      verify(1, y, __FILE__, __LINE__);
+      verify(4, (12, y = 8, x = 4), __FILE__, __LINE__);
+      verify(4, x, __FILE__, __LINE__);
+      verify(8, y, __FILE__, __LINE__);
+      x = -1, y = -2;
+      verify(-1, x, __FILE__, __LINE__);
+      verify(-2, y, __FILE__, __LINE__);
+    }
   }
   return 0;
 }

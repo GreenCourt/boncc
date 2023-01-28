@@ -347,6 +347,13 @@ Node *new_node_bitnot(Token *tok, Node *operand) {
   return node;
 }
 
+Node *new_node_comma(Token *tok, Node *lhs, Node *rhs) {
+  Type *type = rhs->type;
+  Node *node = new_node(ND_COMMA, lhs, rhs, type);
+  node->token = tok;
+  return node;
+}
+
 Node *new_node_assign_ignore_const(Token *tok, Node *lhs, Node *rhs) {
   if ((is_struct_union(lhs->type) || is_struct_union(rhs->type)) && !same_type(lhs->type, rhs->type))
     error(tok ? &tok->pos : NULL, "unmatched type");

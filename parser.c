@@ -1157,6 +1157,11 @@ Node *init_local_variable(Variable *var, VariableInit *init, Type *type, int arr
       return new_node_array_set_expr(var, array_index_offset, init->expr);
     } else
       return new_node_assign_ignore_const(NULL, new_node_var(NULL, var), init->expr);
+  } else if (type->kind == TYPE_STRUCT || type->kind == TYPE_UNION) {
+    if (init->vec)
+      error(NULL, "unimplemented error at %s:%d", __FILE__, __LINE__);
+    assert(init->expr);
+    return new_node_assign_ignore_const(NULL, new_node_var(NULL, var), init->expr);
   } else
     assert(false);
   return NULL;

@@ -281,7 +281,6 @@ int main() {
     s.a = 4;
     verify(4, s.b, __FILE__, __LINE__);
   }
-
   {
     struct S {
       short q;
@@ -297,5 +296,60 @@ int main() {
     verify(2, s.a, __FILE__, __LINE__);
     verify(3, s.b, __FILE__, __LINE__);
   }
+  {
+    struct S {
+      char a;
+      short b;
+      int c;
+    };
+    struct S x, y;
+    x.a = 4;
+    x.b = 5;
+    x.c = 6;
+    y = x;
+    verify(4, x.a, __FILE__, __LINE__);
+    verify(5, x.b, __FILE__, __LINE__);
+    verify(6, x.c, __FILE__, __LINE__);
+  }
+  {
+    union U {
+      char a;
+      short b;
+      int c;
+    };
+    union U x, y;
+    x.a = 6;
+    y = x;
+    verify(6, y.a, __FILE__, __LINE__);
+    x.b = 4;
+    y = x;
+    verify(4, y.b, __FILE__, __LINE__);
+    x.c = 8;
+    y = x;
+    verify(8, y.c, __FILE__, __LINE__);
+  }
+  {
+    struct S {
+      char a;
+      short b;
+      int c;
+    };
+    struct S x, y;
+    x.a = 4;
+    x.b = 5;
+    x.c = 6;
+    y.a = 1;
+    y.b = 2;
+    y.c = 3;
+    struct S z = 1 ? x : y;
+    verify(4, z.a, __FILE__, __LINE__);
+    verify(5, z.b, __FILE__, __LINE__);
+    verify(6, z.c, __FILE__, __LINE__);
+    z = 0 ? x : y;
+    verify(1, z.a, __FILE__, __LINE__);
+    verify(2, z.b, __FILE__, __LINE__);
+    verify(3, z.c, __FILE__, __LINE__);
+  }
+
   return 0;
 }

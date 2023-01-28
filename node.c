@@ -349,8 +349,15 @@ Node *new_node_bitnot(Token *tok, Node *operand) {
 
 Node *new_node_assign_ignore_const(Token *tok, Node *lhs, Node *rhs) {
   if (lhs->type->kind == TYPE_STRUCT || lhs->type->kind == TYPE_UNION ||
-      rhs->type->kind == TYPE_STRUCT || rhs->type->kind == TYPE_UNION)
-    error(tok ? &tok->pos : NULL, "assignning to/from struct/union is currentry not supported");
+      rhs->type->kind == TYPE_STRUCT || rhs->type->kind == TYPE_UNION) {
+
+    if (!same_type(lhs->type, rhs->type))
+      error(tok ? &tok->pos : NULL, "unmatched type");
+
+    Node *node = new_node(ND_ASSIGN, lhs, rhs, lhs->type);
+    node->token = tok;
+    return node;
+  }
 
   if (lhs->kind == ND_VAR && lhs->variable->kind == OBJ_FUNC)
     error(tok ? &tok->pos : NULL, "function cannot be a left-value");
@@ -391,8 +398,17 @@ Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int lab
     error(tok ? &tok->pos : NULL, "invalid operands to conditional operator");
 
   if (lhs->type->kind == TYPE_STRUCT || lhs->type->kind == TYPE_UNION ||
-      rhs->type->kind == TYPE_STRUCT || rhs->type->kind == TYPE_UNION)
-    error(tok ? &tok->pos : NULL, "struct/union is currentry not supported for conditional operator");
+      rhs->type->kind == TYPE_STRUCT || rhs->type->kind == TYPE_UNION) {
+
+    if (!same_type(lhs->type, rhs->type))
+      error(tok ? &tok->pos : NULL, "unmatched type");
+
+    Node *node = new_node(ND_COND, lhs, rhs, lhs->type);
+    node->condition = cond;
+    node->token = tok;
+    node->label_index = label_index;
+    return node;
+  }
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);

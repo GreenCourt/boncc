@@ -1,5 +1,6 @@
 #include "vector.h"
 #include <stdbool.h>
+#include <stdio.h>
 
 typedef enum {
   TK_HASH,      // #
@@ -307,7 +308,7 @@ bool same_ident(Ident *a, Ident *b);
 Token *tokenize(char *input_path);
 Token *preprocess(Token *input);
 void parse(Token *input);
-void generate_code();
+void generate_code(FILE *output_stream);
 
 char *type_text(TypeKind kind);
 Type *base_type(TypeKind kind);

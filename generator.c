@@ -432,6 +432,9 @@ void gen_cast(Node *node) {
     return;
   }
 
+  if (to->kind == TYPE_VOID)
+    return;
+
   if (from->kind == TYPE_CHAR) {
     switch (to->kind) {
     case TYPE_CHAR:

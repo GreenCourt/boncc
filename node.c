@@ -19,18 +19,19 @@ Node *new_node_num(Token *tok, long long val, Type *type) {
 }
 
 Node *new_node_cast(Token *tok, Type *type, Node *operand) {
-  if (type->kind == TYPE_ARRAY)
-    error(tok ? &tok->pos : NULL, "invalid type casting to array type");
-
-  if (!is_scalar(type))
-    error(tok ? &tok->pos : NULL, "invalid type casting");
-
-  bool op_is_ptr = operand->type->kind == TYPE_PTR || operand->type->kind == TYPE_ARRAY;
-  if (!op_is_ptr && !is_scalar(operand->type))
+  if (!is_scalar(type) && type->kind != TYPE_VOID)
     error(tok ? &tok->pos : NULL, "invalid type casting");
 
   if (same_type(type, operand->type))
     return operand;
+
+  if ((!is_scalar(operand->type) &&
+       operand->type->kind != TYPE_ARRAY &&
+       operand->type->kind != TYPE_VOID))
+    error(tok ? &tok->pos : NULL, "invalid type casting");
+
+  if (operand->type->kind == TYPE_VOID && type->kind != TYPE_VOID)
+    error(tok ? &tok->pos : NULL, "invalid type casting from void");
 
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_CAST;

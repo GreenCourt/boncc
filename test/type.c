@@ -274,5 +274,10 @@ int main() {
     a = 0;
     verify(0, (_Bool)a, __FILE__, __LINE__);
   }
+  {
+    int a = 12;
+    (void)a;
+    (void)(void) a;
+  }
   return 0;
 }

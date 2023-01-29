@@ -57,6 +57,8 @@ _Bool retbool(int a) {
   return a;
 }
 
+void empty() {}
+
 int main() {
   verify(12, add3(1, 5, 6), __FILE__, __LINE__);
   verify(5, ret5(1, 5, 6), __FILE__, __LINE__);
@@ -65,6 +67,7 @@ int main() {
   verify(8, fib(6), __FILE__, __LINE__);
   verify(13, fib(7), __FILE__, __LINE__);
   voidfunc(4);
+  empty();
 
   verify(1, static_test1(), __FILE__, __LINE__);
   verify(2, static_test1(), __FILE__, __LINE__);

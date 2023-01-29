@@ -1305,16 +1305,12 @@ Node *stmt() {
 }
 
 Node *stmt_block() {
-  Token *tok;
-  if ((tok = consume(TK_RBRACE)))
-    return NULL;
-
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_BLOCK;
   node->blk_stmts = new_vector(0, sizeof(Node *));
-  node->token = tok;
+  node->token = NULL;
 
-  do {
+  while (!consume(TK_RBRACE)) {
     Node *s;
     if ((s = declaration())) {
       if (s->kind != ND_NOP)
@@ -1322,7 +1318,7 @@ Node *stmt_block() {
     } else if ((s = stmt())) {
       vector_push(node->blk_stmts, &s);
     }
-  } while (!consume(TK_RBRACE));
+  }
 
   return node;
 }

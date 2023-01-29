@@ -696,14 +696,13 @@ Variable *new_global(Type *type, int qualifier) {
 
   Variable *prev = map_get(global_scope->objects, type->objdec->ident);
   if (prev) {
-    if ((!is_extern && !prev->is_extern) || !same_type(type, prev->type))
+    if (is_static != prev->is_static || !same_type(type, prev->type))
       error(&type->objdec->pos, "conflicted identifier");
-    if (!is_extern) {
-      assert(prev->is_extern);
-      if (is_static)
-        error(&type->objdec->pos, "conflicted storage class");
+    if (!is_extern)
       prev->is_extern = false;
-    }
+
+    if (prev->type->kind == TYPE_ARRAY && prev->type->size < -1 && type->size >= 0)
+      prev->type = type;
     return prev;
   }
 
@@ -767,9 +766,6 @@ Vector *vardec(Type *type, ObjectKind kind, int qualifier) {
       assert(false);
   }
 
-  bool is_static = (qualifier & IS_STATIC) != 0;
-  bool is_extern = (qualifier & IS_EXTERN) != 0;
-
   Vector *variables = new_vector(0, sizeof(Variable *));
   while (true) {
     if (type->kind == TYPE_VOID)
@@ -785,31 +781,31 @@ Vector *vardec(Type *type, ObjectKind kind, int qualifier) {
       assert(false);
 
     if (consume(TK_ASSIGN)) {
-      if (is_extern)
+      if (var->is_extern)
         error(&type->objdec->pos, "cannot initialize extern variable");
       var->init = varinit();
-      if (type->kind == TYPE_ARRAY) {
+      if (var->type->kind == TYPE_ARRAY) {
         if (var->init->vec == NULL) {
-          if (type->base->kind != TYPE_CHAR) {
+          if (var->type->base->kind != TYPE_CHAR) {
             error(&type->objdec->pos, "invalid initializer for an array");
           } else if (var->init->expr->kind != ND_VAR || var->init->expr->variable->kind != OBJ_STRLIT) {
             error(&type->objdec->pos, "invalid initializer for an array");
-          } else if (type->array_size < 0) {
-            type->array_size = var->init->expr->variable->type->array_size;
-            type->size = var->init->expr->variable->type->size;
+          } else if (var->type->array_size < 0) {
+            var->type->array_size = var->init->expr->variable->type->array_size;
+            var->type->size = var->init->expr->variable->type->size;
           }
-        } else if (type->array_size < 0) {
-          type->array_size = var->init->vec->size;
-          type->size = type->base->size * type->array_size;
+        } else if (var->type->array_size < 0) {
+          var->type->array_size = var->init->vec->size;
+          var->type->size = var->type->base->size * var->type->array_size;
         }
-        assert(type->size >= 0);
-        assert(type->array_size >= 0);
+        assert(var->type->size >= 0);
+        assert(var->type->array_size >= 0);
       }
-    } else if (!is_extern && type->array_size < 0) {
+    } else if (!var->is_extern && kind == OBJ_LVAR && type->array_size < 0) {
       error(&type->objdec->pos, "invalid array size");
     }
 
-    if (kind == OBJ_LVAR && !is_static && !is_extern)
+    if (kind == OBJ_LVAR && !var->is_static && !var->is_extern)
       set_offset(var);
 
     vector_push(variables, &var);

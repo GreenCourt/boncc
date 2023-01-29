@@ -1,7 +1,13 @@
 void verify(int expected, int actual, char *file_name, int line_number);
 
+int global_multdec[];  // array size is not given at first time
+int global_multdec[3]; // array size is given at second time
+int global_multdec[];  // array size is not given at third time
+
 int global_int1;
+int global_int2; // multiple declaration
 int global_int2 = 4;
+int global_int2; // multiple declaration
 int global_int3 = {3};
 int global_array3[3] = {2, 3, 4};
 int global_array20[20];

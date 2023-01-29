@@ -2,7 +2,10 @@ void verify(int expected, int actual, char *file_name, int line_number);
 
 char global_str[4] = "abc";
 char *global_char_ptr = "abc";
+
+char *global_array_of_char_ptr[]; // multiple declaration
 char *global_array_of_char_ptr[] = {"abc", "def", "ghi"};
+char *global_array_of_char_ptr[]; // multiple declaration
 
 int main() {
   verify(97, 'a', __FILE__, __LINE__);

@@ -1018,6 +1018,8 @@ void generate_code(FILE *output_stream) {
       continue;
     if (v->is_extern)
       continue;
+    if (v->type->kind == TYPE_ARRAY && v->type->size < 0)
+      error(v->token ? &v->token->pos : NULL, "unknown array size");
     writeline(".data");
     if (v->is_static)
       writeline(".local %.*s", v->ident->len, v->ident->name);

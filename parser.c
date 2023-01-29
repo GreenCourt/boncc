@@ -1840,6 +1840,93 @@ void parse(Token *input) {
   assert(current_scope == NULL);
   new_scope();
   global_scope = current_scope;
+
+  {
+    /* dirty hack to read gcc headers */
+    Ident *id;
+    Function *f;
+    Type *t;
+
+    id = calloc(1, sizeof(Ident));
+    id->name = "__builtin_va_list";
+    id->len = 17;
+    map_push(global_scope->typedefs, id, base_type(TYPE_INT));
+
+    id = calloc(1, sizeof(Ident));
+    id->name = "__builtin_va_start";
+    id->len = 18;
+    f = calloc(1, sizeof(Function));
+    f->type = func_type(base_type(TYPE_VOID));
+    t = base_type(TYPE_INT);
+    vector_push(f->type->params, &t);
+    t = pointer_type(base_type(TYPE_CHAR));
+    vector_push(f->type->params, &t);
+    f->kind = OBJ_FUNC;
+    f->token = NULL;
+    f->ident = id;
+    f->is_extern = true;
+    map_push(global_scope->objects, f->ident, f);
+
+    id = calloc(1, sizeof(Ident));
+    id->name = "__builtin_bswap16";
+    id->len = 17;
+    f = calloc(1, sizeof(Function));
+    f->type = func_type(base_type(TYPE_USHORT));
+    t = base_type(TYPE_USHORT);
+    vector_push(f->type->params, &t);
+    f->kind = OBJ_FUNC;
+    f->token = NULL;
+    f->ident = id;
+    f->is_extern = true;
+    map_push(global_scope->objects, f->ident, f);
+
+    id = calloc(1, sizeof(Ident));
+    id->name = "__builtin_bswap32";
+    id->len = 17;
+    f = calloc(1, sizeof(Function));
+    f->type = func_type(base_type(TYPE_UINT));
+    t = base_type(TYPE_UINT);
+    vector_push(f->type->params, &t);
+    f->kind = OBJ_FUNC;
+    f->token = NULL;
+    f->ident = id;
+    f->is_extern = true;
+    map_push(global_scope->objects, f->ident, f);
+
+    id = calloc(1, sizeof(Ident));
+    id->name = "__builtin_bswap64";
+    id->len = 17;
+    f = calloc(1, sizeof(Function));
+    f->type = func_type(base_type(TYPE_ULONG));
+    t = base_type(TYPE_ULONG);
+    vector_push(f->type->params, &t);
+    f->kind = OBJ_FUNC;
+    f->token = NULL;
+    f->ident = id;
+    f->is_extern = true;
+    map_push(global_scope->objects, f->ident, f);
+  }
+
   while (!at_eof())
     declaration();
+
+  {
+    /* dirty hack to read gcc headers */
+    typedef struct KeyValue KeyValue;
+    struct KeyValue {
+      Ident *ident;
+      void *val;
+    };
+    for (int i = 0; i < global_scope->objects->size; i++) {
+      Function *f = map_geti(global_scope->objects, i);
+      if (f->kind != OBJ_FUNC)
+        continue;
+      if (f->ident->name[0] == '_') {
+        KeyValue *kv = *(KeyValue **)vector_last(global_scope->objects);
+        vector_set(global_scope->objects, i, &kv);
+        vector_pop(global_scope->objects);
+        --i;
+      }
+    }
+  }
 }

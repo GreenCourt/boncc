@@ -3,10 +3,13 @@ OBJ_DIR=obj
 TEST_OBJ_DIR=test/obj
 TEST_EXE_DIR=test/exe
 
-boncc: $(addprefix $(OBJ_DIR)/, main.o common.o tokenizer.o parser.o generator.o preprocessor.o vector.o type.o node.o map.o)
+DEP=main common tokenizer parser generator preprocessor vector type node map
+TESTS=$(basename $(filter-out common.c,$(notdir $(wildcard test/*.c))))
+
+boncc: $(addprefix $(OBJ_DIR)/,$(addsuffix .o,$(DEP)))
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-test: $(addprefix $(TEST_EXE_DIR)/,$(basename $(filter-out common.c,$(notdir $(wildcard test/*.c)))))
+test: $(addprefix $(TEST_EXE_DIR)/,$(TESTS))
 	for i in $^; do echo $$i; $$i || exit $$?; done
 
 clean:
@@ -40,7 +43,7 @@ $(TEST_OBJ_DIR)/vector.o: test/vector.c
 	@mkdir -p $(TEST_OBJ_DIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-gtest: $(addprefix $(TEST_EXE_DIR)/,$(addprefix gcc_,$(basename $(filter-out common.c,$(notdir $(wildcard test/*.c))))))
+gtest: $(addprefix $(TEST_EXE_DIR)/,$(addprefix gcc_,$(TESTS)))
 	for i in $^; do echo $$i; $$i || exit $$?; done
 
 $(TEST_EXE_DIR)/gcc_vector: vector.c
@@ -51,3 +54,31 @@ $(TEST_EXE_DIR)/gcc_%: test/%.c test/common.c
 
 -include $(OBJ_DIR)/*.d
 .PHONY: test clean fmt gtest
+
+#########################################
+#
+# stage2
+#
+#########################################
+
+boncc2: $(addprefix $(OBJ_DIR)/,$(addsuffix 2.o,$(DEP)))
+	$(CC) -g -o $@ $^ $(LDFLAGS)
+
+$(OBJ_DIR)/%2.o:%.c boncc
+	$(CC) -DNDEBUG -DBONCC -E -P $< -o $(basename $@).c
+	./boncc $(basename $@).c -o $(basename $@).s
+	$(CC) -g $(basename $@).s -c -o $@
+
+test2: $(addprefix $(TEST_EXE_DIR)/,$(addsuffix 2,$(filter-out vector,$(TESTS))))
+	for i in $^; do echo $$i; $$i || exit $$?; done
+
+$(TEST_EXE_DIR)/%2: $(addprefix $(TEST_OBJ_DIR)/,%2.o common2.o std.o)
+	@mkdir -p $(TEST_EXE_DIR)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+$(TEST_OBJ_DIR)/%2.o: test/%.c boncc2
+	@mkdir -p $(TEST_OBJ_DIR)
+	./boncc2 $< -o $(basename $@).s
+	$(CC) $(CFLAGS) -c -o $@ $(basename $@).s
+
+.PHONY: test2

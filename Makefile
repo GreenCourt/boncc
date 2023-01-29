@@ -22,11 +22,7 @@ $(OBJ_DIR)/%.o:%.c
 	@mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(TEST_OBJ_DIR)/std.o:
-	@mkdir -p $(TEST_OBJ_DIR)
-	printf "#include <stdio.h>\n#include <stdlib.h>\n" | cc -c -x c - -o $@
-
-$(TEST_EXE_DIR)/%: $(addprefix $(TEST_OBJ_DIR)/,%.o common.o std.o)
+$(TEST_EXE_DIR)/%: $(addprefix $(TEST_OBJ_DIR)/,%.o common.o)
 	@mkdir -p $(TEST_EXE_DIR)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
@@ -72,7 +68,7 @@ $(OBJ_DIR)/%2.o:%.c boncc
 test2: $(addprefix $(TEST_EXE_DIR)/,$(addsuffix 2,$(filter-out vector,$(TESTS))))
 	for i in $^; do echo $$i; $$i || exit $$?; done
 
-$(TEST_EXE_DIR)/%2: $(addprefix $(TEST_OBJ_DIR)/,%2.o common2.o std.o)
+$(TEST_EXE_DIR)/%2: $(addprefix $(TEST_OBJ_DIR)/,%2.o common2.o)
 	@mkdir -p $(TEST_EXE_DIR)
 	$(CC) -o $@ $^ $(LDFLAGS)
 

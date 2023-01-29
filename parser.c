@@ -1846,7 +1846,7 @@ void parse(Token *input) {
     id = calloc(1, sizeof(Ident));
     id->name = "__builtin_va_list";
     id->len = 17;
-    map_push(global_scope->typedefs, id, base_type(TYPE_INT));
+    map_push(global_scope->typedefs, id, pointer_type(base_type(TYPE_VOID)));
 
     id = calloc(1, sizeof(Ident));
     id->name = "__builtin_va_start";

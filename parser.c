@@ -657,14 +657,8 @@ Variable *new_local_variable(Type *type, int qualifier) {
 
   Variable *prev = map_get(current_scope->objects, type->objdec->ident);
   if (prev) {
-    if ((!is_extern && !prev->is_extern) || !same_type(type, prev->type))
+    if (!is_extern || !prev->is_extern || !same_type(type, prev->type))
       error(&type->objdec->pos, "conflicted identifier");
-    if (!is_extern) {
-      assert(prev->is_extern);
-      if (is_static)
-        error(&type->objdec->pos, "conflicted storage class");
-      prev->is_extern = false;
-    }
     return prev;
   }
 

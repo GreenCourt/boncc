@@ -10,7 +10,7 @@ int ret5(int x, int y, int z) {
 
 int add12(int, int);
 int add12(int x, int y) {
-  int a =12;
+  int a = 12;
   return a + x + y;
 }
 

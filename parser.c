@@ -658,7 +658,7 @@ Variable *new_local_variable(Type *type, int qualifier) {
   Variable *prev = map_get(current_scope->objects, type->objdec->ident);
   if (prev) {
     if (!is_extern || !prev->is_extern || !same_type(type, prev->type))
-      error(&type->objdec->pos, "conflicted identifier");
+      error(&type->objdec->pos, "conflicted identifier %.*s", type->objdec->ident->len, type->objdec->ident->name);
     return prev;
   }
 
@@ -870,6 +870,24 @@ void func(Type *type, int qualifier) {
     Variable *var = new_local_variable(ty, 0);
     set_offset(var);
     vector_push(f->params, &var);
+  }
+
+  if (type->is_variadic) {
+    // push hidden local variable for variadic arguments
+    Type *t = base_type(TYPE_UCHAR);
+    Token *dummy_tok = calloc(1, sizeof(Token));
+    *dummy_tok = *type->objdec;
+    Ident *dummy_id = calloc(1, sizeof(Ident));
+    dummy_id->name = "__hidden_va_area__";
+    dummy_id->len = strlen(dummy_id->name);
+    dummy_tok->ident = dummy_id;
+    t->objdec = dummy_tok;
+    static const int sizeof_register_save_area = (/* gp */ 8 * 6) + (/* xmm0 - xmm7 */ 16 * 8);
+    static const int sizeof_va_list = 24;
+    t = array_type(t, sizeof_va_list + sizeof_register_save_area);
+    Variable *var = new_local_variable(t, 0);
+    set_offset(var);
+    f->hidden_va_area = var;
   }
 
   f->body = stmt_block();

@@ -412,6 +412,37 @@ void gen_func(Function *func) {
     writeline("  sub rsp, %d", ofs);
   }
 
+  if (func->hidden_va_area) {
+    // write variadic argument information to hidden_va_area
+    int num_gp = func->params->size;
+    int ofs = func->hidden_va_area->offset;
+
+    // va_list
+    comment(NULL, "va_list: %.*s", func->ident->len, func->ident->name);
+    writeline("  mov word ptr [rbp-%d], %d", ofs, num_gp * 8); // gp_offset
+    writeline("  mov word ptr [rbp-%d], 0", ofs - 4);          // fp_offset (TODO)
+    writeline("  movq [rbp-%d], 0", ofs - 8);                  // overflow_arg_area (TODO)
+    writeline("  movq [rbp-%d], rbp", ofs - 16);               // reg_save_area = rbp
+    writeline("  subq [rbp-%d], %d", ofs - 16, ofs - 24);      // reg_save_area -= ofs - 24
+
+    // register save area
+    comment(NULL, "register save area: %.*s", func->ident->len, func->ident->name);
+    writeline("  movq [rbp-%d], rdi", ofs - 24);
+    writeline("  movq [rbp-%d], rsi", ofs - 32);
+    writeline("  movq [rbp-%d], rdx", ofs - 40);
+    writeline("  movq [rbp-%d], rcx", ofs - 48);
+    writeline("  movq [rbp-%d], r8", ofs - 56);
+    writeline("  movq [rbp-%d], r9", ofs - 64);
+    writeline("  movsd [rbp-%d], xmm0", ofs - 72);
+    writeline("  movsd [rbp-%d], xmm1", ofs - 88);
+    writeline("  movsd [rbp-%d], xmm2", ofs - 104);
+    writeline("  movsd [rbp-%d], xmm3", ofs - 120);
+    writeline("  movsd [rbp-%d], xmm4", ofs - 136);
+    writeline("  movsd [rbp-%d], xmm5", ofs - 152);
+    writeline("  movsd [rbp-%d], xmm6", ofs - 168);
+    writeline("  movsd [rbp-%d], xmm7", ofs - 184);
+  }
+
   gen(func->body);
 
   // epilogue

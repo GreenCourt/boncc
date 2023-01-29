@@ -59,6 +59,31 @@ _Bool retbool(int a) {
 
 void empty() {}
 
+#ifdef BONCC
+typedef struct {
+  unsigned int gp_offset;
+  unsigned int fp_offset;
+  void *overflow_arg_area;
+  void *reg_save_area;
+} __va_list;
+typedef __va_list va_list[1];
+static void va_start(va_list ap, void *last) {}
+#else
+#include <stdarg.h>
+#endif
+
+int vsprintf(char *, char *, va_list);
+
+int sprintf_(char *s, char *fmt, ...) {
+  va_list ap;
+#ifdef BONCC
+  *ap = *(__va_list *)__hidden_va_area__;
+#else
+  va_start(ap, fmt);
+#endif
+  return vsprintf(s, fmt, ap);
+}
+
 int main() {
   verify(12, add3(1, 5, 6), __FILE__, __LINE__);
   verify(5, ret5(1, 5, 6), __FILE__, __LINE__);
@@ -114,6 +139,18 @@ int main() {
     verify(1, retbool(12), __FILE__, __LINE__);
     verify(1, retbool(1), __FILE__, __LINE__);
     verify(0, retbool(0), __FILE__, __LINE__);
+  }
+  {
+    char buf[10];
+    int x = sprintf_(buf, "%d_%c_%d", 12, 't', 3);
+    verify(6, x, __FILE__, __LINE__);
+    verify('1', buf[0], __FILE__, __LINE__);
+    verify('2', buf[1], __FILE__, __LINE__);
+    verify('_', buf[2], __FILE__, __LINE__);
+    verify('t', buf[3], __FILE__, __LINE__);
+    verify('_', buf[4], __FILE__, __LINE__);
+    verify('3', buf[5], __FILE__, __LINE__);
+    verify('\0', buf[6], __FILE__, __LINE__);
   }
   return 0;
 }

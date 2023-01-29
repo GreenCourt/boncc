@@ -198,6 +198,7 @@ struct Object { // variable or function
   // function
   Node *body;
   Vector *params; // vector of Variable*
+  Variable *hidden_va_area;
 };
 
 typedef enum {

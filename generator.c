@@ -443,11 +443,11 @@ void gen_func(Function *func) {
 
     // va_list
     comment(NULL, "va_list: %.*s", func->ident->len, func->ident->name);
-    writeline("  mov word ptr [rbp-%d], %d", ofs, num_gp * 8); // gp_offset
-    writeline("  mov word ptr [rbp-%d], 0", ofs - 4);          // fp_offset (TODO)
-    writeline("  movq [rbp-%d], 0", ofs - 8);                  // overflow_arg_area (TODO)
-    writeline("  movq [rbp-%d], rbp", ofs - 16);               // reg_save_area = rbp
-    writeline("  subq [rbp-%d], %d", ofs - 16, ofs - 24);      // reg_save_area -= ofs - 24
+    writeline("  mov dword ptr [rbp-%d], %d", ofs, num_gp * 8); // gp_offset
+    writeline("  mov dword ptr [rbp-%d], 0", ofs - 4);          // fp_offset (TODO)
+    writeline("  movq [rbp-%d], 0", ofs - 8);                   // overflow_arg_area (TODO)
+    writeline("  movq [rbp-%d], rbp", ofs - 16);                // reg_save_area = rbp
+    writeline("  subq [rbp-%d], %d", ofs - 16, ofs - 24);       // reg_save_area -= ofs - 24
 
     // register save area
     comment(NULL, "register save area: %.*s", func->ident->len, func->ident->name);

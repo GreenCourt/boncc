@@ -866,7 +866,7 @@ void gen(Node *node) {
     writeline("  movzx rax, al");
     return;
   case ND_LOGOR:
-    comment(node->token, "ND_LOGOR");
+    comment(node->token, "ND_LOGOR %d", node->label_index);
     gen(node->lhs);
     writeline("  cmp rax, 0");
     writeline("  jne .Ltrue%d", node->label_index);

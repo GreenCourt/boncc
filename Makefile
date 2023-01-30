@@ -12,7 +12,7 @@ boncc: $(addprefix $(OBJ_DIR)/,$(addsuffix .o,$(DEP)))
 test: gtest stage1test stage2test stage3test
 
 clean:
-	rm -rf boncc $(OBJ_DIR) $(TEST_OBJ_DIR) $(TEST_EXE_DIR)
+	rm -rf boncc boncc2 boncc3 $(OBJ_DIR) $(TEST_OBJ_DIR) $(TEST_EXE_DIR)
 
 fmt:
 	clang-format -i *.c *.h test/*.c
@@ -54,7 +54,7 @@ $(TEST_EXE_DIR)/%: $(addprefix $(TEST_OBJ_DIR)/,%.o common.o)
 $(TEST_OBJ_DIR)/%.o: test/%.c boncc
 	@mkdir -p $(TEST_OBJ_DIR)
 	./boncc $< -o $(basename $@).s
-	$(CC) $(CFLAGS) -c -o $@ $(basename $@).s
+	as -g -o $@ $(basename $@).s
 
 $(TEST_EXE_DIR)/vector: $(TEST_OBJ_DIR)/vector.o $(OBJ_DIR)/vector.o
 	@mkdir -p $(TEST_EXE_DIR)
@@ -70,14 +70,16 @@ $(TEST_OBJ_DIR)/vector.o: test/vector.c
 #
 #########################################
 
+$(OBJ_DIR)/%.pp.c:%.c
+	$(CC) -DNDEBUG -DBONCC -E -P $< -o $@
+
 boncc2: $(addprefix $(OBJ_DIR)/,$(addsuffix 2.o,$(DEP)))
-	$(CC) -g -o $@ $^ $(LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS)
 	strip -s $@
 
-$(OBJ_DIR)/%2.o:%.c boncc
-	$(CC) -DNDEBUG -DBONCC -E -P $< -o $(basename $@).c
-	./boncc $(basename $@).c -o $(basename $@).s
-	$(CC) -g $(basename $@).s -c -o $@
+$(OBJ_DIR)/%2.o:$(OBJ_DIR)/%.pp.c boncc
+	./boncc $< -o $(basename $@).s
+	as $(basename $@).s -o $@
 
 stage2test: $(addprefix $(TEST_EXE_DIR)/,$(addsuffix 2,$(filter-out vector,$(TESTS))))
 	for i in $^; do echo $$i; $$i || exit $$?; done
@@ -89,9 +91,7 @@ $(TEST_EXE_DIR)/%2: $(addprefix $(TEST_OBJ_DIR)/,%2.o common2.o)
 $(TEST_OBJ_DIR)/%2.o: test/%.c boncc2
 	@mkdir -p $(TEST_OBJ_DIR)
 	./boncc2 $< -o $(basename $@).s
-	$(CC) $(CFLAGS) -c -o $@ $(basename $@).s
-
-.PHONY: test2
+	as -g -o $@ $(basename $@).s
 
 #########################################
 #
@@ -100,13 +100,12 @@ $(TEST_OBJ_DIR)/%2.o: test/%.c boncc2
 #########################################
 
 boncc3: $(addprefix $(OBJ_DIR)/,$(addsuffix 3.o,$(DEP)))
-	$(CC) -g -o $@ $^ $(LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS)
 	strip -s $@
 
-$(OBJ_DIR)/%3.o:%.c boncc2
-	$(CC) -DNDEBUG -DBONCC -E -P $< -o $(basename $@).c
-	./boncc2 $(basename $@).c -o $(basename $@).s
-	$(CC) -g $(basename $@).s -c -o $@
+$(OBJ_DIR)/%3.o:$(OBJ_DIR)/%.pp.c boncc2
+	./boncc2 $< -o $(basename $@).s
+	as $(basename $@).s -o $@
 
 stage3test: $(addprefix $(TEST_EXE_DIR)/,$(addsuffix 3,$(filter-out vector,$(TESTS))))
 	for i in $^; do echo $$i; $$i || exit $$?; done
@@ -118,4 +117,4 @@ $(TEST_EXE_DIR)/%3: $(addprefix $(TEST_OBJ_DIR)/,%3.o common3.o)
 $(TEST_OBJ_DIR)/%3.o: test/%.c boncc3
 	@mkdir -p $(TEST_OBJ_DIR)
 	./boncc3 $< -o $(basename $@).s
-	$(CC) $(CFLAGS) -c -o $@ $(basename $@).s
+	as -g -o $@ $(basename $@).s

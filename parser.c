@@ -1519,10 +1519,12 @@ Node *logor() {
   Node *node = logand();
   while (true) {
     Token *tok = next_token;
-    if (consume(TK_LOGOR))
-      node = new_node_logor(tok, node, logand(), label_index++);
-    else
+    if (consume(TK_LOGOR)) {
+      int l = label_index++;
+      node = new_node_logor(tok, node, logand(), l);
+    } else {
       return node;
+    }
   }
 }
 
@@ -1530,10 +1532,12 @@ Node *logand() {
   Node *node = bitor ();
   while (true) {
     Token *tok = next_token;
-    if (consume(TK_LOGAND))
-      node = new_node_logand(tok, node, bitor (), label_index++);
-    else
+    if (consume(TK_LOGAND)) {
+      int l = label_index++;
+      node = new_node_logand(tok, node, bitor (), l);
+    } else {
       return node;
+    }
   }
 }
 

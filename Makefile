@@ -9,7 +9,8 @@ TESTS=$(basename $(filter-out common.c,$(notdir $(wildcard test/*.c))))
 boncc: $(addprefix $(OBJ_DIR)/,$(addsuffix .o,$(DEP)))
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-test: gtest stage1test stage2test stage3test
+test: gtest stage1test
+all: gtest stage1test stage2test stage3test
 
 clean:
 	rm -rf boncc boncc2 boncc3 $(OBJ_DIR) $(TEST_OBJ_DIR) $(TEST_EXE_DIR)
@@ -22,7 +23,7 @@ $(OBJ_DIR)/%.o:%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 -include $(OBJ_DIR)/*.d
-.PHONY: test stage1test stage2test stage3test clean fmt gtest
+.PHONY: all test stage1test stage2test stage3test clean fmt gtest
 
 #########################################
 #
@@ -75,11 +76,10 @@ $(OBJ_DIR)/%.pp.c:%.c
 
 boncc2: $(addprefix $(OBJ_DIR)/,$(addsuffix 2.o,$(DEP)))
 	$(CC) -o $@ $^ $(LDFLAGS)
-	strip -s $@
 
 $(OBJ_DIR)/%2.o:$(OBJ_DIR)/%.pp.c boncc
 	./boncc $< -o $(basename $@).s
-	as $(basename $@).s -o $@
+	as -g $(basename $@).s -o $@
 
 stage2test: $(addprefix $(TEST_EXE_DIR)/,$(addsuffix 2,$(filter-out vector,$(TESTS))))
 	for i in $^; do echo $$i; $$i || exit $$?; done
@@ -99,22 +99,8 @@ $(TEST_OBJ_DIR)/%2.o: test/%.c boncc2
 #
 #########################################
 
-boncc3: $(addprefix $(OBJ_DIR)/,$(addsuffix 3.o,$(DEP)))
-	$(CC) -o $@ $^ $(LDFLAGS)
-	strip -s $@
+stage3test: $(addprefix $(OBJ_DIR)/,$(addsuffix 3.s,$(DEP)))
+	for i in $(DEP); do diff -s $(OBJ_DIR)/$${i}2.s $(OBJ_DIR)/$${i}3.s || exit $$?; done
 
-$(OBJ_DIR)/%3.o:$(OBJ_DIR)/%.pp.c boncc2
-	./boncc2 $< -o $(basename $@).s
-	as $(basename $@).s -o $@
-
-stage3test: $(addprefix $(TEST_EXE_DIR)/,$(addsuffix 3,$(filter-out vector,$(TESTS))))
-	for i in $^; do echo $$i; $$i || exit $$?; done
-
-$(TEST_EXE_DIR)/%3: $(addprefix $(TEST_OBJ_DIR)/,%3.o common3.o)
-	@mkdir -p $(TEST_EXE_DIR)
-	$(CC) -o $@ $^ $(LDFLAGS)
-
-$(TEST_OBJ_DIR)/%3.o: test/%.c boncc3
-	@mkdir -p $(TEST_OBJ_DIR)
-	./boncc3 $< -o $(basename $@).s
-	as -g -o $@ $(basename $@).s
+$(OBJ_DIR)/%3.s:$(OBJ_DIR)/%.pp.c boncc2
+	./boncc2 $< -o $@

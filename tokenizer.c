@@ -297,7 +297,17 @@ Token *tokenize(char *input_path) {
 
     if (isdigit(*p.pos)) {
       char *q;
-      long long val = strtol(p.pos, &q, 10);
+      long long val;
+
+      if(*p.pos == '0' && *(p.pos+1) == 'x') {
+        advance(&p, 2);
+        val = strtol(p.pos, &q, 16);
+      } else if(*p.pos == '0') {
+        val = strtol(p.pos, &q, 8);
+      } else {
+        val = strtol(p.pos, &q, 10);
+      }
+
       int len = q - p.pos;
       new_token(TK_NUM, &tail, &p, len);
       tail->val = val;

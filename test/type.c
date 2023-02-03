@@ -75,6 +75,16 @@ int main() {
   verify(8, sizeof(1ULL), __FILE__, __LINE__);
   verify(8, sizeof(1LL), __FILE__, __LINE__);
 
+  verify(255, 0xFF, __FILE__, __LINE__);
+  verify(255, 0xFFLL, __FILE__, __LINE__);
+  verify(4, sizeof(0xFF), __FILE__, __LINE__);
+  verify(8, sizeof(0xFFLL), __FILE__, __LINE__);
+
+  verify(10, 012, __FILE__, __LINE__);
+  verify(10, 012LL, __FILE__, __LINE__);
+  verify(4, sizeof(012), __FILE__, __LINE__);
+  verify(8, sizeof(012LL), __FILE__, __LINE__);
+
   verify(4, sizeof(typedef_global_enum), __FILE__, __LINE__);
   verify(4, sizeof(enum global_enum), __FILE__, __LINE__);
   verify(4, sizeof(g), __FILE__, __LINE__);

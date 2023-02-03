@@ -1,5 +1,4 @@
 void verify(int expected, int actual, char *file_name, int line_number);
-int printf(const char *, ...);
 
 int main() {
   {
@@ -242,7 +241,6 @@ int main() {
     int r = 0;
   foo:;
     int x = 1;
-    printf("r: %d   x: %d\n", r, x);
     if (r) {
       verify(1, x, __FILE__, __LINE__);
       goto end;

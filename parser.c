@@ -918,7 +918,13 @@ void func(Type *type, int qualifier) {
     Variable *var = new_local_variable(ty, 0);
     set_offset(var);
     vector_push(f->params, &var);
+
+    if (is_struct_union(ty))
+      error(&f->token->pos, "currently struct/union parameter is not supported");
   }
+
+  if (f->params->size > 6)
+    error(&f->token->pos, "maximum number of parameter is currently 6");
 
   if (type->is_variadic) {
     // push hidden local variable for variadic arguments
@@ -1964,7 +1970,7 @@ Node *primary() {
   if ((tok = consume(TK_NUM)))
     return new_node_num(tok, tok->val, tok->type);
 
-  error(&next_token->pos, "primary expected but not found", next_token->token_length, next_token->pos);
+  error(&next_token->pos, "primary expected but not found");
   return NULL;
 }
 
@@ -2032,6 +2038,9 @@ Node *tail(Node *x) {
     do {
       Node *e = assign();
 
+      if (is_struct_union(e->type))
+        error(&op->pos, "currently passing struct/union is not supported");
+
       if (!f->is_variadic && f->params->size == node->args->size)
         error(&op->pos, "too many arguments");
 
@@ -2043,6 +2052,9 @@ Node *tail(Node *x) {
 
       vector_push(node->args, &e);
     } while (consume(TK_COMMA));
+
+    if (node->args->size > 6)
+      error(&node->token->pos, "maximum number of argument is currently 6");
 
     expect(TK_RPAREN);
     return node;

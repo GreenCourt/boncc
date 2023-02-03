@@ -244,6 +244,9 @@ bool is_struct_union(Type *type) {
 }
 
 Type *implicit_type_conversion(Type *l, Type *r) {
+  if (is_float(l) || is_float(r))
+    error(NULL, "currently floating point is not supported");
+
   if (l->kind == TYPE_ARRAY)
     return pointer_type(l->base);
   if (r->kind == TYPE_ARRAY)

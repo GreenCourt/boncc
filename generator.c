@@ -236,8 +236,6 @@ void gen_block(Node *node) {
 void gen_call(Node *node) {
   assert(is_funcptr(node->lhs->type));
   int sz = node->args->size;
-  if (sz > 6)
-    error(NULL, "maximum number of argument is currently 6");
 
   for (int i = 0; i < sz; ++i) {
     Node *d = *(Node **)vector_get(node->args, i);

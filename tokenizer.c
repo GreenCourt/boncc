@@ -301,7 +301,34 @@ Token *tokenize(char *input_path) {
       int len = q - p.pos;
       new_token(TK_NUM, &tail, &p, len);
       tail->val = val;
-      tail->type = base_type((-2147483648 <= val && val <= 2147483647) ? TYPE_INT : TYPE_LONG);
+
+      bool is_long = !(-2147483648 <= val && val <= 2147483647);
+      bool is_unsigned = false;
+
+      if (*p.pos == 'U') {
+        is_unsigned = true;
+        advance(&p, 1);
+      }
+
+      if (*p.pos == 'L') {
+        is_long = true;
+        advance(&p, 1);
+        if (*p.pos == 'L')
+          advance(&p, 1);
+      }
+
+      TypeKind kind;
+
+      if (is_long && is_unsigned)
+        kind = TYPE_ULONG;
+      else if (is_long)
+        kind = TYPE_LONG;
+      else if (is_unsigned)
+        kind = TYPE_UINT;
+      else
+        kind = TYPE_INT;
+
+      tail->type = base_type(kind);
       continue;
     }
 

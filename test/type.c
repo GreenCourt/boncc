@@ -70,6 +70,11 @@ int main() {
   verify(16, sizeof(long double), __FILE__, __LINE__);
   verify(16, sizeof(double long), __FILE__, __LINE__);
 
+  verify(4, sizeof(1U), __FILE__, __LINE__);
+  verify(8, sizeof(1L), __FILE__, __LINE__);
+  verify(8, sizeof(1ULL), __FILE__, __LINE__);
+  verify(8, sizeof(1LL), __FILE__, __LINE__);
+
   verify(4, sizeof(typedef_global_enum), __FILE__, __LINE__);
   verify(4, sizeof(enum global_enum), __FILE__, __LINE__);
   verify(4, sizeof(g), __FILE__, __LINE__);

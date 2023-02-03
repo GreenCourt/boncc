@@ -512,7 +512,7 @@ int is_constant_number(Node *node) {
   }
 }
 
-int eval(Node *node) {
+long long eval(Node *node) {
   switch (node->kind) {
   case ND_ADD:
     return eval(node->lhs) + eval(node->rhs);

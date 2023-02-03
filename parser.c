@@ -413,9 +413,9 @@ Type *consume_struct(TypeKind kind) {
   st->size = offset;
   st->align = align;
 
-  if(kind == TYPE_UNION) {
+  if (kind == TYPE_UNION) {
     Member *m = head.next;
-    while(m) {
+    while (m) {
       m->padding = st->size - m->type->size;
       m = m->next;
     }

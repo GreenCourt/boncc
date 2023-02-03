@@ -280,6 +280,191 @@ void gen_call(Node *node) {
   writeline(".Lend_call%d:", l);
 }
 
+void gen_global_init(VariableInit *init, Type *type);
+void gen_global_array_init(VariableInit *init, Type *type);
+void gen_global_struct_init(VariableInit *init, Type *type);
+void gen_global_union_init(VariableInit *init, Type *type);
+void gen_global_pointer_init(VariableInit *init, Type *type);
+void gen_global_integer_init(VariableInit *init, Type *type);
+
+void gen_global_array_init(VariableInit *init, Type *type) {
+  assert(type->kind == TYPE_ARRAY);
+
+  if (init->expr) {
+    if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == OBJ_STRLIT) {
+      // initilize the array as a string
+      Variable *lit = init->expr->variable;
+      if (type->array_size != lit->type->array_size)
+        error(&init->expr->token->pos, "miss-match between array-size and string-length");
+      writeline("  .ascii \"%s\\0\"", lit->string_literal);
+      return;
+    }
+
+    // When init->expr is given for an array, only the first element will be initialized.
+    Type *ty = type;
+    while (ty->kind == TYPE_ARRAY)
+      ty = ty->base;
+    gen_global_init(init, ty);
+    writeline("  .zero %d", type->size - ty->size);
+    return;
+  }
+
+  assert(init->vec);
+  assert(init->vec->size > 0);
+  if (init->nested) {
+    // init arrays recursively
+    int zero_size = type->size;
+    int len = type->array_size;
+    if (len > init->vec->size)
+      len = init->vec->size;
+    for (int i = 0; i < len; i++) {
+      zero_size -= type->base->size;
+      gen_global_init(*(VariableInit **)vector_get(init->vec, i), type->base);
+    }
+    if (zero_size)
+      writeline("  .zero %d", zero_size);
+    return;
+  }
+
+  // init as a one-dimensional array
+  Type *base = type;
+  while (base->kind == TYPE_ARRAY)
+    base = base->base;
+  int len = type->size / base->size;
+  if (len > init->vec->size)
+    len = init->vec->size;
+  for (int i = 0; i < len; i++)
+    gen_global_init(*(VariableInit **)vector_get(init->vec, i), base);
+  int zero_size = type->size - (base->size * len);
+  if (zero_size)
+    writeline("  .zero %d", zero_size);
+}
+
+void gen_global_struct_init(VariableInit *init, Type *type) {
+  assert(type->kind == TYPE_STRUCT);
+  if (init->vec) {
+    // init struct members recursively
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_BLOCK;
+    node->blk_stmts = new_vector(0, sizeof(Node *));
+
+    int zero_size = type->size;
+
+    Member *m = type->member;
+    for (int i = 0; i < init->vec->size && m; i++, m = m->next) {
+      gen_global_init(*(VariableInit **)vector_get(init->vec, i), m->type);
+      if (m->padding)
+        writeline("  .zero %d", m->padding);
+      zero_size -= m->type->size + m->padding;
+    }
+    if (zero_size)
+      writeline("  .zero %d", zero_size);
+    return;
+  }
+
+  assert(init->expr);
+
+  // init first member only
+  gen_global_init(init, type->member->type);
+  int zero_size = type->size - type->member->type->size;
+  if (zero_size)
+    writeline("  .zero %d", zero_size);
+}
+
+void gen_global_union_init(VariableInit *init, Type *type) {
+  assert(type->kind == TYPE_UNION);
+
+  // init first member only
+  while (init->vec)
+    init = *(VariableInit **)vector_get(init->vec, 0);
+  assert(init->expr);
+
+  gen_global_init(init, type->member->type);
+  int zero_size = type->size - type->member->type->size;
+  if (zero_size)
+    writeline("  .zero %d", zero_size);
+}
+
+void gen_global_pointer_init(VariableInit *init, Type *type) {
+  assert(type->kind == TYPE_PTR);
+  while (init->vec) { // for non-array primitive types, only the first element in the brace will be used
+    assert(init->vec->size > 0);
+    init = *(VariableInit **)vector_get(init->vec, 0);
+  }
+  assert(init->expr);
+  if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == OBJ_STRLIT) {
+    // initilize the pointer to a string-literal
+    writeline("  .quad %.*s", init->expr->variable->ident->len, init->expr->variable->ident->name);
+    return;
+  }
+
+  if (init->expr->kind == ND_ADD) {
+    Variable *left_addr = is_const_var_addr(init->expr->lhs);
+    Variable *right_addr = is_const_var_addr(init->expr->rhs);
+
+    if (left_addr && is_constant_number(init->expr->rhs)) {
+      writeline("  .quad %.*s+%d",
+                left_addr->ident->len,
+                left_addr->ident->name,
+                eval(init->expr->rhs));
+    } else if (right_addr && is_constant_number(init->expr->lhs)) {
+      writeline("  .quad %.*s+%d",
+                right_addr->ident->len,
+                right_addr->ident->name,
+                eval(init->expr->lhs));
+    } else {
+      error(NULL, "unsupported initalization of a global pointer.");
+    }
+    return;
+  }
+
+  if (is_const_var_addr(init->expr)) {
+    Variable *var = is_const_var_addr(init->expr);
+    writeline("  .quad %.*s",
+              var->ident->len,
+              var->ident->name);
+    return;
+  }
+
+  if (is_constant_number(init->expr)) {
+    writeline("  .quad %d", eval(init->expr));
+    return;
+  }
+
+  error(NULL, "unsupported initalization of a global pointer.");
+}
+
+void gen_global_integer_init(VariableInit *init, Type *type) {
+  assert(is_integer(type));
+  while (init->vec) { // for non-array primitive types, only the first element in the brace will be used
+    assert(init->vec->size > 0);
+    init = *(VariableInit **)vector_get(init->vec, 0);
+  }
+  assert(init->expr);
+  int val = eval(init->expr);
+  switch (type->kind) {
+  case TYPE_LONG:
+  case TYPE_ULONG:
+    writeline("  .quad %d", val);
+    break;
+  case TYPE_INT:
+  case TYPE_UINT:
+  case TYPE_ENUM:
+    writeline("  .long %d", val);
+    break;
+  case TYPE_SHORT:
+  case TYPE_USHORT:
+    writeline("  .value %d", val);
+    break;
+  case TYPE_CHAR:
+  case TYPE_BOOL:
+    writeline("  .byte %d", val);
+    break;
+  default:
+    assert(false);
+  }
+}
+
 void gen_global_init(VariableInit *init, Type *type) {
   if (init == NULL) {
     writeline("  .zero %d", type->size);
@@ -287,118 +472,31 @@ void gen_global_init(VariableInit *init, Type *type) {
   }
 
   if (type->kind == TYPE_ARRAY) {
-    if (init->expr) {
-      if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == OBJ_STRLIT) {
-        // initilize the array as a string
-        Variable *lit = init->expr->variable;
-        if (type->array_size != lit->type->array_size)
-          error(&init->expr->token->pos, "miss-match between array-size and string-length");
-        writeline("  .ascii \"%s\\0\"", lit->string_literal);
-      } else {
-        // When init->expr is given for an array, only the first element will be initialized.
-        Type *ty = type;
-        while (ty->kind == TYPE_ARRAY)
-          ty = ty->base;
-        gen_global_init(init, ty);
-        writeline("  .zero %d", type->size - ty->size);
-      }
-    } else if (init->vec) {
-      assert(init->vec->size > 0);
-      if (init->nested) {
-        // init arrays recursively
-        int zero_size = type->size;
-        int len = type->array_size;
-        if (len > init->vec->size)
-          len = init->vec->size;
-        for (int i = 0; i < len; i++) {
-          zero_size -= type->base->size;
-          gen_global_init(*(VariableInit **)vector_get(init->vec, i), type->base);
-        }
-        if (zero_size)
-          writeline("  .zero %d", zero_size);
-      } else {
-        // init as a one-dimensional array
-        Type *base = type;
-        while (base->kind == TYPE_ARRAY)
-          base = base->base;
-        int len = type->size / base->size;
-        if (len > init->vec->size)
-          len = init->vec->size;
-        for (int i = 0; i < len; i++)
-          gen_global_init(*(VariableInit **)vector_get(init->vec, i), base);
-        int zero_size = type->size - (base->size * len);
-        if (zero_size)
-          writeline("  .zero %d", zero_size);
-      }
-    } else
-      assert(false);
-  } else if (type->kind == TYPE_PTR) {
-    while (init->vec) { // for non-array primitive types, only the first element in the brace will be used
-      assert(init->vec->size > 0);
-      init = *(VariableInit **)vector_get(init->vec, 0);
-    }
-    assert(init->expr);
-    if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == OBJ_STRLIT) {
-      // initilize the pointer to a string-literal
-      writeline("  .quad %.*s", init->expr->variable->ident->len, init->expr->variable->ident->name);
-      return;
-    } else if (init->expr->kind == ND_ADD) {
-      Variable *left_addr = is_const_var_addr(init->expr->lhs);
-      Variable *right_addr = is_const_var_addr(init->expr->rhs);
+    gen_global_array_init(init, type);
+    return;
+  }
 
-      if (left_addr && is_constant_number(init->expr->rhs)) {
-        writeline("  .quad %.*s+%d",
-                  left_addr->ident->len,
-                  left_addr->ident->name,
-                  eval(init->expr->rhs));
-      } else if (right_addr && is_constant_number(init->expr->lhs)) {
-        writeline("  .quad %.*s+%d",
-                  right_addr->ident->len,
-                  right_addr->ident->name,
-                  eval(init->expr->lhs));
-      } else {
-        error(NULL, "unsupported initalization of a global pointer.");
-      }
-    } else if (is_const_var_addr(init->expr)) {
-      Variable *var = is_const_var_addr(init->expr);
-      writeline("  .quad %.*s",
-                var->ident->len,
-                var->ident->name);
-    } else if (is_constant_number(init->expr)) {
-      writeline("  .quad %d", eval(init->expr));
-    } else {
-      error(NULL, "unsupported initalization of a global pointer.");
-    }
-  } else if (is_integer(type)) {
-    while (init->vec) { // for non-array primitive types, only the first element in the brace will be used
-      assert(init->vec->size > 0);
-      init = *(VariableInit **)vector_get(init->vec, 0);
-    }
-    assert(init->expr);
-    int val = eval(init->expr);
-    switch (type->kind) {
-    case TYPE_LONG:
-    case TYPE_ULONG:
-      writeline("  .quad %d", val);
-      break;
-    case TYPE_INT:
-    case TYPE_UINT:
-    case TYPE_ENUM:
-      writeline("  .long %d", val);
-      break;
-    case TYPE_SHORT:
-    case TYPE_USHORT:
-      writeline("  .value %d", val);
-      break;
-    case TYPE_CHAR:
-    case TYPE_BOOL:
-      writeline("  .byte %d", val);
-      break;
-    default:
-      assert(false);
-    }
-  } else
-    assert(false);
+  if (type->kind == TYPE_PTR) {
+    gen_global_pointer_init(init, type);
+    return;
+  }
+
+  if (type->kind == TYPE_STRUCT) {
+    gen_global_struct_init(init, type);
+    return;
+  }
+
+  if (type->kind == TYPE_UNION) {
+    gen_global_union_init(init, type);
+    return;
+  }
+
+  if (is_integer(type)) {
+    gen_global_integer_init(init, type);
+    return;
+  }
+
+  assert(false);
 }
 
 void gen_func(Function *func) {

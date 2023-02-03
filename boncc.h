@@ -61,6 +61,7 @@ typedef enum {
   TK_DEFAULT,   // default
   TK_BREAK,     // break
   TK_CONTINUE,  // continue
+  TK_GOTO,      // goto
   TK_VOID,      // void
   TK_INT,       // int
   TK_CHAR,      // char
@@ -238,6 +239,8 @@ typedef enum {
   ND_DEFAULT,  // default
   ND_BREAK,    // break
   ND_CONTINUE, // continue
+  ND_LABEL,    // label:
+  ND_GOTO,     // goto
   ND_BLOCK,    // { }
   ND_CALL,     // call function
   ND_ADDR,     // &val
@@ -267,6 +270,7 @@ struct Node {
   // switch(condition) body
   // case condition: body
   // default: body
+  // label: body
   Node *condition;
   Node *body;
   Node *else_;

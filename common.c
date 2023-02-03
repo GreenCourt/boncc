@@ -73,6 +73,7 @@ const char *token_text[] = {
     "default",
     "break",
     "continue",
+    "goto",
     "void",
     "int",
     "char",

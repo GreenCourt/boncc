@@ -871,6 +871,16 @@ void gen(Node *node) {
     comment(node->token, "ND_BREAK");
     writeline("  jmp .Lend%d", node->label_index);
     return;
+  case ND_GOTO:
+    comment(node->token, "ND_GOTO %.*s", node->token->ident->len, node->token->ident->name);
+    writeline("  jmp .Lgoto%d", node->label_index);
+    return;
+  case ND_LABEL:
+    comment(node->token, "ND_LABEL %.*s", node->token->ident->len, node->token->ident->name);
+    writeline(".Lgoto%d:", node->label_index);
+    if (node->body)
+      gen(node->body);
+    return;
   case ND_NUM:
     comment(node->token, "ND_NUM");
     writeline("  mov rax, %lld", node->val);

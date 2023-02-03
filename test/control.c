@@ -1,4 +1,5 @@
 void verify(int expected, int actual, char *file_name, int line_number);
+int printf(const char *, ...);
 
 int main() {
   {
@@ -236,6 +237,20 @@ int main() {
     for (x = 2, y = 3; 1, x < 10; x++, y++) {
       verify(1, y - x, __FILE__, __LINE__);
     }
+  }
+  {
+    int r = 0;
+  foo:;
+    int x = 1;
+    printf("r: %d   x: %d\n", r, x);
+    if (r) {
+      verify(1, x, __FILE__, __LINE__);
+      goto end;
+    }
+    r = 1;
+    x = 2;
+    goto foo;
+  end:;
   }
   return 0;
 }

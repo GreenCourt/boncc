@@ -39,6 +39,8 @@ stmt        = ";"
               | "switch" "(" expr ")" stmt
               | "case" expr ":" stmt
               | "default" ":" stmt
+              | ident ":" stmt
+              | "goto" ident ";"
 expr        = comma
 comma       = assign ("," comma)?
 assign      = condtional (("=" | "+=" | "-=" | "*=" | "/=" | "%=" | "^=" | "&=" | "|=" | "<<=" | ">>=" ) assign)?
@@ -159,6 +161,9 @@ Node *init_multiple_local_variables(Vector *variables);
 static Token *next_token;
 static Scope *current_scope = NULL;
 static Function *current_function;
+static Vector *goto_in_current_function;  // Node*
+static Vector *label_in_current_function; // Node*
+
 static int label_index = 0;
 static Vector *continue_label; // stack of int
 static Vector *break_label;    // stack of int
@@ -895,6 +900,12 @@ void func(Type *type, int qualifier) {
   assert(current_function == NULL);
   current_function = f;
 
+  assert(goto_in_current_function == NULL);
+  goto_in_current_function = new_vector(0, sizeof(Node *));
+
+  assert(label_in_current_function == NULL);
+  label_in_current_function = new_vector(0, sizeof(Node *));
+
   assert(current_scope == global_scope);
   new_scope();
 
@@ -928,8 +939,33 @@ void func(Type *type, int qualifier) {
   }
 
   f->body = stmt_block();
+
+  // give label_index to labels in the function
+  for (int i = 0; i < label_in_current_function->size; ++i) {
+    Node *node = *(Node **)vector_get(label_in_current_function, i);
+    node->label_index = label_index++;
+  }
+
+  // resolve goto label index
+  for (int i = 0; i < goto_in_current_function->size; ++i) {
+    Node *node_goto = *(Node **)vector_get(goto_in_current_function, i);
+    node_goto->label_index = -1;
+
+    for (int j = 0; j < label_in_current_function->size; ++j) {
+      Node *node_label = *(Node **)vector_get(label_in_current_function, j);
+      if (same_ident(node_goto->token->ident, node_label->token->ident)) {
+        node_goto->label_index = node_label->label_index;
+        break;
+      }
+    }
+    if (node_goto->label_index == -1)
+      error(&node_goto->token->pos, "undefined label");
+  }
+
   restore_scope();
   current_function = NULL;
+  goto_in_current_function = NULL;
+  label_in_current_function = NULL;
 }
 
 void funcparam(Type *ft) {
@@ -1476,6 +1512,35 @@ Node *stmt() {
     node->label_index = vector_lasti(break_label);
     node->token = tok;
     expect(TK_SEMICOLON);
+    return node;
+  }
+
+  if (consume(TK_GOTO)) {
+    Token *label_name = expect(TK_IDENT);
+    expect(TK_SEMICOLON);
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_GOTO;
+    node->token = label_name;
+    vector_push(goto_in_current_function, &node);
+    return node;
+  }
+
+  if (next_token->kind == TK_IDENT && next_token->next->kind == TK_COLON) {
+    Token *label_name = expect(TK_IDENT);
+    expect(TK_COLON);
+
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_LABEL;
+    node->token = label_name;
+    node->body = stmt();
+
+    for (int i = 0; i < label_in_current_function->size; ++i) {
+      Node *prev = *(Node **)vector_get(label_in_current_function, i);
+      if (same_ident(label_name->ident, prev->token->ident))
+        error(&label_name->pos, "duplicated label");
+    }
+
+    vector_push(label_in_current_function, &node);
     return node;
   }
 

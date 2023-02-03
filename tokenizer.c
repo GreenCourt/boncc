@@ -125,6 +125,7 @@ Token *tokenize(char *input_path) {
         TK_DEFAULT,
         TK_BREAK,
         TK_CONTINUE,
+        TK_GOTO,
         TK_VOID,
         TK_INT,
         TK_CHAR,
@@ -299,10 +300,10 @@ Token *tokenize(char *input_path) {
       char *q;
       long long val;
 
-      if(*p.pos == '0' && *(p.pos+1) == 'x') {
+      if (*p.pos == '0' && *(p.pos + 1) == 'x') {
         advance(&p, 2);
         val = strtol(p.pos, &q, 16);
-      } else if(*p.pos == '0') {
+      } else if (*p.pos == '0') {
         val = strtol(p.pos, &q, 8);
       } else {
         val = strtol(p.pos, &q, 10);

@@ -351,6 +351,7 @@ int main() {
     verify(3, z.c, __FILE__, __LINE__);
   }
   {
+    // test align
     struct S {
       int a;
       union {
@@ -362,9 +363,54 @@ int main() {
         int d1;
         short d2;
       } d[2];
-    } x;
-    verify(28, sizeof(x), __FILE__, __LINE__); // test align
+    };
+    verify(28, sizeof(struct S), __FILE__, __LINE__);
   }
+  {
+    // initializer
+    struct S {
+      int a;
+      union {
+        int b1;
+        char b2;
+      } b;
+      char c[3];
+      struct {
+        int d1;
+        short d2[3];
+      } d[2];
+    };
+    struct S x = {1, {2}, {3}, {{5}, {7, {8, 9}}}};
+    struct S y = {1, 2, {3}, 5};
+    verify(36, sizeof(x), __FILE__, __LINE__);
+    verify(1, x.a, __FILE__, __LINE__);
+    verify(2, x.b.b1, __FILE__, __LINE__);
+    verify(3, x.c[0], __FILE__, __LINE__);
+    verify(0, x.c[1], __FILE__, __LINE__);
+    verify(0, x.c[2], __FILE__, __LINE__);
+    verify(5, x.d[0].d1, __FILE__, __LINE__);
+    verify(0, x.d[0].d2[0], __FILE__, __LINE__);
+    verify(0, x.d[0].d2[1], __FILE__, __LINE__);
+    verify(0, x.d[0].d2[2], __FILE__, __LINE__);
+    verify(7, x.d[1].d1, __FILE__, __LINE__);
+    verify(8, x.d[1].d2[0], __FILE__, __LINE__);
+    verify(9, x.d[1].d2[1], __FILE__, __LINE__);
+    verify(0, x.d[1].d2[2], __FILE__, __LINE__);
 
+    verify(36, sizeof(y), __FILE__, __LINE__);
+    verify(1, y.a, __FILE__, __LINE__);
+    verify(2, y.b.b1, __FILE__, __LINE__);
+    verify(3, y.c[0], __FILE__, __LINE__);
+    verify(0, y.c[1], __FILE__, __LINE__);
+    verify(0, y.c[2], __FILE__, __LINE__);
+    verify(5, y.d[0].d1, __FILE__, __LINE__);
+    verify(0, y.d[0].d2[0], __FILE__, __LINE__);
+    verify(0, y.d[0].d2[1], __FILE__, __LINE__);
+    verify(0, y.d[0].d2[2], __FILE__, __LINE__);
+    verify(0, y.d[1].d1, __FILE__, __LINE__);
+    verify(0, y.d[1].d2[0], __FILE__, __LINE__);
+    verify(0, y.d[1].d2[1], __FILE__, __LINE__);
+    verify(0, y.d[1].d2[2], __FILE__, __LINE__);
+  }
   return 0;
 }

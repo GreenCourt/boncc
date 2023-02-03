@@ -436,20 +436,24 @@ Node *new_node_var(Token *tok, Variable *var) {
   return node;
 }
 
-Node *new_node_array_set_expr(Variable *var, int idx, Node *expr) {
-  assert(var->type->kind == TYPE_ARRAY);
+Node *new_node_array_access(Token *tok, Node *array, int idx) {
+  assert(array->type->kind == TYPE_ARRAY);
   assert(idx >= 0);
-  Type *base = var->type->base;
+  idx *= array->type->base->size;
+  return new_node_deref(tok, new_node(ND_ADD, array, new_node_num(tok, idx, base_type(TYPE_INT)), pointer_type(array->type->base)));
+}
+
+Node *new_node_array_access_as_1D(Token *tok, Node *array, int idx) {
+  assert(array->type->kind == TYPE_ARRAY);
+  assert(idx >= 0);
+
+  // treat as 1D-array even if array->type is multi-dimensional
+  Type *base = array->type->base;
   while (base->kind == TYPE_ARRAY)
     base = base->base;
   idx *= base->size;
-  return new_node_assign(NULL, new_node_deref(NULL, new_node(ND_ADD, new_node_var(NULL, var), new_node_num(NULL, idx, base_type(TYPE_INT)), pointer_type(var->type->base))), expr);
-}
 
-Node *new_node_array_set_val(Variable *var, int idx, int val) {
-  assert(var->type->kind == TYPE_ARRAY);
-  assert(idx >= 0);
-  return new_node_array_set_expr(var, idx, new_node_num(NULL, val, base_type(TYPE_INT)));
+  return new_node_deref(tok, new_node(ND_ADD, array, new_node_num(tok, idx, base_type(TYPE_INT)), pointer_type(array->type->base)));
 }
 
 Variable *is_const_var_addr(Node *node) {

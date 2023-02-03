@@ -58,24 +58,24 @@ Type *base_type(TypeKind kind) {
   case TYPE_CHAR:
   case TYPE_UCHAR:
   case TYPE_BOOL:
-    t->size = 1;
+    t->align = t->size = 1;
     break;
   case TYPE_SHORT:
   case TYPE_USHORT:
-    t->size = 2;
+    t->align = t->size = 2;
     break;
   case TYPE_INT:
   case TYPE_UINT:
   case TYPE_FLOAT:
-    t->size = 4;
+    t->align = t->size = 4;
     break;
   case TYPE_LONG:
   case TYPE_ULONG:
   case TYPE_DOUBLE:
-    t->size = 8;
+    t->align = t->size = 8;
     break;
   case TYPE_LDOUBLE:
-    t->size = 16;
+    t->align = t->size = 16;
     break;
   default:
     assert(false);
@@ -88,7 +88,7 @@ Type *pointer_type(Type *base) {
   t->kind = TYPE_PTR;
   t->base = base;
   t->objdec = base->objdec;
-  t->size = 8;
+  t->align = t->size = 8;
   return t;
 }
 
@@ -99,6 +99,7 @@ Type *array_type(Type *base, int len) {
   t->objdec = base->objdec;
   t->array_size = len;
   t->size = base->size * len;
+  t->align = base->align;
   return t;
 }
 
@@ -122,6 +123,7 @@ Type *enum_type(bool is_unnamed) {
   Type *t = calloc(1, sizeof(Type));
   t->kind = TYPE_ENUM;
   t->size = -1;
+  t->align = 4;
   t->is_unnamed = is_unnamed;
   return t;
 }
@@ -129,7 +131,7 @@ Type *enum_type(bool is_unnamed) {
 Type *func_type(Type *return_type) {
   Type *t = calloc(1, sizeof(Type));
   t->kind = TYPE_FUNC;
-  t->size = 0;
+  t->align = t->size = 0;
   t->params = new_vector(0, sizeof(Variable *));
   t->return_type = return_type;
   t->objdec = return_type->objdec;

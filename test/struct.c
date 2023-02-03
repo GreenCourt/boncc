@@ -350,6 +350,21 @@ int main() {
     verify(2, z.b, __FILE__, __LINE__);
     verify(3, z.c, __FILE__, __LINE__);
   }
+  {
+    struct S {
+      int a;
+      union {
+        int b1;
+        char b2;
+      } b;
+      char c[3];
+      struct {
+        int d1;
+        short d2;
+      } d[2];
+    } x;
+    verify(28, sizeof(x), __FILE__, __LINE__); // test align
+  }
 
   return 0;
 }

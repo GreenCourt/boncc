@@ -150,6 +150,7 @@ typedef struct Type Type;
 struct Type {
   TypeKind kind;
   int size; // sizeof
+  int align;
   bool is_const;
 
   struct Type *base; // only for TYPE_PTR and TYPE_ARRAY

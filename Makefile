@@ -100,7 +100,7 @@ $(TEST_OBJ_DIR)/%2.o: test/%.c boncc2
 #########################################
 
 stage3test: $(addprefix $(OBJ_DIR)/,$(addsuffix 3.s,$(DEP)))
-	for i in $(DEP); do diff -s $(OBJ_DIR)/$${i}2.s $(OBJ_DIR)/$${i}3.s || exit $$?; done
+	for i in $(DEP); do diff -sq $(OBJ_DIR)/$${i}2.s $(OBJ_DIR)/$${i}3.s || exit $$?; done
 
 $(OBJ_DIR)/%3.s:$(OBJ_DIR)/%.pp.c boncc2
 	./boncc2 $< -o $@

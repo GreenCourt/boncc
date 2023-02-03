@@ -314,20 +314,22 @@ Type *consume_struct(TypeKind kind) {
       if (kind == TYPE_UNION) {
         if (offset < base->size)
           offset = base->size;
+        if (align < base->align)
+          align = base->align;
       } else if (base->kind == TYPE_STRUCT) {
         Member *m = child;
         while (m) {
           Type *type = m->type;
-          int padding = (offset % type->size) ? type->size - (offset % type->size) : 0;
+          int padding = (offset % type->align) ? type->align - (offset % type->align) : 0;
           offset += padding;
           m->offset += offset;
           m = m->next;
           offset += type->size;
-          if (type->size > align)
-            align = type->size;
+          if (type->align > align)
+            align = type->align;
         }
       } else if (base->kind == TYPE_UNION) {
-        int padding = (offset % base->size) ? base->size - (offset % base->size) : 0;
+        int padding = (offset % base->align) ? base->align - (offset % base->align) : 0;
         offset += padding;
         Member *m = child;
         while (m) {
@@ -335,8 +337,8 @@ Type *consume_struct(TypeKind kind) {
           m = m->next;
         }
         offset += base->size;
-        if (base->size > align)
-          align = base->size;
+        if (base->align > align)
+          align = base->align;
       } else {
         assert(false);
       }
@@ -365,13 +367,15 @@ Type *consume_struct(TypeKind kind) {
         m->offset = 0;
         if (offset < type->size)
           offset = type->size;
+        if (align < type->align)
+          align = type->align;
       } else {
-        int padding = (offset % type->size) ? type->size - (offset % type->size) : 0;
+        int padding = (offset % type->align) ? type->align - (offset % type->align) : 0;
         offset += padding;
         m->offset = offset;
         offset += type->size;
-        if (type->size > align)
-          align = type->size;
+        if (type->align > align)
+          align = type->align;
       }
 
       tail->next = m;
@@ -385,6 +389,7 @@ Type *consume_struct(TypeKind kind) {
 
   st->member = head.next;
   st->size = offset;
+  st->align = align;
   return st;
 }
 

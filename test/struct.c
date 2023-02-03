@@ -243,6 +243,7 @@ int main() {
         int a;
         int b;
       };
+      long c;
     };
     verify(8, sizeof(union U), __FILE__, __LINE__);
     union U u;
@@ -251,6 +252,8 @@ int main() {
     verify(2, u.a, __FILE__, __LINE__);
     verify(3, u.b, __FILE__, __LINE__);
     verify(2, u.q, __FILE__, __LINE__);
+    u.c = 4;
+    verify(4, u.c, __FILE__, __LINE__);
   }
 
   {
@@ -275,11 +278,14 @@ int main() {
         int a;
         long b;
       };
+      int c;
     };
-    verify(16, sizeof(struct S), __FILE__, __LINE__);
+    verify(24, sizeof(struct S), __FILE__, __LINE__);
     struct S s;
     s.a = 4;
+    s.c = 6;
     verify(4, s.b, __FILE__, __LINE__);
+    verify(6, s.c, __FILE__, __LINE__);
   }
   {
     struct S {
@@ -288,13 +294,16 @@ int main() {
         int a;
         int b;
       };
+      int c;
     };
-    verify(12, sizeof(struct S), __FILE__, __LINE__);
+    verify(16, sizeof(struct S), __FILE__, __LINE__);
     struct S s;
     s.a = 2;
     s.b = 3;
+    s.c = 6;
     verify(2, s.a, __FILE__, __LINE__);
     verify(3, s.b, __FILE__, __LINE__);
+    verify(6, s.c, __FILE__, __LINE__);
   }
   {
     struct S {

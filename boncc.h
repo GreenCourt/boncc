@@ -121,6 +121,7 @@ struct Member {
   Ident *ident;
   Type *type;
   int offset;
+  int padding;
   Member *next; // liked list
 };
 

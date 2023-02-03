@@ -309,42 +309,62 @@ Type *consume_struct(TypeKind kind) {
       if (!base->is_unnamed)
         error(&tok_type->pos, "identifier required for the member");
       expect(TK_SEMICOLON);
+
       // merge unnamed struct/union
-      Member *child = base->member;
+
       if (kind == TYPE_UNION) {
         if (offset < base->size)
           offset = base->size;
         if (align < base->align)
           align = base->align;
-      } else if (base->kind == TYPE_STRUCT) {
-        Member *m = child;
+
+        tail->next = base->member;
+        Member *m = base->member;
+        while (m->next)
+          m = m->next;
+        tail = m;
+        continue;
+      }
+
+      if (base->kind == TYPE_STRUCT) {
+        Member *m = base->member;
+        assert(m);
+
         while (m) {
           Type *type = m->type;
-          int padding = (offset % type->align) ? type->align - (offset % type->align) : 0;
-          offset += padding;
-          m->offset += offset;
-          m = m->next;
+          tail->padding = (offset % type->align) ? type->align - (offset % type->align) : 0;
+          offset += tail->padding;
+          m->offset = offset;
           offset += type->size;
           if (type->align > align)
             align = type->align;
+          tail->next = m;
+          tail = m;
+
+          m = m->next;
         }
-      } else if (base->kind == TYPE_UNION) {
-        int padding = (offset % base->align) ? base->align - (offset % base->align) : 0;
-        offset += padding;
-        Member *m = child;
+
+        continue;
+      }
+
+      if (base->kind == TYPE_UNION) {
+        tail->padding = (offset % base->align) ? base->align - (offset % base->align) : 0;
+        offset += tail->padding;
+
+        Member *m = base->member;
         while (m) {
           m->offset += offset;
+          tail->next = m;
+          tail = m;
           m = m->next;
         }
         offset += base->size;
         if (base->align > align)
           align = base->align;
-      } else {
-        assert(false);
+
+        continue;
       }
-      tail->next = child;
-      tail = child;
-      continue;
+      assert(false);
     }
 
     do {
@@ -370,8 +390,8 @@ Type *consume_struct(TypeKind kind) {
         if (align < type->align)
           align = type->align;
       } else {
-        int padding = (offset % type->align) ? type->align - (offset % type->align) : 0;
-        offset += padding;
+        tail->padding = (offset % type->align) ? type->align - (offset % type->align) : 0;
+        offset += tail->padding;
         m->offset = offset;
         offset += type->size;
         if (type->align > align)
@@ -384,12 +404,23 @@ Type *consume_struct(TypeKind kind) {
     expect(TK_SEMICOLON);
   }
 
-  if (align && offset % align)
-    offset += align - offset % align;
+  if (align && offset % align) {
+    tail->padding = align - offset % align;
+    offset += tail->padding;
+  }
 
   st->member = head.next;
   st->size = offset;
   st->align = align;
+
+  if(kind == TYPE_UNION) {
+    Member *m = head.next;
+    while(m) {
+      m->padding = st->size - m->type->size;
+      m = m->next;
+    }
+  }
+
   return st;
 }
 

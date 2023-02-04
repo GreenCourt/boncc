@@ -2,11 +2,6 @@
 #include <assert.h>
 #include <string.h>
 
-static bool match_ident(Ident *ident, char *text) {
-  int len = strlen(text);
-  return len == ident->len && strncmp(ident->name, text, len) == 0;
-}
-
 Token *preprocess(Token *input) {
   assert(input);
   Token *next_token = input;
@@ -23,11 +18,11 @@ Token *preprocess(Token *input) {
     }
 
     if (next_token->kind == TK_IDENT) {
-      if (match_ident(next_token->ident, "__FILE__")) {
+      if (same_string_nt(next_token->str, "__FILE__")) {
         next_token->kind = TK_STR;
         next_token->string_literal = next_token->pos.file_name;
       }
-      if (match_ident(next_token->ident, "__LINE__")) {
+      if (same_string_nt(next_token->str, "__LINE__")) {
         next_token->kind = TK_NUM;
         next_token->val = next_token->pos.line_number;
         next_token->type = base_type(TYPE_INT);

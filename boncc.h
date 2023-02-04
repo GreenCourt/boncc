@@ -96,9 +96,10 @@ struct Position {
   int column_number;
 };
 
-typedef struct Ident Ident;
-struct Ident {
-  char *name;
+typedef struct String String;
+struct String {
+  // a string that is not null-terminated
+  char *str;
   int len;
 };
 
@@ -108,7 +109,7 @@ struct Token {
   TokenKind kind;
   Token *next;
   Position pos;
-  Ident *ident;         // TK_IDENT
+  String *str;
   long long val;        // only for TK_NUM
   char *string_literal; // null terminated, only for TK_STR
   Type *type;           // TK_NUM
@@ -118,7 +119,7 @@ struct Token {
 typedef struct Type Type;
 typedef struct Member Member;
 struct Member {
-  Ident *ident;
+  String *ident;
   Type *type;
   int offset;
   int padding;
@@ -184,7 +185,7 @@ typedef struct Object Variable;
 typedef struct Object Function;
 typedef struct Object Object;
 struct Object { // variable or function
-  Ident *ident;
+  String *ident;
   Type *type;
   Token *token; // for error messages
   ObjectKind kind;
@@ -192,9 +193,9 @@ struct Object { // variable or function
   int offset; // OBJ_LVAR, OBJ_FUNC
 
   // variable
-  char *string_literal;  // null terminated, only for OBJ_STRLIT
-  VariableInit *init;    // OBJ_GVAR, OBJ_LVAR
-  Ident *internal_ident; // for static local
+  char *string_literal;   // null terminated, only for OBJ_STRLIT
+  VariableInit *init;     // OBJ_GVAR, OBJ_LVAR
+  String *internal_ident; // for static local
   bool is_extern;
 
   // function
@@ -299,8 +300,8 @@ struct Scope {
 
 Map *new_map();
 void *map_geti(Map *map, int idx);
-void *map_get(Map *map, Ident *key);
-void map_push(Map *map, Ident *key, void *val);
+void *map_get(Map *map, String *key);
+void map_push(Map *map, String *key, void *val);
 
 extern Scope *global_scope;
 extern Map *strings;                   // Variable*
@@ -310,7 +311,10 @@ bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);
 void error(Position *pos, char *fmt, ...);
 char *read_file(char *path);
-bool same_ident(Ident *a, Ident *b);
+
+String *new_string(char *str, int len);
+bool same_string(String *a, String *b);
+bool same_string_nt(String *s, char *null_terminated);
 
 Token *tokenize(char *input_path);
 Token *preprocess(Token *input);

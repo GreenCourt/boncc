@@ -208,7 +208,7 @@ long long expect_number() {
   return val;
 }
 
-Type *find_typedef(Ident *id) {
+Type *find_typedef(String *id) {
   Scope *scope = current_scope;
   while (scope) {
     Type *t = map_get(scope->typedefs, id);
@@ -219,7 +219,7 @@ Type *find_typedef(Ident *id) {
   return NULL;
 }
 
-Type *find_type(Ident *id) {
+Type *find_type(String *id) {
   Scope *scope = current_scope;
   while (scope) {
     Type *t = map_get(scope->types, id);
@@ -230,7 +230,7 @@ Type *find_type(Ident *id) {
   return NULL;
 }
 
-int *find_enum_element(Ident *id) {
+int *find_enum_element(String *id) {
   Scope *scope = current_scope;
   while (scope) {
     int *e = map_get(scope->enum_elements, id);
@@ -246,7 +246,7 @@ Member *find_member(Type *st, Token *tok) {
   assert(tok->kind == TK_IDENT);
   Member *member = st->member;
   while (member) {
-    if (same_ident(member->ident, tok->ident))
+    if (same_string(member->ident, tok->str))
       return member;
     member = member->next;
   }
@@ -262,20 +262,20 @@ Type *consume_struct(TypeKind kind) {
     if (consume(TK_LBRACE)) {
       // define struct/union
       // struct/union can be defined only for the current-scope
-      st = map_get(current_scope->types, tag->ident);
+      st = map_get(current_scope->types, tag->str);
       if (st == NULL) {
         st = kind == TYPE_UNION ? union_type(false) : struct_type(false);
-        map_push(current_scope->types, tag->ident, st);
+        map_push(current_scope->types, tag->str, st);
       } else if (kind != st->kind || st->size > 0) {
         error(&tag->pos, "conflicted type tag");
       }
     } else {
       // declare struct/union
       // multipe time declaration is allowed
-      st = find_type(tag->ident);
+      st = find_type(tag->str);
       if (st == NULL) {
         st = kind == TYPE_UNION ? union_type(false) : struct_type(false);
-        map_push(current_scope->types, tag->ident, st);
+        map_push(current_scope->types, tag->str, st);
       } else if (kind != st->kind) {
         error(&tag->pos, "conflicted type tag");
       }
@@ -385,7 +385,7 @@ Type *consume_struct(TypeKind kind) {
         error(&tok_type->pos, "function type is not allowed");
 
       Member *m = calloc(1, sizeof(Member));
-      m->ident = type->objdec->ident;
+      m->ident = type->objdec->str;
       m->type = type;
 
       if (kind == TYPE_UNION) {
@@ -438,20 +438,20 @@ Type *consume_enum() {
     if (consume(TK_LBRACE)) {
       // define enum
       // enum can be defined only for the current-scope
-      et = map_get(current_scope->types, tag->ident);
+      et = map_get(current_scope->types, tag->str);
       if (et == NULL) {
         et = enum_type(false);
-        map_push(current_scope->types, tag->ident, et);
+        map_push(current_scope->types, tag->str, et);
       } else if (et->kind != TYPE_ENUM || et->size > 0) {
         error(&tag->pos, "conflicted type tag");
       }
     } else {
       // declare enum
       // multipe time declaration is allowed
-      et = find_type(tag->ident);
+      et = find_type(tag->str);
       if (et == NULL) {
         et = enum_type(false);
-        map_push(current_scope->types, tag->ident, et);
+        map_push(current_scope->types, tag->str, et);
       } else if (et->kind != TYPE_ENUM) {
         error(&tag->pos, "conflicted type tag");
       }
@@ -469,14 +469,14 @@ Type *consume_enum() {
   int val = -1;
   while (true) {
     Token *id = expect(TK_IDENT);
-    if (map_get(current_scope->enum_elements, id->ident))
+    if (map_get(current_scope->enum_elements, id->str))
       error(&id->pos, "duplicated identifier for enum element");
 
     if (consume(TK_ASSIGN))
       val = eval(assign()) - 1;
     int *v = calloc(1, sizeof(int));
     *v = ++val;
-    map_push(current_scope->enum_elements, id->ident, v);
+    map_push(current_scope->enum_elements, id->str, v);
     if (consume(TK_COMMA)) {
       if (consume(TK_RBRACE))
         break;
@@ -506,7 +506,7 @@ Type *consume_type_star(Type *type) {
 
 Type *consume_type() {
   if (next_token->kind == TK_IDENT) {
-    Type *t = find_typedef(next_token->ident);
+    Type *t = find_typedef(next_token->str);
     if (t)
       expect(TK_IDENT);
     return t;
@@ -651,13 +651,13 @@ void expect_typedef() {
   Type *base = expect_type();
   do {
     Type *type = declarator(base);
-    Type *pre = map_get(current_scope->typedefs, type->objdec->ident);
+    Type *pre = map_get(current_scope->typedefs, type->objdec->str);
 
     // multiple typedef for same type is allowed
     if (pre && !same_type(type, pre))
       error(&type->objdec->pos, "duplicated typedef identifier");
     if (!pre)
-      map_push(current_scope->typedefs, type->objdec->ident, type);
+      map_push(current_scope->typedefs, type->objdec->str, type);
   } while (consume(TK_COMMA));
   expect(TK_SEMICOLON);
 }
@@ -666,10 +666,10 @@ bool at_eof() { return next_token->kind == TK_EOF; }
 
 Object *find_object(Token *tok) {
   assert(tok);
-  assert(tok->ident);
+  assert(tok->str);
   Scope *scope = current_scope;
   while (scope) {
-    Object *obj = map_get(scope->objects, tok->ident);
+    Object *obj = map_get(scope->objects, tok->str);
     if (obj)
       return obj;
     scope = scope->prev;
@@ -679,9 +679,9 @@ Object *find_object(Token *tok) {
 
 Variable *new_variable(Type *type, ObjectKind kind, int qualifier) {
   assert(type->objdec);
-  assert(type->objdec->ident);
+  assert(type->objdec->str);
   Variable *var = calloc(1, sizeof(Variable));
-  var->ident = type->objdec->ident;
+  var->ident = type->objdec->str;
   var->type = type;
   var->kind = kind;
   var->token = type->objdec;
@@ -692,14 +692,14 @@ Variable *new_variable(Type *type, ObjectKind kind, int qualifier) {
 
 Variable *new_local_variable(Type *type, int qualifier) {
   assert(type->objdec);
-  assert(type->objdec->ident);
+  assert(type->objdec->str);
   bool is_extern = qualifier & IS_EXTERN;
   bool is_static = qualifier & IS_STATIC;
 
-  Variable *prev = map_get(current_scope->objects, type->objdec->ident);
+  Variable *prev = map_get(current_scope->objects, type->objdec->str);
   if (prev) {
     if (!is_extern || !prev->is_extern || !same_type(type, prev->type))
-      error(&type->objdec->pos, "conflicted identifier %.*s", type->objdec->ident->len, type->objdec->ident->name);
+      error(&type->objdec->pos, "conflicted identifier %.*s", type->objdec->str->len, type->objdec->str->str);
     return prev;
   }
 
@@ -711,11 +711,10 @@ Variable *new_local_variable(Type *type, int qualifier) {
     vector_push(static_local_variables, &var);
 
     // give internal ident
-    var->internal_ident = calloc(1, sizeof(Ident));
-    var->internal_ident->name = calloc(var->ident->len + 21, sizeof(char));
-    sprintf(var->internal_ident->name, ".static_%d_", idx++);
-    strncpy(var->internal_ident->name + strlen(var->internal_ident->name), var->ident->name, var->ident->len);
-    var->internal_ident->len = strlen(var->internal_ident->name);
+    char *id = calloc(var->ident->len + 21, sizeof(char));
+    sprintf(id, ".static_%d_", idx++);
+    strncpy(id + strlen(id), var->ident->str, var->ident->len);
+    var->internal_ident = new_string(id, 0);
   }
 
   return var;
@@ -730,12 +729,12 @@ void set_offset(Variable *var) {
 
 Variable *new_global(Type *type, int qualifier) {
   assert(type->objdec);
-  assert(type->objdec->ident);
+  assert(type->objdec->str);
 
   bool is_extern = qualifier & IS_EXTERN;
   bool is_static = qualifier & IS_STATIC;
 
-  Variable *prev = map_get(global_scope->objects, type->objdec->ident);
+  Variable *prev = map_get(global_scope->objects, type->objdec->str);
   if (prev) {
     if (is_static != prev->is_static || !same_type(type, prev->type))
       error(&type->objdec->pos, "conflicted identifier");
@@ -756,19 +755,18 @@ Variable *new_string_literal(Token *tok) {
   static int idx = 0;
   assert(tok->kind == TK_STR);
 
-  Ident *key = calloc(1, sizeof(Ident));
-  key->name = tok->string_literal;
-  key->len = strlen(tok->string_literal);
+  String *key = new_string(tok->string_literal, 0);
 
   Variable *var = map_get(strings, key);
   if (var)
     return var;
 
   var = calloc(1, sizeof(Variable));
-  var->ident = calloc(1, sizeof(Ident));
-  var->ident->name = calloc(15, sizeof(char));
-  sprintf(var->ident->name, ".LC%d", idx++);
-  var->ident->len = strlen(var->ident->name);
+
+  char *id = calloc(15, sizeof(char));
+  sprintf(id, ".LC%d", idx++);
+  var->ident = new_string(id, 0);
+
   var->kind = OBJ_STRLIT;
   var->string_literal = tok->string_literal;
   var->token = tok;
@@ -865,13 +863,13 @@ Vector *vardec(Type *type, ObjectKind kind, int qualifier) {
 
 void func(Type *type, int qualifier) {
   assert(type->objdec);
-  assert(type->objdec->ident);
+  assert(type->objdec->str);
 
   Function *f = calloc(1, sizeof(Function));
   f->type = type;
   f->kind = OBJ_FUNC;
   f->token = type->objdec;
-  f->ident = type->objdec->ident;
+  f->ident = type->objdec->str;
   f->is_static = (qualifier & IS_STATIC) != 0;
 
   Function *prev = map_get(global_scope->objects, f->ident);
@@ -931,10 +929,8 @@ void func(Type *type, int qualifier) {
     Type *t = base_type(TYPE_UCHAR);
     Token *dummy_tok = calloc(1, sizeof(Token));
     *dummy_tok = *type->objdec;
-    Ident *dummy_id = calloc(1, sizeof(Ident));
-    dummy_id->name = "__hidden_va_area__";
-    dummy_id->len = strlen(dummy_id->name);
-    dummy_tok->ident = dummy_id;
+    dummy_tok->str = new_string("__hidden_va_area__", 0);
+
     t->objdec = dummy_tok;
     static const int sizeof_register_save_area = (/* gp */ 8 * 6) + (/* xmm0 - xmm7 */ 16 * 8);
     static const int sizeof_va_list = 24;
@@ -959,7 +955,7 @@ void func(Type *type, int qualifier) {
 
     for (int j = 0; j < label_in_current_function->size; ++j) {
       Node *node_label = *(Node **)vector_get(label_in_current_function, j);
-      if (same_ident(node_goto->token->ident, node_label->token->ident)) {
+      if (same_string(node_goto->token->str, node_label->token->str)) {
         node_goto->label_index = node_label->label_index;
         break;
       }
@@ -1542,7 +1538,7 @@ Node *stmt() {
 
     for (int i = 0; i < label_in_current_function->size; ++i) {
       Node *prev = *(Node **)vector_get(label_in_current_function, i);
-      if (same_ident(label_name->ident, prev->token->ident))
+      if (same_string(label_name->str, prev->token->str))
         error(&label_name->pos, "duplicated label");
     }
 
@@ -1952,13 +1948,13 @@ Node *primary() {
 
   Token *tok;
   if ((tok = consume(TK_IDENT))) {
-    int *enum_val = find_enum_element(tok->ident);
+    int *enum_val = find_enum_element(tok->str);
     if (enum_val)
       return new_node_num(tok, *enum_val, base_type(TYPE_INT));
 
     Variable *var = find_object(tok);
     if (!var)
-      error(&tok->pos, "undefined identifier: '%.*s'", tok->ident->len, tok->ident->name);
+      error(&tok->pos, "undefined identifier: '%.*s'", tok->str->len, tok->str->str);
     return new_node_var(tok, var);
   }
 
@@ -2086,18 +2082,14 @@ void parse(Token *input) {
 
   {
     /* dirty hack to read gcc headers */
-    Ident *id;
+    String *id;
     Function *f;
     Type *t;
 
-    id = calloc(1, sizeof(Ident));
-    id->name = "__builtin_va_list";
-    id->len = 17;
+    id = new_string("__builtin_va_list", 0);
     map_push(global_scope->typedefs, id, pointer_type(base_type(TYPE_VOID)));
 
-    id = calloc(1, sizeof(Ident));
-    id->name = "__builtin_va_start";
-    id->len = 18;
+    id = new_string("__builtin_va_start", 0);
     f = calloc(1, sizeof(Function));
     f->type = func_type(base_type(TYPE_VOID));
     t = base_type(TYPE_INT);
@@ -2110,9 +2102,7 @@ void parse(Token *input) {
     f->is_extern = true;
     map_push(global_scope->objects, f->ident, f);
 
-    id = calloc(1, sizeof(Ident));
-    id->name = "__builtin_bswap16";
-    id->len = 17;
+    id = new_string("__builtin_bswap16", 0);
     f = calloc(1, sizeof(Function));
     f->type = func_type(base_type(TYPE_USHORT));
     t = base_type(TYPE_USHORT);
@@ -2123,9 +2113,7 @@ void parse(Token *input) {
     f->is_extern = true;
     map_push(global_scope->objects, f->ident, f);
 
-    id = calloc(1, sizeof(Ident));
-    id->name = "__builtin_bswap32";
-    id->len = 17;
+    id = new_string("__builtin_bswap32", 0);
     f = calloc(1, sizeof(Function));
     f->type = func_type(base_type(TYPE_UINT));
     t = base_type(TYPE_UINT);
@@ -2136,9 +2124,7 @@ void parse(Token *input) {
     f->is_extern = true;
     map_push(global_scope->objects, f->ident, f);
 
-    id = calloc(1, sizeof(Ident));
-    id->name = "__builtin_bswap64";
-    id->len = 17;
+    id = new_string("__builtin_bswap64", 0);
     f = calloc(1, sizeof(Function));
     f->type = func_type(base_type(TYPE_ULONG));
     t = base_type(TYPE_ULONG);
@@ -2157,14 +2143,14 @@ void parse(Token *input) {
     /* dirty hack to read gcc headers */
     typedef struct KeyValue KeyValue;
     struct KeyValue {
-      Ident *ident;
+      String *ident;
       void *val;
     };
     for (int i = 0; i < global_scope->objects->size; i++) {
       Function *f = map_geti(global_scope->objects, i);
       if (f->kind != OBJ_FUNC)
         continue;
-      if (f->ident->name[0] == '_') {
+      if (f->ident->str[0] == '_') {
         KeyValue *kv = *(KeyValue **)vector_last(global_scope->objects);
         vector_set(global_scope->objects, i, &kv);
         vector_pop(global_scope->objects);

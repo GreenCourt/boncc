@@ -31,12 +31,7 @@ static void new_token(TokenKind kind, Token **tail, Position *p, int len) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
   tok->pos = *p;
-
-  if (tok->kind == TK_IDENT) {
-    tok->ident = calloc(1, sizeof(Ident));
-    tok->ident->name = p->pos;
-    tok->ident->len = len;
-  }
+  tok->str = new_string(p->pos, len);
 
   (*tail)->next = tok;
   *tail = tok;
@@ -300,7 +295,7 @@ Token *tokenize(char *input_path) {
       long long val;
 
       if (*q == '0' && (*(q + 1) == 'X' || *(q + 1) == 'x'))
-        val = strtol(q+2, &q, 16);
+        val = strtol(q + 2, &q, 16);
       else if (*q == '0')
         val = strtol(q, &q, 8);
       else

@@ -98,8 +98,6 @@ const char *token_text[] = {
     "eof",
 };
 
-bool same_ident(Ident *a, Ident *b) { return a->len == b->len && strncmp(a->name, b->name, a->len) == 0; }
-
 void error(Position *pos, char *fmt, ...) {
 #ifdef BONCC
   typedef struct {
@@ -170,4 +168,22 @@ char *read_file(char *path) {
   fputc('\0', stream);
   fclose(stream);
   return content;
+}
+
+String *new_string(char *str, int len) {
+  String *s = calloc(1, sizeof(String));
+  s->str = str;
+  if (len == 0)
+    s->len = strlen(str); // must be null-terminated
+  else
+    s->len = len;
+  return s;
+}
+
+bool same_string(String *a, String *b) {
+  return a->len == b->len && strncmp(a->str, b->str, a->len) == 0;
+}
+bool same_string_nt(String *s, char *null_terminated) {
+  int len = strlen(null_terminated);
+  return len == s->len && strncmp(s->str, null_terminated, len) == 0;
 }

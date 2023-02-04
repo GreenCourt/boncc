@@ -4,7 +4,7 @@
 
 typedef struct KeyValue KeyValue;
 struct KeyValue {
-  Ident *ident;
+  String *ident;
   void *val;
 };
 
@@ -19,17 +19,17 @@ void *map_geti(Map *map, int idx) {
   return e->val;
 }
 
-void *map_get(Map *map, Ident *key) {
+void *map_get(Map *map, String *key) {
   int sz = map->size;
   for (int i = 0; i < sz; ++i) {
     KeyValue *e = *(KeyValue **)vector_get(map, i);
-    if (same_ident(e->ident, key))
+    if (same_string(e->ident, key))
       return e->val;
   }
   return NULL;
 }
 
-void map_push(Map *map, Ident *key, void *val) {
+void map_push(Map *map, String *key, void *val) {
   assert(map_get(map, key) == NULL);
   KeyValue *e = calloc(1, sizeof(KeyValue));
   e->ident = key;
@@ -37,11 +37,11 @@ void map_push(Map *map, Ident *key, void *val) {
   vector_push(map, &e);
 }
 
-void map_erase(Map *map, Ident *key) {
+void map_erase(Map *map, String *key) {
   int sz = map->size;
   for (int i = 0; i < sz; ++i) {
     KeyValue *e = *(KeyValue **)vector_get(map, i);
-    if (same_ident(e->ident, key)) {
+    if (same_string(e->ident, key)) {
       KeyValue *last = *(KeyValue **)vector_last(map);
       vector_set(map, i, &last);
       vector_pop(map);

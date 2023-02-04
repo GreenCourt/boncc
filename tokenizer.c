@@ -300,7 +300,7 @@ Token *tokenize(char *input_path) {
       char *q;
       long long val;
 
-      if (*p.pos == '0' && *(p.pos + 1) == 'x') {
+      if (*p.pos == '0' && (*(p.pos + 1) == 'X' || *(p.pos + 1) == 'x')) {
         advance(&p, 2);
         val = strtol(p.pos, &q, 16);
       } else if (*p.pos == '0') {
@@ -316,16 +316,16 @@ Token *tokenize(char *input_path) {
       bool is_long = !(-2147483648 <= val && val <= 2147483647);
       bool is_unsigned = false;
 
-      if (*p.pos == 'U') {
+      if (*p.pos == 'U' || *p.pos == 'u') {
         is_unsigned = true;
         advance(&p, 1);
       }
 
-      if (*p.pos == 'L') {
+      if (*p.pos == 'L' || *p.pos == 'l') {
         is_long = true;
-        advance(&p, 1);
-        if (*p.pos == 'L')
+        if (*(p.pos + 1) == *p.pos)
           advance(&p, 1);
+        advance(&p, 1);
       }
 
       TypeKind kind;

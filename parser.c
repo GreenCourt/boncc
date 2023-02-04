@@ -1958,7 +1958,7 @@ Node *primary() {
 
     Variable *var = find_object(tok);
     if (!var)
-      error(&tok->pos, "undefined identifier: '%.*s'", tok->token_length, tok->pos.pos);
+      error(&tok->pos, "undefined identifier: '%.*s'", tok->ident->len, tok->ident->name);
     return new_node_var(tok, var);
   }
 

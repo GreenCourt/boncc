@@ -108,7 +108,6 @@ struct Token {
   TokenKind kind;
   Token *next;
   Position pos;
-  int token_length;
   Ident *ident;         // TK_IDENT
   long long val;        // only for TK_NUM
   char *string_literal; // null terminated, only for TK_STR

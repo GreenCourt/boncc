@@ -31,7 +31,6 @@ static void new_token(TokenKind kind, Token **tail, Position *p, int len) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
   tok->pos = *p;
-  tok->token_length = len;
 
   if (tok->kind == TK_IDENT) {
     tok->ident = calloc(1, sizeof(Ident));

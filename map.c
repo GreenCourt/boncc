@@ -36,3 +36,17 @@ void map_push(Map *map, Ident *key, void *val) {
   e->val = val;
   vector_push(map, &e);
 }
+
+void map_erase(Map *map, Ident *key) {
+  int sz = map->size;
+  for (int i = 0; i < sz; ++i) {
+    KeyValue *e = *(KeyValue **)vector_get(map, i);
+    if (same_ident(e->ident, key)) {
+      KeyValue *last = *(KeyValue **)vector_last(map);
+      vector_set(map, i, &last);
+      vector_pop(map);
+      return;
+    }
+  }
+  assert(false);
+}

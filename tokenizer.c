@@ -297,39 +297,36 @@ Token *tokenize(char *input_path) {
     }
 
     if (isdigit(*p.pos)) {
-      char *q;
+      char *q = p.pos;
       long long val;
 
-      if (*p.pos == '0' && (*(p.pos + 1) == 'X' || *(p.pos + 1) == 'x')) {
-        advance(&p, 2);
-        val = strtol(p.pos, &q, 16);
-      } else if (*p.pos == '0') {
-        val = strtol(p.pos, &q, 8);
-      } else {
-        val = strtol(p.pos, &q, 10);
+      if (*q == '0' && (*(q + 1) == 'X' || *(q + 1) == 'x'))
+        val = strtol(q+2, &q, 16);
+      else if (*q == '0')
+        val = strtol(q, &q, 8);
+      else
+        val = strtol(q, &q, 10);
+
+      bool is_long = !(-2147483648 <= val && val <= 2147483647);
+      bool is_unsigned = false;
+
+      if (*q == 'U' || *q == 'u') {
+        is_unsigned = true;
+        q++;
+      }
+
+      if (*q == 'L' || *q == 'l') {
+        is_long = true;
+        if (*(q + 1) == *q)
+          q++;
+        q++;
       }
 
       int len = q - p.pos;
       new_token(TK_NUM, &tail, &p, len);
       tail->val = val;
 
-      bool is_long = !(-2147483648 <= val && val <= 2147483647);
-      bool is_unsigned = false;
-
-      if (*p.pos == 'U' || *p.pos == 'u') {
-        is_unsigned = true;
-        advance(&p, 1);
-      }
-
-      if (*p.pos == 'L' || *p.pos == 'l') {
-        is_long = true;
-        if (*(p.pos + 1) == *p.pos)
-          advance(&p, 1);
-        advance(&p, 1);
-      }
-
       TypeKind kind;
-
       if (is_long && is_unsigned)
         kind = TYPE_ULONG;
       else if (is_long)

@@ -299,7 +299,7 @@ int main() {
   {
     int a = 12;
     (void)a;
-    (void)(void) a;
+    (void)(void)a;
   }
   return 0;
 }

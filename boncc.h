@@ -296,6 +296,7 @@ struct Scope {
   Map *types;         // Type*
   Map *enum_elements; // int*
   Map *typedefs;      // Type*
+  int offset;         // local variable offset
 };
 
 Map *new_map();

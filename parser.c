@@ -176,6 +176,8 @@ void new_scope() {
   s->types = new_map();
   s->enum_elements = new_map();
   s->typedefs = new_map();
+  if (current_scope)
+    s->offset = current_scope->offset;
   current_scope = s;
 }
 
@@ -723,8 +725,10 @@ Variable *new_local_variable(Type *type, int qualifier) {
 void set_offset(Variable *var) {
   assert(var->kind == OBJ_LVAR);
   assert(var->offset == 0);
-  var->offset = current_function->offset + var->type->size;
-  current_function->offset = var->offset;
+  var->offset = current_scope->offset + var->type->size;
+  current_scope->offset = var->offset;
+  if (current_function->offset < var->offset)
+    current_function->offset = var->offset;
 }
 
 Variable *new_global(Type *type, int qualifier) {

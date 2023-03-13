@@ -1251,7 +1251,18 @@ Node *init_local_struct(Variable *var, Node *left, VariableInit *init) {
   if (same_type(init->expr->type, left->type))
     return new_node_assign_ignore_const(var->token, left, init->expr);
 
-  return init_local_variable(var, new_node_member(var->token, left, left->type->member), init);
+  // when init->expr is given to a struct,
+  // init first member by init->expr and fill other members with zero
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_BLOCK;
+  node->blk_stmts = new_vector(0, sizeof(Node *));
+  Member *m = left->type->member;
+  Node *s = init_local_variable(var, new_node_member(var->token, left, m), init);
+  vector_push(node->blk_stmts, &s);
+  // fill zero
+  s = fill_struct_union_zero(left, m->next);
+  vector_push(node->blk_stmts, &s);
+  return node;
 }
 
 Node *init_local_union(Variable *var, Node *left, VariableInit *init) {

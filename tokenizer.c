@@ -27,11 +27,12 @@ bool match(char *p, const char *keyword) {
   return true;
 }
 
-static void new_token(TokenKind kind, Token **tail, Position *p, int len) {
+static void new_token(TokenKind kind, Token **tail, Position *p, int len, bool is_identifier) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
   tok->pos = *p;
   tok->str = new_string(p->pos, len);
+  tok->is_identifier = is_identifier;
 
   (*tail)->next = tok;
   *tail = tok;
@@ -106,99 +107,119 @@ Token *tokenize(char *input_path) {
       }
     }
 
-    static const TokenKind kinds[] = {
-        // ordering is important, e.g) "==" must be checked before "=".
-        TK_RETURN,
-        TK_IF,
-        TK_ELSE,
-        TK_DO,
-        TK_WHILE,
-        TK_FOR,
-        TK_SWITCH,
-        TK_CASE,
-        TK_DEFAULT,
-        TK_BREAK,
-        TK_CONTINUE,
-        TK_GOTO,
-        TK_VOID,
-        TK_INT,
-        TK_CHAR,
-        TK_SHORT,
-        TK_LONG,
-        TK_FLOAT,
-        TK_DOUBLE,
-        TK_BOOL,
-        TK_SIZEOF,
-        TK_STRUCT,
-        TK_UNION,
-        TK_ENUM,
-        TK_TYPEDEF,
-        TK_STATIC,
-        TK_EXTERN,
-        TK_CONST,
-        TK_SIGNED,
-        TK_UNSIGNED,
-        TK_3DOTS,
-        TK_ARROW,
-        TK_INC,
-        TK_DEC,
-        TK_ADDEQ,
-        TK_SUBEQ,
-        TK_MULEQ,
-        TK_DIVEQ,
-        TK_MODEQ,
-        TK_XOREQ,
-        TK_ANDEQ,
-        TK_OREQ,
-        TK_LSHIFTEQ,
-        TK_RSHIFTEQ,
-        TK_LSHIFT,
-        TK_RSHIFT,
-        TK_LE,
-        TK_GE,
-        TK_EQ,
-        TK_NE,
-        TK_LOGAND,
-        TK_LOGOR,
-        TK_LOGNOT,
-        TK_DOT,
-        TK_PLUS,
-        TK_MINUS,
-        TK_STAR,
-        TK_SLASH,
-        TK_PERCENT,
-        TK_AMP,
-        TK_TILDE,
-        TK_HAT,
-        TK_BAR,
-        TK_LPAREN,
-        TK_RPAREN,
-        TK_LBRACE,
-        TK_RBRACE,
-        TK_LBRACKET,
-        TK_RBRACKET,
-        TK_LT,
-        TK_GT,
-        TK_ASSIGN,
-        TK_QUESTION,
-        TK_COLON,
-        TK_SEMICOLON,
-        TK_COMMA,
-        TK_HASH,
-    };
+    {
+      static const TokenKind kinds[] = {
+          // ordering is important, e.g) "==" must be checked before "=".
+          TK_3DOTS,
+          TK_ARROW,
+          TK_INC,
+          TK_DEC,
+          TK_ADDEQ,
+          TK_SUBEQ,
+          TK_MULEQ,
+          TK_DIVEQ,
+          TK_MODEQ,
+          TK_XOREQ,
+          TK_ANDEQ,
+          TK_OREQ,
+          TK_LSHIFTEQ,
+          TK_RSHIFTEQ,
+          TK_LSHIFT,
+          TK_RSHIFT,
+          TK_LE,
+          TK_GE,
+          TK_EQ,
+          TK_NE,
+          TK_LOGAND,
+          TK_LOGOR,
+          TK_LOGNOT,
+          TK_DOT,
+          TK_PLUS,
+          TK_MINUS,
+          TK_STAR,
+          TK_SLASH,
+          TK_PERCENT,
+          TK_AMP,
+          TK_TILDE,
+          TK_HAT,
+          TK_BAR,
+          TK_LPAREN,
+          TK_RPAREN,
+          TK_LBRACE,
+          TK_RBRACE,
+          TK_LBRACKET,
+          TK_RBRACKET,
+          TK_LT,
+          TK_GT,
+          TK_ASSIGN,
+          TK_QUESTION,
+          TK_COLON,
+          TK_SEMICOLON,
+          TK_COMMA,
+          TK_HASH,
+      };
 
-    bool cont = false;
-    for (int i = 0; i < (int)(sizeof(kinds) / sizeof(TokenKind)); ++i) {
-      int k = kinds[i];
-      const char *t = token_text[k];
-      if (match(p.pos, t)) {
-        new_token(k, &tail, &p, strlen(t));
-        cont = true;
-        break;
+      bool cont = false;
+      for (int i = 0; i < (int)(sizeof(kinds) / sizeof(TokenKind)); ++i) {
+        int k = kinds[i];
+        const char *t = token_text[k];
+        if (match(p.pos, t)) {
+          new_token(k, &tail, &p, strlen(t), false);
+          cont = true;
+          break;
+        }
       }
+      if (cont)
+        continue;
     }
-    if (cont)
-      continue;
+
+    {
+      static const TokenKind kinds[] = {
+          TK_RETURN,
+          TK_IF,
+          TK_ELSE,
+          TK_DO,
+          TK_WHILE,
+          TK_FOR,
+          TK_SWITCH,
+          TK_CASE,
+          TK_DEFAULT,
+          TK_BREAK,
+          TK_CONTINUE,
+          TK_GOTO,
+          TK_VOID,
+          TK_INT,
+          TK_CHAR,
+          TK_SHORT,
+          TK_LONG,
+          TK_FLOAT,
+          TK_DOUBLE,
+          TK_BOOL,
+          TK_SIZEOF,
+          TK_STRUCT,
+          TK_UNION,
+          TK_ENUM,
+          TK_TYPEDEF,
+          TK_STATIC,
+          TK_EXTERN,
+          TK_CONST,
+          TK_SIGNED,
+          TK_UNSIGNED,
+      };
+
+      bool cont = false;
+      for (int i = 0; i < (int)(sizeof(kinds) / sizeof(TokenKind)); ++i) {
+        int k = kinds[i];
+        const char *t = token_text[k];
+        if (match(p.pos, t)) {
+          new_token(k, &tail, &p, strlen(t), true);
+          cont = true;
+          break;
+        }
+      }
+      if (cont)
+        continue;
+    }
 
     if (*p.pos == '\'') { // character literal
       advance(&p, 1);
@@ -244,7 +265,7 @@ Token *tokenize(char *input_path) {
         default:
           error(&p, "unsupported escaped literal");
         }
-        new_token(TK_NUM, &tail, &p, 2);
+        new_token(TK_NUM, &tail, &p, 2, false);
         tail->val = val;
         tail->type = base_type(TYPE_CHAR);
         advance(&p, 1);
@@ -254,7 +275,7 @@ Token *tokenize(char *input_path) {
       if (*(p.pos + 1) != '\'')
         error(&p, "invalid character literal");
 
-      new_token(TK_NUM, &tail, &p, 1);
+      new_token(TK_NUM, &tail, &p, 1, false);
       tail->val = *(tail->pos.pos);
       tail->type = base_type(TYPE_CHAR);
       advance(&p, 1);
@@ -284,7 +305,7 @@ Token *tokenize(char *input_path) {
       int len = q - p.pos;
       char *string_literal = calloc(len + 1, sizeof(char));
       strncpy(string_literal, p.pos, len);
-      new_token(TK_STR, &tail, &p, len);
+      new_token(TK_STR, &tail, &p, len, false);
       tail->string_literal = string_literal;
       advance(&p, 1);
       continue;
@@ -317,7 +338,7 @@ Token *tokenize(char *input_path) {
       }
 
       int len = q - p.pos;
-      new_token(TK_NUM, &tail, &p, len);
+      new_token(TK_NUM, &tail, &p, len, false);
       tail->val = val;
 
       TypeKind kind;
@@ -339,12 +360,12 @@ Token *tokenize(char *input_path) {
       while (is_alphanumeric_or_underscore(*(q + 1)))
         q++;
       int len = q + 1 - p.pos;
-      new_token(TK_IDENT, &tail, &p, len);
+      new_token(TK_IDENT, &tail, &p, len, true);
       continue;
     }
 
     error(&p, "failed to tokenize");
   }
-  new_token(TK_EOF, &tail, &p, 0);
+  new_token(TK_EOF, &tail, &p, 0, false);
   return head.next;
 }

@@ -110,6 +110,7 @@ struct Token {
   Token *next;
   Position pos;
   String *str;
+  bool is_identifier;   // true iff TK_IDENT or reserved identifiers
   long long val;        // only for TK_NUM
   char *string_literal; // null terminated, only for TK_STR
   Type *type;           // TK_NUM

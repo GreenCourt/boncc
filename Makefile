@@ -10,7 +10,7 @@ boncc: $(addprefix $(OBJ_DIR)/,$(addsuffix .o,$(DEP)))
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 test: gtest stage1test
-all: gtest stage1test stage2test stage3test
+all: fmt gtest stage1test stage2test stage3test
 
 clean:
 	rm -rf boncc boncc2 boncc3 $(OBJ_DIR) $(TEST_OBJ_DIR) $(TEST_EXE_DIR)

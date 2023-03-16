@@ -114,6 +114,7 @@ struct Token {
   long long val;        // only for TK_NUM
   char *string_literal; // null terminated, only for TK_STR
   Type *type;           // TK_NUM
+  bool at_bol;
   bool at_eol;
 };
 

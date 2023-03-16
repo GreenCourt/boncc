@@ -33,6 +33,7 @@ static void new_token(TokenKind kind, Token **tail, Position *p, int len, bool i
   tok->pos = *p;
   tok->str = new_string(p->pos, len);
   tok->is_identifier = is_identifier;
+  tok->at_bol = (*tail)->at_eol;
 
   (*tail)->next = tok;
   *tail = tok;
@@ -43,6 +44,7 @@ Token *tokenize(char *input_path) {
   char *src = read_file(input_path);
   Token head;
   head.next = NULL;
+  head.at_eol = true;
   Token *tail = &head;
 
   Position p;

@@ -99,38 +99,36 @@ static Token *expand(Token *token) {
   return token; // unmodified
 }
 
-Token *directive(Token *next_token, Token **tail) {
-  assert(next_token->kind == TK_HASH);
-  next_token = next_token->next;
-  if (!next_token->is_identifier)
-    error(&next_token->pos, "invalid directive");
+Token *process_directive(Token *directive) {
+  // return the next token
+  if (!directive->is_identifier)
+    error(&directive->pos, "invalid directive");
 
-  if (same_string_nt(next_token->str, "define")) {
-    if (next_token->at_eol)
-      error(&next_token->pos, "identifier required after #define but not found.");
+  // #define
+  if (same_string_nt(directive->str, "define")) {
+    if (directive->at_eol)
+      error(&directive->pos, "identifier required after #define but not found.");
 
-    Token *macro_ident = next_token->next;
+    Token *macro_ident = directive->next;
     if (!macro_ident->is_identifier)
       error(&macro_ident->pos, "identifier expected but not found.");
 
     Token *macro_head = macro_ident->next;
-    next_token = macro_head;
-    while (!next_token->at_eol)
-      next_token = next_token->next;
-    Token *macro_tail = next_token;
-    next_token = macro_tail->next;
+    Token *macro_tail = macro_head;
+    while (!macro_tail->at_eol)
+      macro_tail = macro_tail->next;
+
+    Token *nx = macro_tail->next;
     macro_tail->next = NULL;
     new_macro(macro_ident->str, macro_head);
-    (*tail)->next = next_token;
-    return next_token;
+    return nx;
   }
 
   // currently, ignore unknown directives
-  while (!next_token->at_eol)
-    next_token = next_token->next;
-  next_token = next_token->next;
-  (*tail)->next = next_token;
-  return next_token;
+  Token *nx = directive;
+  while (!nx->at_eol)
+    nx = nx->next;
+  return nx->next;
 
   // error(&next_token->pos, "unknown directive");
   // return NULL;
@@ -160,7 +158,8 @@ Token *preprocess(Token *input) {
     if (next_token->kind == TK_HASH) {
       if (!next_token->at_bol)
         error(&next_token->pos, "invalid # here");
-      next_token = directive(next_token, &tail);
+      next_token = process_directive(next_token->next);
+      tail->next = next_token;
       continue;
     }
 

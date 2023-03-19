@@ -3,7 +3,8 @@ int line2 = __LINE__;
 
 void verify(int expected, int actual, char *file_name, int line_number);
 
-#define FOO 12
+#define FOO 10
+#define FOO 12 // redefine
 #define BAR "bar"
 #define A0 1
 #define A1 2

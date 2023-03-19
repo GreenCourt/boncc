@@ -305,6 +305,7 @@ Map *new_map();
 void *map_geti(Map *map, int idx);
 void *map_get(Map *map, String *key);
 void map_push(Map *map, String *key, void *val);
+void map_erase(Map *map, String *key);
 
 extern Scope *global_scope;
 extern Map *strings;                   // Variable*

@@ -17,6 +17,8 @@ static Macro *new_macro(String *ident, Token *body) {
   Macro *m = calloc(1, sizeof(Macro));
   m->ident = ident;
   m->body = body;
+  if (map_get(macros, ident))
+    map_erase(macros, ident); // overwrite
   map_push(macros, ident, m);
   return m;
 }
@@ -104,9 +106,13 @@ Token *directive(Token *next_token, Token **tail) {
     error(&next_token->pos, "invalid directive");
 
   if (same_string_nt(next_token->str, "define")) {
+    if (next_token->at_eol)
+      error(&next_token->pos, "identifier required after #define but not found.");
+
     Token *macro_ident = next_token->next;
     if (!macro_ident->is_identifier)
       error(&macro_ident->pos, "identifier expected but not found.");
+
     Token *macro_head = macro_ident->next;
     next_token = macro_head;
     while (!next_token->at_eol)

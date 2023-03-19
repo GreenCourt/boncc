@@ -1,8 +1,101 @@
 #include "boncc.h"
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
-static Map *user_macros;
+static Map *macros;
+
+typedef struct Macro Macro;
+struct Macro {
+  String *ident;
+  Token *body; // NULL-terminated linked list
+  bool is_predefined;
+  bool flag; // used in recursive manner
+};
+
+static Macro *new_macro(String *ident, Token *body) {
+  Macro *m = calloc(1, sizeof(Macro));
+  m->ident = ident;
+  m->body = body;
+  map_push(macros, ident, m);
+  return m;
+}
+
+static Token *expand(Token *token);
+
+static Token *expand_predefined(Token *orig, Macro *macro) {
+  // expand orig and return tail of expanded tokens
+  assert(macro->is_predefined);
+
+  if (same_string_nt(macro->ident, "__FILE__")) {
+    orig->kind = TK_STR;
+    orig->string_literal = orig->pos.file_name;
+    return orig;
+  }
+
+  if (same_string_nt(macro->ident, "__LINE__")) {
+    orig->kind = TK_NUM;
+    orig->val = orig->pos.line_number;
+    orig->type = base_type(TYPE_INT);
+    return orig;
+  }
+
+  assert(false);
+  return NULL;
+}
+
+static Token *expand_user(Token *orig, Macro *macro) {
+  // expand orig and return tail of expanded tokens
+  assert(!macro->is_predefined);
+  assert(macro->body);
+
+  Token *nx = orig->next;
+  Token head;
+  head.next = NULL;
+  Token *tail = &head;
+
+  { // replace
+    Token *b = macro->body;
+    while (b) {
+      tail->next = calloc(1, sizeof(Token));
+      tail = tail->next;
+      *tail = *b;
+      tail->pos = orig->pos;
+      b = b->next;
+    }
+    tail->next = nx;
+  }
+
+  { // recusive expansion
+    Token *cur = head.next;
+    assert(cur);
+    while (cur != tail)
+      cur = expand(cur)->next;
+    tail = expand(cur);
+  }
+
+  *orig = *head.next;
+  return tail;
+}
+
+static Token *expand(Token *token) {
+  // expand orig and return tail of expanded tokens
+  if (token->kind == TK_IDENT) {
+    Macro *m = map_get(macros, token->str);
+    if (m && !m->flag) {
+      Token *tail = NULL;
+      m->flag = true;
+      if (m->is_predefined)
+        tail = expand_predefined(token, m);
+      else
+        tail = expand_user(token, m);
+      m->flag = false;
+      return tail;
+    }
+  }
+
+  return token; // unmodified
+}
 
 Token *directive(Token *next_token, Token **tail) {
   assert(next_token->kind == TK_HASH);
@@ -11,17 +104,17 @@ Token *directive(Token *next_token, Token **tail) {
     error(&next_token->pos, "invalid directive");
 
   if (same_string_nt(next_token->str, "define")) {
-    Token *macro_name = next_token->next;
-    if (!macro_name->is_identifier)
-      error(&macro_name->pos, "identifier expected but not found.");
-    Token *macro_head = macro_name->next;
+    Token *macro_ident = next_token->next;
+    if (!macro_ident->is_identifier)
+      error(&macro_ident->pos, "identifier expected but not found.");
+    Token *macro_head = macro_ident->next;
     next_token = macro_head;
     while (!next_token->at_eol)
       next_token = next_token->next;
     Token *macro_tail = next_token;
     next_token = macro_tail->next;
     macro_tail->next = NULL;
-    map_push(user_macros, macro_name->str, macro_head);
+    new_macro(macro_ident->str, macro_head);
     (*tail)->next = next_token;
     return next_token;
   }
@@ -39,8 +132,18 @@ Token *directive(Token *next_token, Token **tail) {
 
 Token *preprocess(Token *input) {
   assert(input);
-  if (user_macros == NULL)
-    user_macros = new_map();
+
+  if (macros == NULL) {
+    macros = new_map();
+    static String idents[] = {
+        {"__LINE__", 8},
+        {"__FILE__", 8},
+    };
+    for (int i = 0; i < (int)(sizeof(idents) / sizeof(String)); ++i) {
+      Macro *m = new_macro(&idents[i], NULL);
+      m->is_predefined = true;
+    }
+  }
 
   Token *next_token = input;
   Token head;
@@ -55,21 +158,10 @@ Token *preprocess(Token *input) {
       continue;
     }
 
-    if (next_token->kind == TK_IDENT) {
-      if (same_string_nt(next_token->str, "__FILE__")) {
-        next_token->kind = TK_STR;
-        next_token->string_literal = next_token->pos.file_name;
-      }
-      if (same_string_nt(next_token->str, "__LINE__")) {
-        next_token->kind = TK_NUM;
-        next_token->val = next_token->pos.line_number;
-        next_token->type = base_type(TYPE_INT);
-      }
-    }
-
     tail->next = next_token;
-    tail = next_token;
-    next_token = next_token->next;
+    tail = expand(next_token);
+    next_token = tail->next;
   }
+
   return head.next;
 }

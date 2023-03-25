@@ -6,17 +6,20 @@ void verify(int expected, int actual, char *file_name, int line_number);
 #define FOO 10
 #define FOO 12 // redefine
 #define BAR "bar"
+#define EMPTY // empty macro
+#define EMPTY2 EMPTY
 #define A0 1
 #define A1 2
 #define B0 4
 #define B1 8
-#define A01 A0 + A1
-#define B01 B0 + B1
+#define A01 A0 + EMPTY A1
+#define B01 B0 + EMPTY2 B1
 #define SUM A01 + B01
 
 int main() {
   verify(1, line1, __FILE__, __LINE__);
   verify(2, line2, __FILE__, __LINE__);
+  verify(12, 5 + EMPTY + 7, EMPTY2 __FILE__, __LINE__);
   verify('t', __FILE__[0], __FILE__, __LINE__);
   verify('e', __FILE__[1], __FILE__, __LINE__);
   verify('s', __FILE__[2], __FILE__, __LINE__);

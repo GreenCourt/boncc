@@ -23,35 +23,36 @@ static Macro *new_macro(String *ident, Token *body) {
   return m;
 }
 
-static Token *expand(Token *token);
+static Token *expand(Token *prev);
 
-static Token *expand_predefined(Token *orig, Macro *macro) {
-  // expand orig and return tail of expanded tokens
+static Token *expand_predefined(Token *prev, Macro *macro) {
+  // expand prev->next and return the tail of expanded tokens
   assert(macro->is_predefined);
 
+  Token *token = prev->next;
+
   if (same_string_nt(macro->ident, "__FILE__")) {
-    orig->kind = TK_STR;
-    orig->string_literal = orig->pos.file_name;
-    return orig;
+    token->kind = TK_STR;
+    token->string_literal = token->pos.file_name;
+    return token;
   }
 
   if (same_string_nt(macro->ident, "__LINE__")) {
-    orig->kind = TK_NUM;
-    orig->val = orig->pos.line_number;
-    orig->type = base_type(TYPE_INT);
-    return orig;
+    token->kind = TK_NUM;
+    token->val = token->pos.line_number;
+    token->type = base_type(TYPE_INT);
+    return token;
   }
 
   assert(false);
   return NULL;
 }
 
-static Token *expand_user(Token *orig, Macro *macro) {
-  // expand orig and return tail of expanded tokens
+static Token *expand_user(Token *prev, Macro *macro) {
+  // expand prev->next and return the tail of expanded tokens
   assert(!macro->is_predefined);
-  assert(macro->body);
-
-  Token *nx = orig->next;
+  Token *token = prev->next;
+  Token *nx = token->next;
   Token head;
   head.next = NULL;
   Token *tail = &head;
@@ -62,35 +63,40 @@ static Token *expand_user(Token *orig, Macro *macro) {
       tail->next = calloc(1, sizeof(Token));
       tail = tail->next;
       *tail = *b;
-      tail->pos = orig->pos;
+      tail->pos = token->pos;
       b = b->next;
     }
     tail->next = nx;
   }
 
-  { // recusive expansion
-    Token *cur = head.next;
-    assert(cur);
-    while (cur != tail)
-      cur = expand(cur)->next;
-    tail = expand(cur);
+  if (tail != &head) { // recusive expansion
+    Token *t = &head;
+    while (t->next != tail)
+      t = expand(t);
+    tail = expand(t);
   }
 
-  *orig = *head.next;
+  if (tail == &head) { // empty macro
+    prev->next = token->next;
+    return prev;
+  }
+
+  *token = *head.next;
   return tail;
 }
 
-static Token *expand(Token *token) {
-  // expand orig and return tail of expanded tokens
+static Token *expand(Token *prev) {
+  // expand prev->next and return the tail of expanded tokens
+  Token *token = prev->next;
   if (token->kind == TK_IDENT) {
     Macro *m = map_get(macros, token->str);
     if (m && !m->flag) {
       Token *tail = NULL;
       m->flag = true;
       if (m->is_predefined)
-        tail = expand_predefined(token, m);
+        tail = expand_predefined(prev, m);
       else
-        tail = expand_user(token, m);
+        tail = expand_user(prev, m);
       m->flag = false;
       return tail;
     }
@@ -99,8 +105,9 @@ static Token *expand(Token *token) {
   return token; // unmodified
 }
 
-Token *process_directive(Token *directive) {
-  // return the next token
+Token *process_directive(Token *prev) {
+  assert(prev->next->kind == TK_HASH);
+  Token *directive = prev->next->next;
   if (!directive->is_identifier)
     error(&directive->pos, "invalid directive");
 
@@ -113,22 +120,29 @@ Token *process_directive(Token *directive) {
     if (!macro_ident->is_identifier)
       error(&macro_ident->pos, "identifier expected but not found.");
 
+    if (macro_ident->at_eol) { // empty macro
+      new_macro(macro_ident->str, NULL);
+      prev->next = macro_ident->next;
+      return prev;
+    }
+
     Token *macro_head = macro_ident->next;
     Token *macro_tail = macro_head;
     while (!macro_tail->at_eol)
       macro_tail = macro_tail->next;
 
-    Token *nx = macro_tail->next;
+    prev->next = macro_tail->next;
     macro_tail->next = NULL;
     new_macro(macro_ident->str, macro_head);
-    return nx;
+    return prev;
   }
 
   // currently, ignore unknown directives
   Token *nx = directive;
   while (!nx->at_eol)
     nx = nx->next;
-  return nx->next;
+  prev->next = nx->next;
+  return prev;
 
   // error(&next_token->pos, "unknown directive");
   // return NULL;
@@ -149,23 +163,19 @@ Token *preprocess(Token *input) {
     }
   }
 
-  Token *next_token = input;
   Token head;
-  head.next = NULL;
+  head.next = input;
   Token *tail = &head;
 
-  while (next_token->kind != TK_EOF) {
-    if (next_token->kind == TK_HASH) {
-      if (!next_token->at_bol)
-        error(&next_token->pos, "invalid # here");
-      next_token = process_directive(next_token->next);
-      tail->next = next_token;
+  while (tail->next->kind != TK_EOF) {
+    if (tail->next->kind == TK_HASH) {
+      if (!tail->next->at_bol)
+        error(&tail->next->pos, "invalid # here");
+      tail = process_directive(tail);
       continue;
     }
 
-    tail->next = next_token;
-    tail = expand(next_token);
-    next_token = tail->next;
+    tail = expand(tail);
   }
 
   return head.next;

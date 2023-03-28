@@ -54,9 +54,14 @@ Token *tokenize(char *input_path) {
   p.pos = src;
 
   while (*p.pos) {
-    if (*p.pos == '\n')
+    if (*p.pos == '\n') {
       tail->at_eol = true;
+      advance(&p, 1);
+      continue;
+    }
+
     if (isspace(*p.pos)) {
+      tail->has_right_space = true;
       advance(&p, 1);
       continue;
     }

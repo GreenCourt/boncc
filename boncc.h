@@ -116,6 +116,8 @@ struct Token {
   Type *type;           // TK_NUM
   bool at_bol;
   bool at_eol;
+  bool has_right_space; // to detect function-like macros
+  int idx;              // used by function-like macros
 };
 
 typedef struct Type Type;

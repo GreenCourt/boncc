@@ -384,6 +384,24 @@ Token *define_macro(Token *prev) {
   return prev;
 }
 
+Token *undef_macro(Token *prev) {
+  assert(match_directive(prev->next, "undef"));
+  Token *directive = prev->next->next;
+
+  if (directive->at_eol)
+    error(&directive->pos, "identifier required after #undef but not found.");
+
+  Token *macro_ident = directive->next;
+  if (!macro_ident->is_identifier)
+    error(&macro_ident->pos, "identifier expected but not found.");
+
+  if (map_get(macros, macro_ident->str))
+    map_erase(macros, macro_ident->str);
+
+  prev->next = get_eol(macro_ident)->next;
+  return prev;
+}
+
 Token *process_directive(Token *prev) {
   assert(prev->next->kind == TK_HASH);
   Token *directive = prev->next->next;
@@ -397,6 +415,10 @@ Token *process_directive(Token *prev) {
   // #ifdef or #ifndef
   if (same_string_nt(directive->str, "ifdef") || same_string_nt(directive->str, "ifndef"))
     return process_ifdef(prev);
+
+  // #undef
+  if (same_string_nt(directive->str, "undef"))
+    return undef_macro(prev);
 
   // currently, ignore unknown directives
   prev->next = get_eol(directive)->next;

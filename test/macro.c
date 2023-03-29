@@ -52,6 +52,9 @@ int main() {
   {
 #define BBB
 #define CCC
+#define DDD
+#undef DDD
+#undef EEE // undef for non-existing macro is allowed
     int x;
 #ifdef BBB
     x = 12;

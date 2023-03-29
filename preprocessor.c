@@ -235,10 +235,77 @@ static Token *expand(Token *prev) {
   return token; // unmodified
 }
 
-Token *define_macro(Token *prev) {
-  assert(prev->next->kind == TK_HASH);
+bool match_directive(Token *t, char *directive) {
+  return t->at_bol && !t->at_eol && t->kind == TK_HASH && t->next->is_identifier && same_string_nt(t->next->str, directive);
+}
+
+Token *get_eol(Token *t) {
+  while (!t->at_eol)
+    t = t->next;
+  return t;
+}
+
+Token *find_else_or_endif(Token *prev) {
+  // return the token just before #else of #endif
+  assert(prev->kind != TK_EOF);
+  Token *t = prev;
+  int nest = 0;
+  while (true) {
+    if (t->next->kind == TK_EOF)
+      error(NULL, "#endif expected but not found");
+
+    if (match_directive(t->next, "endif")) {
+      if (nest)
+        nest--;
+      else
+        return t;
+    } else if (match_directive(t->next, "else") && nest == 0) {
+      return t;
+    } else if (match_directive(t->next, "ifdef") || match_directive(t->next, "ifndef")) {
+      nest++;
+    }
+    t = t->next;
+  }
+  assert(false);
+  return NULL;
+}
+
+Token *process_ifdef(Token *prev) { // #ifdef and #ifndef
+  assert(match_directive(prev->next, "ifdef") || match_directive(prev->next, "ifndef"));
   Token *directive = prev->next->next;
-  assert(same_string_nt(directive->str, "define"));
+  bool is_ifndef = match_directive(prev->next, "ifndef");
+
+  if (directive->at_eol)
+    error(&directive->pos, "identifier required after the directive but not found.");
+
+  Token *macro_ident = directive->next;
+  if (!macro_ident->is_identifier)
+    error(&macro_ident->pos, "identifier expected but not found.");
+
+  Token *before_hash = find_else_or_endif(prev->next);
+  Macro *macro = map_get(macros, macro_ident->str);
+  if ((!is_ifndef && macro != NULL) || (is_ifndef && macro == NULL)) {
+    prev->next = get_eol(macro_ident)->next;
+    while (!match_directive(before_hash->next, "endif"))
+      before_hash = find_else_or_endif(before_hash->next->next);
+  } else if (match_directive(before_hash->next, "else")) {
+    prev->next = get_eol(before_hash->next)->next;
+    before_hash = find_else_or_endif(prev->next);
+    if (!match_directive(before_hash->next, "endif"))
+      error(&before_hash->next->pos, "#endif expected");
+  } else {
+    assert(match_directive(before_hash->next, "endif"));
+    prev->next = get_eol(before_hash->next)->next;
+  }
+
+  assert(match_directive(before_hash->next, "endif"));
+  before_hash->next = get_eol(before_hash->next)->next;
+  return prev;
+}
+
+Token *define_macro(Token *prev) {
+  assert(match_directive(prev->next, "define"));
+  Token *directive = prev->next->next;
 
   if (directive->at_eol)
     error(&directive->pos, "identifier required after #define but not found.");
@@ -256,10 +323,7 @@ Token *define_macro(Token *prev) {
   if (macro_ident->has_right_space || macro_ident->next->kind != TK_LPAREN) {
     // object-like macro
     Token *macro_head = macro_ident->next;
-    Token *macro_tail = macro_head;
-    while (!macro_tail->at_eol)
-      macro_tail = macro_tail->next;
-
+    Token *macro_tail = get_eol(macro_head);
     prev->next = macro_tail->next;
     macro_tail->next = NULL;
     new_macro(macro_ident->str, macro_head);
@@ -330,11 +394,12 @@ Token *process_directive(Token *prev) {
   if (same_string_nt(directive->str, "define"))
     return define_macro(prev);
 
+  // #ifdef or #ifndef
+  if (same_string_nt(directive->str, "ifdef") || same_string_nt(directive->str, "ifndef"))
+    return process_ifdef(prev);
+
   // currently, ignore unknown directives
-  Token *nx = directive;
-  while (!nx->at_eol)
-    nx = nx->next;
-  prev->next = nx->next;
+  prev->next = get_eol(directive)->next;
   return prev;
 
   // error(&next_token->pos, "unknown directive");
@@ -354,6 +419,11 @@ Token *preprocess(Token *input) {
       Macro *m = new_macro(&idents[i], NULL);
       m->is_predefined = true;
     }
+
+    { // dirty hack for testing
+      static String boncc = {"BONCC", 5};
+      new_macro(&boncc, NULL);
+    }
   }
 
   Token head;
@@ -362,7 +432,7 @@ Token *preprocess(Token *input) {
 
   while (tail->next->kind != TK_EOF) {
     if (tail->next->kind == TK_HASH) {
-      if (!tail->next->at_bol)
+      if (!tail->next->at_bol || tail->next->at_eol)
         error(&tail->next->pos, "invalid # here");
       tail = process_directive(tail);
       continue;

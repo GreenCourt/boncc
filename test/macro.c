@@ -49,5 +49,30 @@ int main() {
   verify(24, MUL(12, 2), __FILE__, __LINE__);
   verify(24, MUL(10 + 2, 2), __FILE__, __LINE__);
   verify(24, MUL(SUM(10, 2), SUM(1, 1)), __FILE__, __LINE__);
+  {
+#define BBB
+#define CCC
+    int x;
+#ifdef BBB
+    x = 12;
+#endif
+    verify(12, x, __FILE__, __LINE__);
+#ifdef CCC
+    x = 14;
+#endif
+    verify(14, x, __FILE__, __LINE__);
+#ifdef DDD
+#ifdef BBB // nested
+    x = 16;
+#else
+    x = 17
+#endif
+#endif
+    verify(14, x, __FILE__, __LINE__);
+#ifndef DDD
+    x = 16;
+#endif
+    verify(16, x, __FILE__, __LINE__);
+  }
   return 0;
 }

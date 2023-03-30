@@ -120,45 +120,44 @@ typedef enum {
   IS_EXTERN = 4,
 } Qualifier;
 
-int consume_qualifier();
-Node *declaration();
-Type *declarator(Type *base);
-void func(Type *type, int qualifier);
-void funcparam(Type *ft);
-VariableInit *varinit();
-Node *stmt();
-Node *expr();
-Node *comma();
-Node *assign();
-Node *conditional();
-Node *logor();
-Node *logand();
-Node * bitor ();
-Node *bitxor();
-Node *bitand();
-Node *equality();
-Node *relational();
-Node *bitshift();
-Node *add();
-Node *mul();
-Node *primary();
-Node *unary();
-Node *postfix();
+int consume_qualifier(Token **nx);
+Node *declaration(Token **nx);
+Type *declarator(Type *base, Token **nx);
+void func(Type *type, int qualifier, Token **nx);
+void funcparam(Type *ft, Token **nx);
+VariableInit *varinit(Token **nx);
+Node *stmt(Token **nx);
+Node *expr(Token **nx);
+Node *comma(Token **nx);
+Node *assign(Token **nx);
+Node *conditional(Token **nx);
+Node *logor(Token **nx);
+Node *logand(Token **nx);
+Node * bitor (Token * *nx);
+Node *bitxor(Token **nx);
+Node *bitand(Token **nx);
+Node *equality(Token **nx);
+Node *relational(Token **nx);
+Node *bitshift(Token **nx);
+Node *add(Token **nx);
+Node *mul(Token **nx);
+Node *primary(Token **nx);
+Node *unary(Token **nx);
+Node *postfix(Token **nx);
 
-Node *stmt_if();
-Node *stmt_do();
-Node *stmt_while();
-Node *stmt_for();
-Node *stmt_switch();
-Node *stmt_block();
+Node *stmt_if(Token **nx);
+Node *stmt_do(Token **nx);
+Node *stmt_while(Token **nx);
+Node *stmt_for(Token **nx);
+Node *stmt_switch(Token **nx);
+Node *stmt_block(Token **nx);
 
-void expect_typedef();
-Type *consume_type();
-Type *consume_type_star(Type *type);
-Type *consume_array_brackets(Type *type);
+void expect_typedef(Token **nx);
+Type *consume_type(Token **nx);
+Type *consume_type_star(Type *type, Token **nx);
+Type *consume_array_brackets(Type *type, Token **nx);
 Node *init_multiple_local_variables(Vector *variables);
 
-static Token *next_token;
 static Scope *current_scope = NULL;
 static Function *current_function;
 static Vector *goto_in_current_function;  // Node*
@@ -186,27 +185,27 @@ void restore_scope() {
   current_scope = current_scope->prev;
 }
 
-Token *consume(TokenKind kind) {
-  if (next_token->kind != kind)
+Token *consume(TokenKind kind, Token **nx) {
+  if ((*nx)->kind != kind)
     return NULL;
-  Token *tok = next_token;
-  next_token = next_token->next;
+  Token *tok = *nx;
+  *nx = (*nx)->next;
   return tok;
 }
 
-Token *expect(TokenKind kind) {
-  if (next_token->kind != kind)
-    error(&next_token->pos, "'%s' expected but not found", token_text[kind]);
-  Token *tok = next_token;
-  next_token = next_token->next;
+Token *expect(TokenKind kind, Token **nx) {
+  if ((*nx)->kind != kind)
+    error(&(*nx)->pos, "'%s' expected but not found", token_text[kind]);
+  Token *tok = *nx;
+  *nx = (*nx)->next;
   return tok;
 }
 
-long long expect_number() {
-  if (next_token->kind != TK_NUM)
-    error(&next_token->pos, "number expected but not found");
-  long long val = next_token->val;
-  next_token = next_token->next;
+long long expect_number(Token **nx) {
+  if ((*nx)->kind != TK_NUM)
+    error(&(*nx)->pos, "number expected but not found");
+  long long val = (*nx)->val;
+  *nx = (*nx)->next;
   return val;
 }
 
@@ -255,13 +254,13 @@ Member *find_member(Type *st, Token *tok) {
   return NULL;
 }
 
-Type *consume_struct(TypeKind kind) {
+Type *consume_struct(TypeKind kind, Token **nx) {
   assert(kind == TYPE_STRUCT || kind == TYPE_UNION);
-  Token *tag = consume(TK_IDENT);
+  Token *tag = consume(TK_IDENT, nx);
   Type *st = NULL;
 
   if (tag) {
-    if (consume(TK_LBRACE)) {
+    if (consume(TK_LBRACE, nx)) {
       // define struct/union
       // struct/union can be defined only for the current-scope
       st = map_get(current_scope->types, tag->str);
@@ -285,7 +284,7 @@ Type *consume_struct(TypeKind kind) {
     }
   } else {
     // unnamed struct/union
-    expect(TK_LBRACE);
+    expect(TK_LBRACE, nx);
     st = kind == TYPE_UNION ? union_type(true) : struct_type(true);
   }
 
@@ -298,24 +297,24 @@ Type *consume_struct(TypeKind kind) {
   int offset = 0;
   int align = 0;
 
-  while (!consume(TK_RBRACE)) {
-    Token *tok_qualifier = next_token;
-    int qualifier = consume_qualifier();
+  while (!consume(TK_RBRACE, nx)) {
+    Token *tok_qualifier = *nx;
+    int qualifier = consume_qualifier(nx);
     if (qualifier & (IS_STATIC | IS_EXTERN))
       error(&tok_qualifier->pos, "invalid storage class for a member");
 
-    Token *tok_type = next_token;
-    Type *base = consume_type();
+    Token *tok_type = *nx;
+    Type *base = consume_type(nx);
     if (!base)
       error(&tok_type->pos, "invalid member type");
     base->is_const = (qualifier & IS_CONST) == IS_CONST;
 
-    if (next_token->kind == TK_SEMICOLON) {
+    if ((*nx)->kind == TK_SEMICOLON) {
       if (!is_struct_union(base))
         error(&tok_type->pos, "identifier required for the member");
       if (!base->is_unnamed)
         error(&tok_type->pos, "identifier required for the member");
-      expect(TK_SEMICOLON);
+      expect(TK_SEMICOLON, nx);
 
       // merge unnamed struct/union
 
@@ -375,7 +374,7 @@ Type *consume_struct(TypeKind kind) {
     }
 
     do {
-      Type *type = declarator(base);
+      Type *type = declarator(base, nx);
 
       if (type->size < 0)
         error(&tok_type->pos, "incomplete type");
@@ -407,8 +406,8 @@ Type *consume_struct(TypeKind kind) {
 
       tail->next = m;
       tail = m;
-    } while (consume(TK_COMMA));
-    expect(TK_SEMICOLON);
+    } while (consume(TK_COMMA, nx));
+    expect(TK_SEMICOLON, nx);
   }
 
   if (align && offset % align) {
@@ -431,13 +430,13 @@ Type *consume_struct(TypeKind kind) {
   return st;
 }
 
-Type *consume_enum() {
-  Token *tag = consume(TK_IDENT);
+Type *consume_enum(Token **nx) {
+  Token *tag = consume(TK_IDENT, nx);
   Type *et = NULL;
 
   if (tag) {
     // named enum
-    if (consume(TK_LBRACE)) {
+    if (consume(TK_LBRACE, nx)) {
       // define enum
       // enum can be defined only for the current-scope
       et = map_get(current_scope->types, tag->str);
@@ -461,7 +460,7 @@ Type *consume_enum() {
     }
   } else {
     // unnamed enum
-    expect(TK_LBRACE);
+    expect(TK_LBRACE, nx);
     et = enum_type(true);
   }
 
@@ -470,20 +469,20 @@ Type *consume_enum() {
 
   int val = -1;
   while (true) {
-    Token *id = expect(TK_IDENT);
+    Token *id = expect(TK_IDENT, nx);
     if (map_get(current_scope->enum_elements, id->str))
       error(&id->pos, "duplicated identifier for enum element");
 
-    if (consume(TK_ASSIGN))
-      val = eval(assign()) - 1;
+    if (consume(TK_ASSIGN, nx))
+      val = eval(assign(nx)) - 1;
     int *v = calloc(1, sizeof(int));
     *v = ++val;
     map_push(current_scope->enum_elements, id->str, v);
-    if (consume(TK_COMMA)) {
-      if (consume(TK_RBRACE))
+    if (consume(TK_COMMA, nx)) {
+      if (consume(TK_RBRACE, nx))
         break;
     } else {
-      expect(TK_RBRACE);
+      expect(TK_RBRACE, nx);
       break;
     }
   }
@@ -491,10 +490,10 @@ Type *consume_enum() {
   return et;
 }
 
-Type *consume_type_star(Type *type) {
+Type *consume_type_star(Type *type, Token **nx) {
   Token *tok = NULL;
   bool is_const = false;
-  while ((tok = consume(TK_STAR)) || (tok = consume(TK_CONST))) {
+  while ((tok = consume(TK_STAR, nx)) || (tok = consume(TK_CONST, nx))) {
     if (tok->kind == TK_CONST) {
       is_const = true;
     } else {
@@ -506,28 +505,28 @@ Type *consume_type_star(Type *type) {
   return type;
 }
 
-Type *consume_type() {
-  if (next_token->kind == TK_IDENT) {
-    Type *t = find_typedef(next_token->str);
+Type *consume_type(Token **nx) {
+  if ((*nx)->kind == TK_IDENT) {
+    Type *t = find_typedef((*nx)->str);
     if (t)
-      expect(TK_IDENT);
+      expect(TK_IDENT, nx);
     return t;
   }
 
-  if (consume(TK_VOID))
+  if (consume(TK_VOID, nx))
     return base_type(TYPE_VOID);
 
-  if (consume(TK_BOOL))
+  if (consume(TK_BOOL, nx))
     return base_type(TYPE_BOOL);
 
-  if (consume(TK_STRUCT))
-    return consume_struct(TYPE_STRUCT);
+  if (consume(TK_STRUCT, nx))
+    return consume_struct(TYPE_STRUCT, nx);
 
-  if (consume(TK_UNION))
-    return consume_struct(TYPE_UNION);
+  if (consume(TK_UNION, nx))
+    return consume_struct(TYPE_UNION, nx);
 
-  if (consume(TK_ENUM))
-    return consume_enum();
+  if (consume(TK_ENUM, nx))
+    return consume_enum(nx);
 
   int has_signed = 0;
   int has_unsigned = 0;
@@ -539,14 +538,14 @@ Type *consume_type() {
   int has_double = 0;
 
   Token *itok = NULL;
-  while ((itok = consume(TK_UNSIGNED)) ||
-         (itok = consume(TK_SIGNED)) ||
-         (itok = consume(TK_INT)) ||
-         (itok = consume(TK_CHAR)) ||
-         (itok = consume(TK_SHORT)) ||
-         (itok = consume(TK_LONG)) ||
-         (itok = consume(TK_FLOAT)) ||
-         (itok = consume(TK_DOUBLE))) {
+  while ((itok = consume(TK_UNSIGNED, nx)) ||
+         (itok = consume(TK_SIGNED, nx)) ||
+         (itok = consume(TK_INT, nx)) ||
+         (itok = consume(TK_CHAR, nx)) ||
+         (itok = consume(TK_SHORT, nx)) ||
+         (itok = consume(TK_LONG, nx)) ||
+         (itok = consume(TK_FLOAT, nx)) ||
+         (itok = consume(TK_DOUBLE, nx))) {
 
     switch (itok->kind) {
     case TK_SIGNED:
@@ -622,37 +621,37 @@ Type *consume_type() {
   return NULL;
 }
 
-Type *consume_array_brackets(Type *type) {
-  if (!consume(TK_LBRACKET))
+Type *consume_array_brackets(Type *type, Token **nx) {
+  if (!consume(TK_LBRACKET, nx))
     return type;
   int size = -1; // -1 will be assumed by rhs initializer
-  if (next_token->kind != TK_RBRACKET) {
-    Token *tok_sz = next_token;
-    Node *expr_sz = expr();
+  if ((*nx)->kind != TK_RBRACKET) {
+    Token *tok_sz = *nx;
+    Node *expr_sz = expr(nx);
     if (expr_sz) {
       size = eval(expr_sz);
       if (size < 0)
         error(&tok_sz->pos, "invalid array size");
     }
   }
-  Token *r = expect(TK_RBRACKET);
-  type = consume_array_brackets(type);
+  Token *r = expect(TK_RBRACKET, nx);
+  type = consume_array_brackets(type, nx);
   if (type->size < 0)
     error(&r->pos, "array size assumption is allowed only in the first dimension");
   return array_type(type, size);
 }
 
-Type *expect_type() {
-  Type *ty = consume_type();
+Type *expect_type(Token **nx) {
+  Type *ty = consume_type(nx);
   if (!ty)
-    error(&next_token->pos, "type expected but not found");
+    error(&(*nx)->pos, "type expected but not found");
   return ty;
 }
 
-void expect_typedef() {
-  Type *base = expect_type();
+void expect_typedef(Token **nx) {
+  Type *base = expect_type(nx);
   do {
-    Type *type = declarator(base);
+    Type *type = declarator(base, nx);
     Type *pre = map_get(current_scope->typedefs, type->objdec->str);
 
     // multiple typedef for same type is allowed
@@ -660,11 +659,9 @@ void expect_typedef() {
       error(&type->objdec->pos, "duplicated typedef identifier");
     if (!pre)
       map_push(current_scope->typedefs, type->objdec->str, type);
-  } while (consume(TK_COMMA));
-  expect(TK_SEMICOLON);
+  } while (consume(TK_COMMA, nx));
+  expect(TK_SEMICOLON, nx);
 }
-
-bool at_eof() { return next_token->kind == TK_EOF; }
 
 Object *find_object(Token *tok) {
   assert(tok);
@@ -796,7 +793,7 @@ Variable *new_string_literal(Token *tok) {
   return var;
 }
 
-Vector *vardec(Type *type, ObjectKind kind, int qualifier) {
+Vector *vardec(Type *type, ObjectKind kind, int qualifier, Token **nx) {
   assert(type->objdec);
 
   Type *base = type;
@@ -823,11 +820,11 @@ Vector *vardec(Type *type, ObjectKind kind, int qualifier) {
     else
       assert(false);
 
-    if (consume(TK_ASSIGN)) {
+    if (consume(TK_ASSIGN, nx)) {
       if (var->is_extern)
         error(&type->objdec->pos, "cannot initialize extern variable");
       var->token = type->objdec;
-      var->init = varinit();
+      var->init = varinit(nx);
 
       if (is_struct_union(var->type) && var->init->vec == NULL && !same_type(var->type, var->init->expr->type))
         error(&type->objdec->pos, "invalid initializer for a struct/union");
@@ -857,15 +854,15 @@ Vector *vardec(Type *type, ObjectKind kind, int qualifier) {
       set_offset(var);
 
     vector_push(variables, &var);
-    if (!consume(TK_COMMA))
+    if (!consume(TK_COMMA, nx))
       break;
-    type = declarator(base);
+    type = declarator(base, nx);
   }
-  expect(TK_SEMICOLON);
+  expect(TK_SEMICOLON, nx);
   return variables;
 }
 
-void func(Type *type, int qualifier) {
+void func(Type *type, int qualifier, Token **nx) {
   assert(type->objdec);
   assert(type->objdec->str);
 
@@ -886,8 +883,8 @@ void func(Type *type, int qualifier) {
   if (prev == NULL)
     map_push(global_scope->objects, f->ident, f);
 
-  if (!consume(TK_LBRACE)) {
-    expect(TK_SEMICOLON);
+  if (!consume(TK_LBRACE, nx)) {
+    expect(TK_SEMICOLON, nx);
     return;
   }
 
@@ -944,7 +941,7 @@ void func(Type *type, int qualifier) {
     f->hidden_va_area = var;
   }
 
-  f->body = stmt_block();
+  f->body = stmt_block(nx);
 
   // give label_index to labels in the function
   for (int i = 0; i < label_in_current_function->size; ++i) {
@@ -974,27 +971,27 @@ void func(Type *type, int qualifier) {
   label_in_current_function = NULL;
 }
 
-void funcparam(Type *ft) {
-  if (next_token->kind == TK_VOID && next_token->next->kind == TK_RPAREN) {
+void funcparam(Type *ft, Token **nx) {
+  if ((*nx)->kind == TK_VOID && (*nx)->next->kind == TK_RPAREN) {
     // (void)
-    expect(TK_VOID);
+    expect(TK_VOID, nx);
     return;
   }
   do {
-    if (consume(TK_3DOTS)) {
+    if (consume(TK_3DOTS, nx)) {
       ft->is_variadic = true;
       return;
     }
-    Token *tok_qualifier = next_token;
-    int qualifier = consume_qualifier();
+    Token *tok_qualifier = *nx;
+    int qualifier = consume_qualifier(nx);
     if (qualifier & (IS_STATIC | IS_EXTERN))
       error(&tok_qualifier->pos, "invalid storage class for funcparam");
 
-    Token *tok_type = next_token;
-    Type *ty = expect_type();
+    Token *tok_type = *nx;
+    Type *ty = expect_type(nx);
     ty->is_const = (qualifier & IS_CONST) != 0;
 
-    ty = declarator(ty);
+    ty = declarator(ty, nx);
 
     if (ty->kind == TYPE_VOID)
       error(&tok_type->pos, "void type is not allowed");
@@ -1006,14 +1003,14 @@ void funcparam(Type *ft) {
       ty = pointer_type(ty->base); // array as a pointer
 
     vector_push(ft->params, &ty);
-  } while (consume(TK_COMMA));
+  } while (consume(TK_COMMA, nx));
   return;
 }
 
-int consume_qualifier() {
+int consume_qualifier(Token **nx) {
   int qualifier = 0;
   Token *tok = NULL;
-  while ((tok = consume(TK_CONST)) || (tok = consume(TK_STATIC)) || (tok = consume(TK_EXTERN))) {
+  while ((tok = consume(TK_CONST, nx)) || (tok = consume(TK_STATIC, nx)) || (tok = consume(TK_EXTERN, nx))) {
     if (tok->kind == TK_CONST) {
       qualifier |= IS_CONST;
       continue;
@@ -1064,50 +1061,50 @@ Type *combine_dectype(Type *mid, Type *tail) {
   return mid;
 }
 
-Type *dectail(Type *base) {
-  if (next_token->kind == TK_LBRACKET)
-    return consume_array_brackets(base);
+Type *dectail(Type *base, Token **nx) {
+  if ((*nx)->kind == TK_LBRACKET)
+    return consume_array_brackets(base, nx);
 
-  if (consume(TK_LPAREN)) {
+  if (consume(TK_LPAREN, nx)) {
     Type *ft = func_type(base);
-    if (!consume(TK_RPAREN)) {
-      funcparam(ft);
-      expect(TK_RPAREN);
+    if (!consume(TK_RPAREN, nx)) {
+      funcparam(ft, nx);
+      expect(TK_RPAREN, nx);
     }
     return ft;
   }
   return base;
 }
 
-Type *declarator(Type *base) {
-  Type *type = consume_type_star(base);
+Type *declarator(Type *base, Token **nx) {
+  Type *type = consume_type_star(base, nx);
 
-  if (consume(TK_LPAREN)) {
+  if (consume(TK_LPAREN, nx)) {
     Type dummy;
     dummy.objdec = NULL;
     dummy.kind = TYPE_NONE;
     dummy.size = 0;
-    Type *mid = declarator(&dummy);
-    expect(TK_RPAREN);
-    Type *tail = dectail(base);
+    Type *mid = declarator(&dummy, nx);
+    expect(TK_RPAREN, nx);
+    Type *tail = dectail(base, nx);
     return combine_dectype(mid, tail);
   }
 
-  type->objdec = base->objdec = consume(TK_IDENT);
-  return dectail(type);
+  type->objdec = base->objdec = consume(TK_IDENT, nx);
+  return dectail(type, nx);
 }
 
-Node *declaration() {
-  if (consume(TK_TYPEDEF)) {
-    expect_typedef();
+Node *declaration(Token **nx) {
+  if (consume(TK_TYPEDEF, nx)) {
+    expect_typedef(nx);
     return new_node_nop();
   }
 
-  Token *tok_qualifier = next_token;
-  int qualifier = consume_qualifier();
+  Token *tok_qualifier = *nx;
+  int qualifier = consume_qualifier(nx);
 
-  Token *tk = next_token;
-  Type *type = consume_type();
+  Token *tk = *nx;
+  Type *type = consume_type(nx);
   if (type == NULL) {
     if (current_scope == global_scope)
       error(&tk->pos, "unknown type");
@@ -1116,22 +1113,22 @@ Node *declaration() {
     return NULL;
   }
 
-  if ((type->kind == TYPE_STRUCT || type->kind == TYPE_UNION || type->kind == TYPE_ENUM) && consume(TK_SEMICOLON)) {
+  if ((type->kind == TYPE_STRUCT || type->kind == TYPE_UNION || type->kind == TYPE_ENUM) && consume(TK_SEMICOLON, nx)) {
     // type declaration only (qualifier is allowed)
     return new_node_nop();
   }
 
-  type = declarator(type);
+  type = declarator(type, nx);
 
   if (type->kind == TYPE_FUNC) {
     if (current_scope != global_scope)
       error(&tk->pos, "function declaration is only allowed in global scope");
-    func(type, qualifier);
+    func(type, qualifier, nx);
     return NULL;
   }
 
   ObjectKind kind = current_scope == global_scope ? OBJ_GVAR : OBJ_LVAR;
-  Vector *vars = vardec(type, kind, qualifier);
+  Vector *vars = vardec(type, kind, qualifier, nx);
   if (kind == OBJ_GVAR)
     return NULL;
   if (qualifier & IS_STATIC)
@@ -1142,29 +1139,29 @@ Node *declaration() {
   return node;
 }
 
-VariableInit *varinit() {
+VariableInit *varinit(Token **nx) {
   VariableInit *init = calloc(1, sizeof(VariableInit));
-  if (consume(TK_LBRACE)) {
-    Token *tok = consume(TK_RBRACE);
+  if (consume(TK_LBRACE, nx)) {
+    Token *tok = consume(TK_RBRACE, nx);
     if (tok)
       error(&tok->pos, "empty brace initializer is not allowed");
     init->vec = new_vector(0, sizeof(VariableInit *));
 
     while (true) {
-      VariableInit *i = varinit();
+      VariableInit *i = varinit(nx);
       if (i->vec)
         init->nested = true;
       vector_push(init->vec, &i);
-      if (consume(TK_COMMA)) {
-        if (consume(TK_RBRACE))
+      if (consume(TK_COMMA, nx)) {
+        if (consume(TK_RBRACE, nx))
           break;
       } else {
-        expect(TK_RBRACE);
+        expect(TK_RBRACE, nx);
         break;
       }
     }
   } else {
-    init->expr = assign();
+    init->expr = assign(nx);
   }
   return init;
 }
@@ -1428,35 +1425,35 @@ Node *init_multiple_local_variables(Vector *variables) {
   return node;
 }
 
-Node *stmt() {
-  Token *tok = next_token;
+Node *stmt(Token **nx) {
+  Token *tok = *nx;
 
-  if (consume(TK_SEMICOLON))
+  if (consume(TK_SEMICOLON, nx))
     return NULL;
 
-  if (consume(TK_LBRACE)) {
+  if (consume(TK_LBRACE, nx)) {
     new_scope();
-    Node *node = stmt_block();
+    Node *node = stmt_block(nx);
     restore_scope();
     return node;
   }
 
-  if (consume(TK_IF))
-    return stmt_if();
+  if (consume(TK_IF, nx))
+    return stmt_if(nx);
 
-  if (consume(TK_DO))
-    return stmt_do();
+  if (consume(TK_DO, nx))
+    return stmt_do(nx);
 
-  if (consume(TK_WHILE))
-    return stmt_while();
+  if (consume(TK_WHILE, nx))
+    return stmt_while(nx);
 
-  if (consume(TK_FOR))
-    return stmt_for();
+  if (consume(TK_FOR, nx))
+    return stmt_for(nx);
 
-  if (consume(TK_SWITCH))
-    return stmt_switch();
+  if (consume(TK_SWITCH, nx))
+    return stmt_switch(nx);
 
-  if (consume(TK_CASE)) {
+  if (consume(TK_CASE, nx)) {
     if (switch_nodes->size == 0)
       error(&tok->pos, "invalid case");
     Node *sw = *(Node **)vector_last(switch_nodes);
@@ -1465,7 +1462,7 @@ Node *stmt() {
     node->token = tok;
     node->label_index = label_index++;
 
-    Node *e = expr();
+    Node *e = expr(nx);
     long long val = eval(e);
     Node *c = sw->next_case;
     while (c) {
@@ -1475,15 +1472,15 @@ Node *stmt() {
       c = c->next_case;
     }
     node->condition = new_node_num(NULL, val, e->type);
-    expect(TK_COLON);
-    node->body = stmt();
+    expect(TK_COLON, nx);
+    node->body = stmt(nx);
     node->next_case = sw->next_case;
     sw->next_case = node;
     return node;
   }
 
-  if (consume(TK_DEFAULT)) {
-    expect(TK_COLON);
+  if (consume(TK_DEFAULT, nx)) {
+    expect(TK_COLON, nx);
     if (switch_nodes->size == 0)
       error(&tok->pos, "invalid default");
     Node *sw = *(Node **)vector_last(switch_nodes);
@@ -1493,48 +1490,48 @@ Node *stmt() {
     node->kind = ND_DEFAULT;
     node->token = tok;
     node->label_index = label_index++;
-    node->body = stmt();
+    node->body = stmt(nx);
     sw->default_ = node;
     return node;
   }
 
-  if (consume(TK_RETURN)) {
+  if (consume(TK_RETURN, nx)) {
     Node *node = calloc(1, sizeof(Node));
     node->token = tok;
     node->kind = ND_RETURN;
-    if (!consume(TK_SEMICOLON)) {
-      node->lhs = expr();
+    if (!consume(TK_SEMICOLON, nx)) {
+      node->lhs = expr(nx);
       node->lhs = new_node_cast(tok, current_function->type->return_type, node->lhs);
-      expect(TK_SEMICOLON);
+      expect(TK_SEMICOLON, nx);
     }
     return node;
   }
 
-  if (consume(TK_CONTINUE)) {
+  if (consume(TK_CONTINUE, nx)) {
     if (continue_label->size == 0)
       error(&tok->pos, "invalid continue");
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_CONTINUE;
     node->label_index = vector_lasti(continue_label);
     node->token = tok;
-    expect(TK_SEMICOLON);
+    expect(TK_SEMICOLON, nx);
     return node;
   }
 
-  if (consume(TK_BREAK)) {
+  if (consume(TK_BREAK, nx)) {
     if (break_label->size == 0)
       error(&tok->pos, "invalid break");
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_BREAK;
     node->label_index = vector_lasti(break_label);
     node->token = tok;
-    expect(TK_SEMICOLON);
+    expect(TK_SEMICOLON, nx);
     return node;
   }
 
-  if (consume(TK_GOTO)) {
-    Token *label_name = expect(TK_IDENT);
-    expect(TK_SEMICOLON);
+  if (consume(TK_GOTO, nx)) {
+    Token *label_name = expect(TK_IDENT, nx);
+    expect(TK_SEMICOLON, nx);
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_GOTO;
     node->token = label_name;
@@ -1542,14 +1539,14 @@ Node *stmt() {
     return node;
   }
 
-  if (next_token->kind == TK_IDENT && next_token->next->kind == TK_COLON) {
-    Token *label_name = expect(TK_IDENT);
-    expect(TK_COLON);
+  if ((*nx)->kind == TK_IDENT && (*nx)->next->kind == TK_COLON) {
+    Token *label_name = expect(TK_IDENT, nx);
+    expect(TK_COLON, nx);
 
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LABEL;
     node->token = label_name;
-    node->body = stmt();
+    node->body = stmt(nx);
 
     for (int i = 0; i < label_in_current_function->size; ++i) {
       Node *prev = *(Node **)vector_get(label_in_current_function, i);
@@ -1561,23 +1558,23 @@ Node *stmt() {
     return node;
   }
 
-  Node *node = expr();
-  expect(TK_SEMICOLON);
+  Node *node = expr(nx);
+  expect(TK_SEMICOLON, nx);
   return node;
 }
 
-Node *stmt_block() {
+Node *stmt_block(Token **nx) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_BLOCK;
   node->blk_stmts = new_vector(0, sizeof(Node *));
   node->token = NULL;
 
-  while (!consume(TK_RBRACE)) {
+  while (!consume(TK_RBRACE, nx)) {
     Node *s;
-    if ((s = declaration())) {
+    if ((s = declaration(nx))) {
       if (s->kind != ND_NOP)
         vector_push(node->blk_stmts, &s);
-    } else if ((s = stmt())) {
+    } else if ((s = stmt(nx))) {
       vector_push(node->blk_stmts, &s);
     }
   }
@@ -1585,26 +1582,26 @@ Node *stmt_block() {
   return node;
 }
 
-Node *stmt_if() {
+Node *stmt_if(Token **nx) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_IF;
   node->label_index = label_index++;
 
-  expect(TK_LPAREN);
-  node->condition = expr();
-  Token *tok = expect(TK_RPAREN);
+  expect(TK_LPAREN, nx);
+  node->condition = expr(nx);
+  Token *tok = expect(TK_RPAREN, nx);
 
   new_scope();
-  node->body = stmt();
+  node->body = stmt(nx);
   restore_scope();
 
-  if ((tok = consume(TK_ELSE)))
-    node->else_ = stmt();
+  if ((tok = consume(TK_ELSE, nx)))
+    node->else_ = stmt(nx);
 
   return node;
 }
 
-Node *stmt_do() {
+Node *stmt_do(Token **nx) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_DO;
   node->label_index = label_index++;
@@ -1612,14 +1609,14 @@ Node *stmt_do() {
   vector_pushi(break_label, node->label_index);
 
   new_scope();
-  node->body = stmt();
+  node->body = stmt(nx);
   restore_scope();
 
-  expect(TK_WHILE);
-  expect(TK_LPAREN);
-  node->condition = expr();
-  expect(TK_RPAREN);
-  expect(TK_SEMICOLON);
+  expect(TK_WHILE, nx);
+  expect(TK_LPAREN, nx);
+  node->condition = expr(nx);
+  expect(TK_RPAREN, nx);
+  expect(TK_SEMICOLON, nx);
 
   vector_pop(continue_label);
   vector_pop(break_label);
@@ -1627,19 +1624,19 @@ Node *stmt_do() {
   return node;
 }
 
-Node *stmt_while() {
+Node *stmt_while(Token **nx) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_WHILE;
   node->label_index = label_index++;
   vector_pushi(continue_label, node->label_index);
   vector_pushi(break_label, node->label_index);
 
-  expect(TK_LPAREN);
-  node->condition = expr();
-  expect(TK_RPAREN);
+  expect(TK_LPAREN, nx);
+  node->condition = expr(nx);
+  expect(TK_RPAREN, nx);
 
   new_scope();
-  node->body = stmt();
+  node->body = stmt(nx);
   restore_scope();
 
   vector_pop(continue_label);
@@ -1648,44 +1645,44 @@ Node *stmt_while() {
   return node;
 }
 
-Node *stmt_for() {
+Node *stmt_for(Token **nx) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_FOR;
   node->label_index = label_index++;
   vector_pushi(continue_label, node->label_index);
   vector_pushi(break_label, node->label_index);
 
-  expect(TK_LPAREN);
+  expect(TK_LPAREN, nx);
 
   new_scope();
-  if (!consume(TK_SEMICOLON)) {
-    Token *tok = next_token;
-    Type *type = consume_type();
+  if (!consume(TK_SEMICOLON, nx)) {
+    Token *tok = *nx;
+    Type *type = consume_type(nx);
     if (type) {
       if (type->size < 0)
         error(&tok->pos, "incomplete type");
 
-      type = declarator(type);
-      Vector *vars = vardec(type, OBJ_LVAR, 0);
+      type = declarator(type, nx);
+      Vector *vars = vardec(type, OBJ_LVAR, 0, nx);
       node->init = init_multiple_local_variables(vars);
     } else {
-      node->init = expr();
-      expect(TK_SEMICOLON);
+      node->init = expr(nx);
+      expect(TK_SEMICOLON, nx);
     }
   }
 
-  if (!consume(TK_SEMICOLON)) {
-    node->condition = expr();
-    expect(TK_SEMICOLON);
+  if (!consume(TK_SEMICOLON, nx)) {
+    node->condition = expr(nx);
+    expect(TK_SEMICOLON, nx);
   }
 
   Token *tok = NULL;
-  if (!(tok = consume(TK_RPAREN))) {
-    node->update = expr();
-    tok = expect(TK_RPAREN);
+  if (!(tok = consume(TK_RPAREN, nx))) {
+    node->update = expr(nx);
+    tok = expect(TK_RPAREN, nx);
   }
 
-  node->body = stmt();
+  node->body = stmt(nx);
   restore_scope();
 
   vector_pop(continue_label);
@@ -1694,19 +1691,19 @@ Node *stmt_for() {
   return node;
 }
 
-Node *stmt_switch() {
+Node *stmt_switch(Token **nx) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_SWITCH;
   node->label_index = label_index++;
   vector_pushi(break_label, node->label_index);
   vector_push(switch_nodes, &node);
 
-  expect(TK_LPAREN);
-  node->condition = expr();
-  expect(TK_RPAREN);
+  expect(TK_LPAREN, nx);
+  node->condition = expr(nx);
+  expect(TK_RPAREN, nx);
 
   new_scope();
-  node->body = stmt();
+  node->body = stmt(nx);
   restore_scope();
 
   vector_pop(break_label);
@@ -1715,200 +1712,200 @@ Node *stmt_switch() {
   return node;
 }
 
-Node *expr() { return comma(); }
+Node *expr(Token **nx) { return comma(nx); }
 
-Node *comma() {
-  Node *node = assign();
-  Token *tok = next_token;
-  if (consume(TK_COMMA))
-    return new_node_comma(tok, node, comma());
+Node *comma(Token **nx) {
+  Node *node = assign(nx);
+  Token *tok = *nx;
+  if (consume(TK_COMMA, nx))
+    return new_node_comma(tok, node, comma(nx));
   return node;
 }
 
-Node *assign() {
-  Node *node = conditional();
-  Token *tok = next_token;
-  if (consume(TK_ASSIGN))
-    node = new_node_assign(tok, node, assign());
-  if (consume(TK_ADDEQ))
-    node = new_node_assign(tok, node, new_node_add(NULL, node, assign()));
-  if (consume(TK_SUBEQ))
-    node = new_node_assign(tok, node, new_node_sub(NULL, node, assign()));
-  if (consume(TK_MULEQ))
-    node = new_node_assign(tok, node, new_node_mul(NULL, node, assign()));
-  if (consume(TK_DIVEQ))
-    node = new_node_assign(tok, node, new_node_div(NULL, node, assign()));
-  if (consume(TK_MODEQ))
-    node = new_node_assign(tok, node, new_node_mod(NULL, node, assign()));
-  if (consume(TK_XOREQ))
-    node = new_node_assign(tok, node, new_node_bitxor(NULL, node, assign()));
-  if (consume(TK_ANDEQ))
-    node = new_node_assign(tok, node, new_node_bitand(NULL, node, assign()));
-  if (consume(TK_OREQ))
-    node = new_node_assign(tok, node, new_node_bitor(NULL, node, assign()));
-  if (consume(TK_LSHIFTEQ))
-    node = new_node_assign(tok, node, new_node_lshift(NULL, node, assign()));
-  if (consume(TK_RSHIFTEQ))
-    node = new_node_assign(tok, node, new_node_rshift(NULL, node, assign()));
+Node *assign(Token **nx) {
+  Node *node = conditional(nx);
+  Token *tok = *nx;
+  if (consume(TK_ASSIGN, nx))
+    node = new_node_assign(tok, node, assign(nx));
+  if (consume(TK_ADDEQ, nx))
+    node = new_node_assign(tok, node, new_node_add(NULL, node, assign(nx)));
+  if (consume(TK_SUBEQ, nx))
+    node = new_node_assign(tok, node, new_node_sub(NULL, node, assign(nx)));
+  if (consume(TK_MULEQ, nx))
+    node = new_node_assign(tok, node, new_node_mul(NULL, node, assign(nx)));
+  if (consume(TK_DIVEQ, nx))
+    node = new_node_assign(tok, node, new_node_div(NULL, node, assign(nx)));
+  if (consume(TK_MODEQ, nx))
+    node = new_node_assign(tok, node, new_node_mod(NULL, node, assign(nx)));
+  if (consume(TK_XOREQ, nx))
+    node = new_node_assign(tok, node, new_node_bitxor(NULL, node, assign(nx)));
+  if (consume(TK_ANDEQ, nx))
+    node = new_node_assign(tok, node, new_node_bitand(NULL, node, assign(nx)));
+  if (consume(TK_OREQ, nx))
+    node = new_node_assign(tok, node, new_node_bitor(NULL, node, assign(nx)));
+  if (consume(TK_LSHIFTEQ, nx))
+    node = new_node_assign(tok, node, new_node_lshift(NULL, node, assign(nx)));
+  if (consume(TK_RSHIFTEQ, nx))
+    node = new_node_assign(tok, node, new_node_rshift(NULL, node, assign(nx)));
   return node;
 }
 
-Node *conditional() {
-  Node *node = logor();
-  Token *tok = consume(TK_QUESTION);
+Node *conditional(Token **nx) {
+  Node *node = logor(nx);
+  Token *tok = consume(TK_QUESTION, nx);
   if (!tok)
     return node;
-  Node *lhs = expr();
-  expect(TK_COLON);
-  return new_node_conditional(tok, node, lhs, conditional(), label_index++);
+  Node *lhs = expr(nx);
+  expect(TK_COLON, nx);
+  return new_node_conditional(tok, node, lhs, conditional(nx), label_index++);
 }
 
-Node *logor() {
-  Node *node = logand();
+Node *logor(Token **nx) {
+  Node *node = logand(nx);
   while (true) {
-    Token *tok = next_token;
-    if (consume(TK_LOGOR)) {
+    Token *tok = *nx;
+    if (consume(TK_LOGOR, nx)) {
       int l = label_index++;
-      node = new_node_logor(tok, node, logand(), l);
+      node = new_node_logor(tok, node, logand(nx), l);
     } else {
       return node;
     }
   }
 }
 
-Node *logand() {
-  Node *node = bitor ();
+Node *logand(Token **nx) {
+  Node *node = bitor (nx);
   while (true) {
-    Token *tok = next_token;
-    if (consume(TK_LOGAND)) {
+    Token *tok = *nx;
+    if (consume(TK_LOGAND, nx)) {
       int l = label_index++;
-      node = new_node_logand(tok, node, bitor (), l);
+      node = new_node_logand(tok, node, bitor (nx), l);
     } else {
       return node;
     }
   }
 }
 
-Node * bitor () {
-  Node *node = bitxor();
+Node * bitor (Token * *nx) {
+  Node *node = bitxor(nx);
   while (true) {
-    Token *tok = next_token;
-    if (consume(TK_BAR))
-      node = new_node_bitor(tok, node, bitxor());
+    Token *tok = *nx;
+    if (consume(TK_BAR, nx))
+      node = new_node_bitor(tok, node, bitxor(nx));
     else
       return node;
   }
 }
 
-Node *bitxor() {
-  Node *node = bitand();
+Node *bitxor(Token **nx) {
+  Node *node = bitand(nx);
   while (true) {
-    Token *tok = next_token;
-    if (consume(TK_HAT))
-      node = new_node_bitxor(tok, node, bitand());
+    Token *tok = *nx;
+    if (consume(TK_HAT, nx))
+      node = new_node_bitxor(tok, node, bitand(nx));
     else
       return node;
   }
 }
 
-Node *bitand() {
-  Node *node = equality();
+Node *bitand(Token **nx) {
+  Node *node = equality(nx);
   while (true) {
-    Token *tok = next_token;
-    if (consume(TK_AMP))
-      node = new_node_bitand(tok, node, equality());
+    Token *tok = *nx;
+    if (consume(TK_AMP, nx))
+      node = new_node_bitand(tok, node, equality(nx));
     else
       return node;
   }
 }
 
-Node *equality() {
-  Node *node = relational();
+Node *equality(Token **nx) {
+  Node *node = relational(nx);
   while (true) {
     Token *tok;
-    if ((tok = consume(TK_EQ)))
-      node = new_node_eq(tok, node, relational());
-    else if ((tok = consume(TK_NE)))
-      node = new_node_ne(tok, node, relational());
+    if ((tok = consume(TK_EQ, nx)))
+      node = new_node_eq(tok, node, relational(nx));
+    else if ((tok = consume(TK_NE, nx)))
+      node = new_node_ne(tok, node, relational(nx));
     else
       return node;
   }
 }
 
-Node *relational() {
-  Node *node = bitshift();
+Node *relational(Token **nx) {
+  Node *node = bitshift(nx);
   while (true) {
     Token *tok;
-    if ((tok = consume(TK_LT)))
-      node = new_node_lt(tok, node, bitshift());
-    else if ((tok = consume(TK_LE)))
-      node = new_node_le(tok, node, bitshift());
-    if ((tok = consume(TK_GT)))
-      node = new_node_lt(tok, bitshift(), node);
-    else if ((tok = consume(TK_GE)))
-      node = new_node_le(tok, bitshift(), node);
+    if ((tok = consume(TK_LT, nx)))
+      node = new_node_lt(tok, node, bitshift(nx));
+    else if ((tok = consume(TK_LE, nx)))
+      node = new_node_le(tok, node, bitshift(nx));
+    if ((tok = consume(TK_GT, nx)))
+      node = new_node_lt(tok, bitshift(nx), node);
+    else if ((tok = consume(TK_GE, nx)))
+      node = new_node_le(tok, bitshift(nx), node);
     else
       return node;
   }
 }
 
-Node *bitshift() {
-  Node *node = add();
+Node *bitshift(Token **nx) {
+  Node *node = add(nx);
   while (true) {
-    Token *tok = next_token;
-    if (consume(TK_LSHIFT)) {
-      node = new_node_lshift(tok, node, add());
-    } else if (consume(TK_RSHIFT)) {
-      node = new_node_rshift(tok, node, add());
+    Token *tok = *nx;
+    if (consume(TK_LSHIFT, nx)) {
+      node = new_node_lshift(tok, node, add(nx));
+    } else if (consume(TK_RSHIFT, nx)) {
+      node = new_node_rshift(tok, node, add(nx));
     } else
       return node;
   }
 }
 
-Node *add() {
-  Node *node = mul();
+Node *add(Token **nx) {
+  Node *node = mul(nx);
   while (true) {
-    Token *tok = next_token;
-    if (consume(TK_PLUS)) {
-      node = new_node_add(tok, node, mul());
-    } else if (consume(TK_MINUS)) {
-      node = new_node_sub(tok, node, mul());
+    Token *tok = *nx;
+    if (consume(TK_PLUS, nx)) {
+      node = new_node_add(tok, node, mul(nx));
+    } else if (consume(TK_MINUS, nx)) {
+      node = new_node_sub(tok, node, mul(nx));
     } else
       return node;
   }
 }
 
-Node *mul() {
-  Node *node = unary();
+Node *mul(Token **nx) {
+  Node *node = unary(nx);
   while (true) {
-    Token *tok = next_token;
-    if (consume(TK_STAR))
-      node = new_node_mul(tok, node, unary());
-    else if (consume(TK_SLASH))
-      node = new_node_div(tok, node, unary());
-    else if (consume(TK_PERCENT))
-      node = new_node_mod(tok, node, unary());
+    Token *tok = *nx;
+    if (consume(TK_STAR, nx))
+      node = new_node_mul(tok, node, unary(nx));
+    else if (consume(TK_SLASH, nx))
+      node = new_node_div(tok, node, unary(nx));
+    else if (consume(TK_PERCENT, nx))
+      node = new_node_mod(tok, node, unary(nx));
     else
       return node;
   }
 }
 
-Node *unary() {
-  Token *tok = next_token;
-  if (consume(TK_SIZEOF)) {
-    Token *keep = next_token;
-    Token *left_paren = consume(TK_LPAREN);
-    Type *type = consume_type();
+Node *unary(Token **nx) {
+  Token *tok = *nx;
+  if (consume(TK_SIZEOF, nx)) {
+    Token *keep = *nx;
+    Token *left_paren = consume(TK_LPAREN, nx);
+    Type *type = consume_type(nx);
     if (left_paren && type) {
       // sizeof(type)
-      type = consume_array_brackets(consume_type_star(type));
+      type = consume_array_brackets(consume_type_star(type, nx), nx);
       if (type->size < 0)
         error(&tok->pos, "invalid array size");
-      expect(TK_RPAREN);
+      expect(TK_RPAREN, nx);
     } else {
       // sizeof unary
-      next_token = keep; // rollback token
-      type = unary()->type;
+      *nx = keep; // rollback token
+      type = unary(nx)->type;
     }
     if (type->kind == TYPE_VOID)
       error(&tok->pos, "invalud sizeof operation for void type");
@@ -1916,53 +1913,53 @@ Node *unary() {
       error(&tok->pos, "invalud sizeof operation for incomplete type");
     return new_node_num(tok, type->size, base_type(TYPE_ULONG));
   }
-  if (consume(TK_INC)) {
-    Node *u = unary();
+  if (consume(TK_INC, nx)) {
+    Node *u = unary(nx);
     return new_node_assign(NULL, u, new_node_add(NULL, u, new_node_num(NULL, 1, base_type(TYPE_INT))));
   }
-  if (consume(TK_DEC)) {
-    Node *u = unary();
+  if (consume(TK_DEC, nx)) {
+    Node *u = unary(nx);
     return new_node_assign(NULL, u, new_node_sub(NULL, u, new_node_num(NULL, 1, base_type(TYPE_INT))));
   }
 
-  if (consume(TK_PLUS))
-    return unary();
+  if (consume(TK_PLUS, nx))
+    return unary(nx);
 
-  if (consume(TK_MINUS)) {
-    Node *u = unary();
+  if (consume(TK_MINUS, nx)) {
+    Node *u = unary(nx);
     return new_node_sub(tok, new_node_num(NULL, 0, u->type), u);
   }
 
-  if (consume(TK_AMP))
-    return new_node_addr(tok, unary());
-  if (consume(TK_STAR))
-    return new_node_deref(tok, unary());
-  if (consume(TK_LOGNOT))
-    return new_node_lognot(tok, unary());
-  if (consume(TK_TILDE))
-    return new_node_bitnot(tok, unary());
+  if (consume(TK_AMP, nx))
+    return new_node_addr(tok, unary(nx));
+  if (consume(TK_STAR, nx))
+    return new_node_deref(tok, unary(nx));
+  if (consume(TK_LOGNOT, nx))
+    return new_node_lognot(tok, unary(nx));
+  if (consume(TK_TILDE, nx))
+    return new_node_bitnot(tok, unary(nx));
 
-  if (consume(TK_LPAREN)) {
-    Type *type = consume_type();
+  if (consume(TK_LPAREN, nx)) {
+    Type *type = consume_type(nx);
     if (type) {
-      type = consume_type_star(type);
-      if (consume(TK_RPAREN))
-        return new_node_cast(tok, type, unary());
+      type = consume_type_star(type, nx);
+      if (consume(TK_RPAREN, nx))
+        return new_node_cast(tok, type, unary(nx));
     }
-    next_token = tok; // rollback
+    *nx = tok; // rollback
   }
-  return postfix();
+  return postfix(nx);
 }
 
-Node *primary() {
-  if (consume(TK_LPAREN)) {
-    Node *node = expr();
-    expect(TK_RPAREN);
+Node *primary(Token **nx) {
+  if (consume(TK_LPAREN, nx)) {
+    Node *node = expr(nx);
+    expect(TK_RPAREN, nx);
     return node;
   }
 
   Token *tok;
-  if ((tok = consume(TK_IDENT))) {
+  if ((tok = consume(TK_IDENT, nx))) {
     int *enum_val = find_enum_element(tok->str);
     if (enum_val)
       return new_node_num(tok, *enum_val, base_type(TYPE_INT));
@@ -1973,62 +1970,62 @@ Node *primary() {
     return new_node_var(tok, var);
   }
 
-  if ((tok = consume(TK_STR))) {
+  if ((tok = consume(TK_STR, nx))) {
     Variable *var = new_string_literal(tok);
     return new_node_var(tok, var);
   }
 
-  if ((tok = consume(TK_NUM)))
+  if ((tok = consume(TK_NUM, nx)))
     return new_node_num(tok, tok->val, tok->type);
 
-  error(&next_token->pos, "primary expected but not found");
+  error(&(*nx)->pos, "primary expected but not found");
   return NULL;
 }
 
-Node *tail(Node *x) {
-  if (consume(TK_LBRACKET)) {
+Node *tail(Node *x, Token **nx) {
+  if (consume(TK_LBRACKET, nx)) {
     // x[y] --> *(x+y)
-    Node *y = expr();
-    Token *tok = expect(TK_RBRACKET);
+    Node *y = expr(nx);
+    Token *tok = expect(TK_RBRACKET, nx);
     return new_node_deref(tok, new_node_add(tok, x, y));
   }
 
-  Token *op = next_token;
+  Token *op = *nx;
 
-  if (consume(TK_DOT)) {
+  if (consume(TK_DOT, nx)) {
     // struct member access (x.y)
     if (x->type == NULL || !is_struct_union(x->type))
       error(&op->pos, "not a struct/union");
-    Token *y = expect(TK_IDENT);
+    Token *y = expect(TK_IDENT, nx);
     Member *member = find_member(x->type, y);
     if (member == NULL)
       error(&y->pos, "unknown struct member");
     return new_node_member(op, x, member);
   }
 
-  if (consume(TK_ARROW)) {
+  if (consume(TK_ARROW, nx)) {
     // struct member access
     // x->y is (*x).y
     if (x->type == NULL || x->type->kind != TYPE_PTR || !is_struct_union(x->type->base))
       error(&op->pos, "not a struct/union pointer");
-    Token *y = expect(TK_IDENT);
+    Token *y = expect(TK_IDENT, nx);
     Member *member = find_member(x->type->base, y);
     if (member == NULL)
       error(&y->pos, "unknown struct member");
     return new_node_member(op, new_node_deref(NULL, x), member);
   }
 
-  if (consume(TK_INC)) {
+  if (consume(TK_INC, nx)) {
     // (x = x + 1) - 1
     return new_node_sub(NULL, new_node_assign(NULL, x, new_node_add(NULL, x, new_node_num(NULL, 1, base_type(TYPE_INT)))), new_node_num(NULL, 1, base_type(TYPE_INT)));
   }
 
-  if (consume(TK_DEC)) {
+  if (consume(TK_DEC, nx)) {
     // (x = x - 1) + 1
     return new_node_add(NULL, new_node_assign(NULL, x, new_node_sub(NULL, x, new_node_num(NULL, 1, base_type(TYPE_INT)))), new_node_num(NULL, 1, base_type(TYPE_INT)));
   }
 
-  if (consume(TK_LPAREN)) {
+  if (consume(TK_LPAREN, nx)) {
     // function call
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_CALL;
@@ -2043,11 +2040,11 @@ Node *tail(Node *x) {
     node->type = f->return_type;
     node->args = new_vector(0, sizeof(Node *));
 
-    if (consume(TK_RPAREN))
+    if (consume(TK_RPAREN, nx))
       return node;
 
     do {
-      Node *e = assign();
+      Node *e = assign(nx);
 
       if (is_struct_union(e->type))
         error(&op->pos, "currently passing struct/union is not supported");
@@ -2062,30 +2059,30 @@ Node *tail(Node *x) {
       }
 
       vector_push(node->args, &e);
-    } while (consume(TK_COMMA));
+    } while (consume(TK_COMMA, nx));
 
     if (node->args->size > 6)
       error(&node->token->pos, "maximum number of argument is currently 6");
 
-    expect(TK_RPAREN);
+    expect(TK_RPAREN, nx);
     return node;
   }
   return x;
 }
 
-Node *postfix() {
-  Node *p = primary();
-  Node *q = tail(p);
+Node *postfix(Token **nx) {
+  Node *p = primary(nx);
+  Node *q = tail(p, nx);
   while (p != q) {
     p = q;
-    q = tail(p);
+    q = tail(p, nx);
   }
   return p;
 }
 
 void parse(Token *input) {
   assert(input);
-  next_token = input;
+  Token *cur = input;
   strings = new_map();
   static_local_variables = new_vector(0, sizeof(Variable *));
   break_label = new_vector(0, sizeof(int));
@@ -2151,8 +2148,8 @@ void parse(Token *input) {
     map_push(global_scope->objects, f->ident, f);
   }
 
-  while (!at_eof())
-    declaration();
+  while (cur->kind != TK_EOF)
+    declaration(&cur);
 
   {
     /* dirty hack to read gcc headers */

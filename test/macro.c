@@ -74,8 +74,36 @@ int main() {
     verify(14, x, __FILE__, __LINE__);
 #ifndef DDD
     x = 16;
+#else
+    x = 15;
 #endif
     verify(16, x, __FILE__, __LINE__);
+#if 1
+    x = 8;
+#else
+    x = 7;
+#endif
+    verify(8, x, __FILE__, __LINE__);
+#if 0
+    x = 1;
+#elif 1
+    x = 2;
+#endif
+    verify(2, x, __FILE__, __LINE__);
+#ifdef GGG
+    x = 6;
+#elif TTTT
+    x = 7;
+#else
+    x = 9;
+#endif
+    verify(9, x, __FILE__, __LINE__);
+#if 5 - 5 ? 1 : 0
+    x = 1;
+#elif 1
+    x = 2;
+#endif
+    verify(2, x, __FILE__, __LINE__);
   }
   return 0;
 }

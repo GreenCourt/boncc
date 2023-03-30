@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+Node *expr(Token **nx);     // parse.c
+long long eval(Node *node); // node.c
+
 static Map *macros;
 
 typedef struct Macro Macro;
@@ -245,8 +248,8 @@ Token *get_eol(Token *t) {
   return t;
 }
 
-Token *find_else_or_endif(Token *prev) {
-  // return the token just before #else of #endif
+Token *find_elif_or_else_or_endif(Token *prev) {
+  // return the token just before #elif or #else or #endif
   assert(prev->kind != TK_EOF);
   Token *t = prev;
   int nest = 0;
@@ -259,15 +262,80 @@ Token *find_else_or_endif(Token *prev) {
         nest--;
       else
         return t;
+    } else if (match_directive(t->next, "elif") && nest == 0) {
+      return t;
     } else if (match_directive(t->next, "else") && nest == 0) {
       return t;
-    } else if (match_directive(t->next, "ifdef") || match_directive(t->next, "ifndef")) {
+    } else if (match_directive(t->next, "if") || match_directive(t->next, "ifdef") || match_directive(t->next, "ifndef")) {
       nest++;
     }
     t = t->next;
   }
   assert(false);
   return NULL;
+}
+
+Token *process_if(Token *prev) { // #if and #elif
+  assert(match_directive(prev->next, "if") || match_directive(prev->next, "elif"));
+  Token *directive = prev->next->next;
+
+  if (directive->at_eol)
+    error(&directive->pos, "expr required after the directive but not found.");
+
+  { // crop expr
+    Token *eol = get_eol(directive->next);
+    prev->next = eol->next;
+    Token *eof = calloc(1, sizeof(Token));
+    eof->kind = TK_EOF;
+    eol->next = eof;
+  }
+
+  // TODO: defined operator
+
+  // expand expr
+  for (Token *t = directive; t->next->kind != TK_EOF;)
+    t = expand(t);
+
+  // replace unknown identifier to 0
+  for (Token *t = directive; t->next->kind != TK_EOF; t = t->next) {
+    if (!t->next->is_identifier)
+      continue;
+    Token *zero = calloc(1, sizeof(Token));
+    zero->kind = TK_NUM;
+    zero->pos = t->pos;
+    zero->val = 0;
+    zero->type = base_type(TYPE_INT);
+    zero->next = t->next->next;
+    t->next = zero;
+  }
+
+  long long value = eval(expr(&directive->next));
+  Token *before_hash = find_elif_or_else_or_endif(prev->next);
+
+  if (value) {
+    Token *last = before_hash;
+    while (!match_directive(before_hash->next, "endif"))
+      before_hash = find_elif_or_else_or_endif(before_hash->next->next);
+    last->next = get_eol(before_hash->next)->next;
+    return prev;
+  }
+
+  if (match_directive(before_hash->next, "elif")) {
+    prev->next = before_hash->next;
+    return process_if(prev);
+  }
+
+  if (match_directive(before_hash->next, "else")) {
+    prev->next = get_eol(before_hash->next)->next;
+    before_hash = find_elif_or_else_or_endif(prev->next);
+    if (!match_directive(before_hash->next, "endif"))
+      error(&before_hash->next->pos, "#endif expected");
+    return prev;
+  }
+
+  assert(match_directive(before_hash->next, "endif"));
+  prev->next = get_eol(before_hash->next)->next;
+  return prev;
 }
 
 Token *process_ifdef(Token *prev) { // #ifdef and #ifndef
@@ -282,24 +350,32 @@ Token *process_ifdef(Token *prev) { // #ifdef and #ifndef
   if (!macro_ident->is_identifier)
     error(&macro_ident->pos, "identifier expected but not found.");
 
-  Token *before_hash = find_else_or_endif(prev->next);
+  Token *before_hash = find_elif_or_else_or_endif(prev->next);
   Macro *macro = map_get(macros, macro_ident->str);
   if ((!is_ifndef && macro != NULL) || (is_ifndef && macro == NULL)) {
     prev->next = get_eol(macro_ident)->next;
+    Token *last = before_hash;
     while (!match_directive(before_hash->next, "endif"))
-      before_hash = find_else_or_endif(before_hash->next->next);
-  } else if (match_directive(before_hash->next, "else")) {
+      before_hash = find_elif_or_else_or_endif(before_hash->next->next);
+    last->next = get_eol(before_hash->next)->next;
+    return prev;
+  }
+
+  if (match_directive(before_hash->next, "elif")) {
+    prev->next = before_hash->next;
+    return process_if(prev);
+  }
+
+  if (match_directive(before_hash->next, "else")) {
     prev->next = get_eol(before_hash->next)->next;
-    before_hash = find_else_or_endif(prev->next);
+    before_hash = find_elif_or_else_or_endif(prev->next);
     if (!match_directive(before_hash->next, "endif"))
       error(&before_hash->next->pos, "#endif expected");
-  } else {
-    assert(match_directive(before_hash->next, "endif"));
-    prev->next = get_eol(before_hash->next)->next;
+    return prev;
   }
 
   assert(match_directive(before_hash->next, "endif"));
-  before_hash->next = get_eol(before_hash->next)->next;
+  prev->next = get_eol(before_hash->next)->next;
   return prev;
 }
 
@@ -411,6 +487,10 @@ Token *process_directive(Token *prev) {
   // #define
   if (same_string_nt(directive->str, "define"))
     return define_macro(prev);
+
+  // #if
+  if (same_string_nt(directive->str, "if"))
+    return process_if(prev);
 
   // #ifdef or #ifndef
   if (same_string_nt(directive->str, "ifdef") || same_string_nt(directive->str, "ifndef"))

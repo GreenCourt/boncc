@@ -1,4 +1,4 @@
-void verify(int expected, int actual, char *file_name, int line_number);
+#include "common.h"
 
 char global_str[4] = "abc";
 char *global_char_ptr = "abc";

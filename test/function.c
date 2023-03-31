@@ -1,4 +1,4 @@
-void verify(int expected, int actual, char *file_name, int line_number);
+#include "common.h"
 
 int foo() { return 12; }
 int add2(int x, int y) { return x + y; }

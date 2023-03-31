@@ -1,4 +1,4 @@
-void verify(int expected, int actual, char *file_name, int line_number);
+#include "common.h"
 
 int global_multdec[];  // array size is not given at first time
 int global_multdec[3]; // array size is given at second time

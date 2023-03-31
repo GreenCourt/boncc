@@ -1,4 +1,4 @@
-void verify(int expected, int actual, char *file_name, int line_number);
+#include "common.h"
 
 struct global_struct1 {
   int a;

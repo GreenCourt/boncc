@@ -1,7 +1,9 @@
 #include "boncc.h"
 #include <assert.h>
+#include <libgen.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 Node *expr(Token **nx);     // parse.c
 long long eval(Node *node); // node.c
@@ -374,6 +376,7 @@ Token *process_if(Token *prev) { // #if and #elif
     before_hash = find_elif_or_else_or_endif(prev->next);
     if (!match_directive(before_hash->next, "endif"))
       error(&before_hash->next->pos, "#endif expected");
+    before_hash->next = get_eol(before_hash->next)->next;
     return prev;
   }
 
@@ -415,6 +418,7 @@ Token *process_ifdef(Token *prev) { // #ifdef and #ifndef
     before_hash = find_elif_or_else_or_endif(prev->next);
     if (!match_directive(before_hash->next, "endif"))
       error(&before_hash->next->pos, "#endif expected");
+    before_hash->next = get_eol(before_hash->next)->next;
     return prev;
   }
 
@@ -522,6 +526,72 @@ Token *undef_macro(Token *prev) {
   return prev;
 }
 
+char *path_join(char *dir, char *file) {
+  int len = strlen(dir) + strlen(file) + 1;
+  char *path = calloc(len + 1, sizeof(char));
+  snprintf(path, len + 1, "%s/%s", dir, file);
+  return path;
+}
+
+Token *process_include(Token *prev) {
+  assert(match_directive(prev->next, "include"));
+  Token *directive = prev->next->next;
+
+  if (directive->at_eol)
+    error(&directive->pos, "filename required after #include but not found.");
+
+  char *filepath = NULL;
+  if (directive->next->kind == TK_STR) {
+    char *p = directive->next->string_literal;
+
+    if (p[0] != '/') {
+      // copy string before calling dirname() since it modifies the string
+      char *f = calloc(strlen(directive->pos.file_name) + 1, sizeof(char));
+      snprintf(f, strlen(directive->pos.file_name) + 1, "%s", directive->pos.file_name);
+      p = path_join(dirname(f), p);
+    }
+
+    if (access(p, R_OK) == 0) // if file is readable
+      filepath = p;
+    else
+      // TODO: search include path
+      error(&directive->next->pos, "failed to include file");
+  } else if (directive->next->kind == TK_LT && !directive->next->at_eol) {
+    Token *left = directive->next->next;
+    Token *right = left;
+    int len = left->str->len;
+    while (right->next->kind != TK_GT) {
+      if (right->next->at_eol)
+        error(&directive->next->pos, "filename required after #include but not found.");
+      right = right->next;
+      len += right->str->len;
+    }
+
+    // construct filename from tokens between < and >
+    char *p = calloc(len + 1, sizeof(char));
+    char *q = p;
+    for (Token *t = left; t != right->next; t = t->next)
+      q += snprintf(q, t->str->len + 1, "%.*s", t->str->len, t->str->str);
+    p[len] = '\0';
+
+    // TODO unimplemented. currently just skip #include<file>
+    prev->next = get_eol(directive)->next;
+    return prev;
+  } else {
+    error(&directive->next->pos, "filename required after #include but not found.");
+  }
+
+  assert(filepath);
+  Token *next_line = get_eol(directive)->next;
+
+  prev->next = tokenize(filepath);
+  Token *t = prev->next;
+  while (t->next->kind != TK_EOF)
+    t = t->next;
+  t->next = next_line;
+  return prev;
+}
+
 Token *process_directive(Token *prev) {
   assert(prev->next->kind == TK_HASH);
   Token *directive = prev->next->next;
@@ -544,12 +614,12 @@ Token *process_directive(Token *prev) {
   if (same_string_nt(directive->str, "undef"))
     return undef_macro(prev);
 
-  // currently, ignore unknown directives
-  prev->next = get_eol(directive)->next;
-  return prev;
+  // #include
+  if (same_string_nt(directive->str, "include"))
+    return process_include(prev);
 
-  // error(&next_token->pos, "unknown directive");
-  // return NULL;
+  error(&prev->next->pos, "unknown directive");
+  return NULL;
 }
 
 Token *preprocess(Token *input) {

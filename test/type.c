@@ -1,4 +1,4 @@
-void verify(int expected, int actual, char *file_name, int line_number);
+#include "common.h"
 
 typedef enum global_enum typedef_global_enum;
 enum global_enum { X0,

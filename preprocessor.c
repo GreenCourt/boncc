@@ -82,10 +82,12 @@ static Token *expand_object_like(Token *prev, Macro *macro) {
   }
 
   if (tail != &head) { // recusive expansion
+    macro->flag = true;
     Token *t = &head;
     while (t->next != tail)
       t = expand(t);
     tail = expand(t);
+    macro->flag = false;
   }
 
   if (tail == &head) { // detect empty macro after expansion
@@ -166,6 +168,17 @@ static Token *expand_function_like(Token *prev, Macro *macro) {
   if (args->size != macro->nparams)
     error(&rparen->pos, "invalid number of arguments for macro expansion");
 
+  // argument prescan
+  {
+    Token head;
+    for (int i = 0; i < args->size; ++i) {
+      head.next = *(Token **)vector_get(args, i);
+      Token *a = &head;
+      while (a->next)
+        a = expand(a);
+    }
+  }
+
   Token *nx = rparen->next;
 
   if (macro->body == NULL) { // empty macro
@@ -201,10 +214,12 @@ static Token *expand_function_like(Token *prev, Macro *macro) {
   }
 
   if (tail != &head) { // recusive expansion
+    macro->flag = true;
     Token *t = &head;
     while (t->next != tail)
       t = expand(t);
     tail = expand(t);
+    macro->flag = false;
   }
 
   if (tail == &head) { // detect empty macro after expansion
@@ -223,14 +238,12 @@ static Token *expand(Token *prev) {
     Macro *m = map_get(macros, token->str);
     if (m && !m->flag) {
       Token *tail = NULL;
-      m->flag = true;
       if (m->is_predefined)
         tail = expand_predefined(prev, m);
       else if (m->is_function_like)
         tail = expand_function_like(prev, m);
       else
         tail = expand_object_like(prev, m);
-      m->flag = false;
       return tail;
     }
   }

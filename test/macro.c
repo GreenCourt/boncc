@@ -49,6 +49,7 @@ int main() {
   verify(24, MUL(12, 2), __FILE__, __LINE__);
   verify(24, MUL(10 + 2, 2), __FILE__, __LINE__);
   verify(24, MUL(SUM(10, 2), SUM(1, 1)), __FILE__, __LINE__);
+  verify(24, MUL(SUM(10, 2), MUL(2, 1)), __FILE__, __LINE__);
   {
 #define BBB
 #define CCC

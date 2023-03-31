@@ -104,6 +104,18 @@ int main() {
     x = 2;
 #endif
     verify(2, x, __FILE__, __LINE__);
+#if defined(AAA) && defined BBB
+    x = 4;
+#elif 1
+    x = 6;
+#endif
+    verify(6, x, __FILE__, __LINE__);
+#if defined CCC && defined(BBB)
+    x = 9;
+#elif 1
+    x = 7;
+#endif
+    verify(9, x, __FILE__, __LINE__);
   }
   return 0;
 }

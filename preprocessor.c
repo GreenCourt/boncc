@@ -290,7 +290,38 @@ Token *process_if(Token *prev) { // #if and #elif
     eol->next = eof;
   }
 
-  // TODO: defined operator
+  // expand defined operator
+  for (Token *t = directive; t->next->kind != TK_EOF;) {
+    if (!t->next->is_identifier || !same_string_nt(t->next->str, "defined")) {
+      t = t->next;
+      continue;
+    }
+    Token *op_defined = t->next;
+    Token *ident = NULL;
+    Token *nx = NULL;
+    if (op_defined->next->kind == TK_LPAREN) {
+      ident = op_defined->next->next;
+      if (!ident->is_identifier)
+        error(&op_defined->pos, "identifier expected after defined operator");
+      if (ident->next->kind != TK_RPAREN)
+        error(&ident->pos, ") expected after identifier");
+      nx = ident->next->next;
+    } else {
+      ident = op_defined->next;
+      if (!ident->is_identifier)
+        error(&op_defined->pos, "identifier expected after defined operator");
+      nx = ident->next;
+    }
+
+    Token *e = calloc(1, sizeof(Token));
+    e->kind = TK_NUM;
+    e->pos = t->pos;
+    e->val = map_get(macros, ident->str) != NULL;
+    e->type = base_type(TYPE_INT);
+    e->next = nx;
+    t->next = e;
+    t = e;
+  }
 
   // expand expr
   for (Token *t = directive; t->next->kind != TK_EOF;)

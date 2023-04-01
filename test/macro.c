@@ -107,7 +107,10 @@ int main() {
 #endif
     verify(2, x, __FILE__, __LINE__);
 #if defined(AAA) && defined BBB
+#if 1
     x = 4;
+#else
+#endif
 #elif 1
     x = 6;
 #endif

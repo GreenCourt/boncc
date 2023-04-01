@@ -356,12 +356,12 @@ Token *process_if(Token *prev) { // #if and #elif
   }
 
   long long value = eval(expr(&directive->next));
-  Token *before_hash = find_elif_or_else_or_endif(prev->next);
+  Token *before_hash = find_elif_or_else_or_endif(prev);
 
   if (value) {
     Token *last = before_hash;
     while (!match_directive(before_hash->next, "endif"))
-      before_hash = find_elif_or_else_or_endif(before_hash->next->next);
+      before_hash = find_elif_or_else_or_endif(before_hash->next);
     last->next = get_eol(before_hash->next)->next;
     return prev;
   }
@@ -373,7 +373,7 @@ Token *process_if(Token *prev) { // #if and #elif
 
   if (match_directive(before_hash->next, "else")) {
     prev->next = get_eol(before_hash->next)->next;
-    before_hash = find_elif_or_else_or_endif(prev->next);
+    before_hash = find_elif_or_else_or_endif(prev);
     if (!match_directive(before_hash->next, "endif"))
       error(&before_hash->next->pos, "#endif expected");
     before_hash->next = get_eol(before_hash->next)->next;
@@ -403,7 +403,7 @@ Token *process_ifdef(Token *prev) { // #ifdef and #ifndef
     prev->next = get_eol(macro_ident)->next;
     Token *last = before_hash;
     while (!match_directive(before_hash->next, "endif"))
-      before_hash = find_elif_or_else_or_endif(before_hash->next->next);
+      before_hash = find_elif_or_else_or_endif(before_hash->next);
     last->next = get_eol(before_hash->next)->next;
     return prev;
   }
@@ -415,7 +415,7 @@ Token *process_ifdef(Token *prev) { // #ifdef and #ifndef
 
   if (match_directive(before_hash->next, "else")) {
     prev->next = get_eol(before_hash->next)->next;
-    before_hash = find_elif_or_else_or_endif(prev->next);
+    before_hash = find_elif_or_else_or_endif(prev);
     if (!match_directive(before_hash->next, "endif"))
       error(&before_hash->next->pos, "#endif expected");
     before_hash->next = get_eol(before_hash->next)->next;

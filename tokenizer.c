@@ -66,7 +66,7 @@ Token *tokenize(char *input_path) {
       continue;
     }
 
-    if (*p.pos == '\\' && *(p.pos+1) == '\n') {
+    if (*p.pos == '\\' && *(p.pos + 1) == '\n') {
       advance(&p, 2);
       continue;
     }

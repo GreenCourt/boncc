@@ -14,7 +14,7 @@ typedef struct Macro Macro;
 struct Macro {
   String *ident;
   Token *body; // NULL-terminated linked list
-  bool is_predefined;
+  bool is_dynamic;
   bool is_function_like;
   int nparams; // function-like
   bool is_variadic;
@@ -33,9 +33,9 @@ static Macro *new_macro(String *ident, Token *body) {
 
 static Token *expand(Token *prev);
 
-static Token *expand_predefined(Token *prev, Macro *macro) {
+static Token *expand_dynamic(Token *prev, Macro *macro) {
   // expand prev->next and return the tail of expanded tokens
-  assert(macro->is_predefined);
+  assert(macro->is_dynamic);
 
   Token *token = prev->next;
 
@@ -58,7 +58,7 @@ static Token *expand_predefined(Token *prev, Macro *macro) {
 
 static Token *expand_object_like(Token *prev, Macro *macro) {
   // expand prev->next and return the tail of expanded tokens
-  assert(!macro->is_predefined);
+  assert(!macro->is_dynamic);
   assert(!macro->is_function_like);
   Token *token = prev->next;
   Token *nx = token->next;
@@ -104,7 +104,7 @@ static Token *expand_object_like(Token *prev, Macro *macro) {
 
 static Token *expand_function_like(Token *prev, Macro *macro) {
   // expand prev->next and return the tail of expanded tokens
-  assert(!macro->is_predefined);
+  assert(!macro->is_dynamic);
   assert(macro->is_function_like);
 
   Token *lparen = prev->next->next;
@@ -258,8 +258,8 @@ static Token *expand(Token *prev) {
     Macro *m = map_get(macros, token->str);
     if (m && !m->flag) {
       Token *tail = NULL;
-      if (m->is_predefined)
-        tail = expand_predefined(prev, m);
+      if (m->is_dynamic)
+        tail = expand_dynamic(prev, m);
       else if (m->is_function_like)
         tail = expand_function_like(prev, m);
       else
@@ -717,18 +717,25 @@ Token *preprocess(Token *input) {
 
   if (macros == NULL) {
     macros = new_map();
-    static String idents[] = {
-        {"__LINE__", 8},
-        {"__FILE__", 8},
-    };
-    for (int i = 0; i < (int)(sizeof(idents) / sizeof(String)); ++i) {
-      Macro *m = new_macro(&idents[i], NULL);
-      m->is_predefined = true;
+    {
+      static String idents[] = {
+          {"__LINE__", 8},
+          {"__FILE__", 8},
+      };
+      for (int i = 0; i < (int)(sizeof(idents) / sizeof(String)); ++i) {
+        Macro *m = new_macro(&idents[i], NULL);
+        m->is_dynamic = true;
+      }
     }
 
-    { // dirty hack for testing
-      static String boncc = {"BONCC", 5};
-      new_macro(&boncc, NULL);
+    {
+      static String idents[] = {
+          {"BONCC", 5},
+          {"__x86_64__", 10},
+          {"__LP64__", 8},
+      };
+      for (int i = 0; i < (int)(sizeof(idents) / sizeof(String)); ++i)
+        new_macro(&idents[i], NULL);
     }
   }
 

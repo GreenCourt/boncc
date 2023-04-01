@@ -66,6 +66,11 @@ Token *tokenize(char *input_path) {
       continue;
     }
 
+    if (*p.pos == '\\' && *(p.pos+1) == '\n') {
+      advance(&p, 2);
+      continue;
+    }
+
     if (match(p.pos, "//")) { // line comments
       advance(&p, 2);
       while (*p.pos != '\n')

@@ -5,7 +5,8 @@ int line2 = __LINE__;
 
 #define FOO 10
 #define FOO 12 // redefine
-#define BAR "bar"
+#define BAR \
+  "bar"
 #define EMPTY // empty macro
 #define EMPTY2 EMPTY
 #define EMPTY3(X, Y)

@@ -3,6 +3,9 @@ int line2 = __LINE__;
 
 #include "common.h"
 
+int sprintf(char *s, char *fmt, ...);
+#define SPRINTF(s, fmt, ...) sprintf(s, fmt, __VA_ARGS__)
+
 #define FOO 10
 #define FOO 12 // redefine
 #define BAR \
@@ -51,6 +54,18 @@ int main() {
   verify(24, MUL(10 + 2, 2), __FILE__, __LINE__);
   verify(24, MUL(SUM(10, 2), SUM(1, 1)), __FILE__, __LINE__);
   verify(24, MUL(SUM(10, 2), MUL(2, 1)), __FILE__, __LINE__);
+  {
+    char buf[10];
+    int x = SPRINTF(buf, "%d_%c_%d", 12, 't', 3);
+    verify(6, x, __FILE__, __LINE__);
+    verify('1', buf[0], __FILE__, __LINE__);
+    verify('2', buf[1], __FILE__, __LINE__);
+    verify('_', buf[2], __FILE__, __LINE__);
+    verify('t', buf[3], __FILE__, __LINE__);
+    verify('_', buf[4], __FILE__, __LINE__);
+    verify('3', buf[5], __FILE__, __LINE__);
+    verify('\0', buf[6], __FILE__, __LINE__);
+  }
   {
 #define BBB
 #define CCC

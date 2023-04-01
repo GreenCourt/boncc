@@ -17,7 +17,8 @@ struct Macro {
   bool is_predefined;
   bool is_function_like;
   int nparams; // function-like
-  bool flag;   // used in recursive manner
+  bool is_variadic;
+  bool flag; // used in recursive manner
 };
 
 static Macro *new_macro(String *ident, Token *body) {
@@ -111,7 +112,7 @@ static Token *expand_function_like(Token *prev, Macro *macro) {
     error(&lparen->pos, "left-paren expected for a function-like marco");
 
   Token *rparen = NULL;
-  Vector *args = args = new_vector(0, sizeof(Token *));
+  Vector *args = new_vector(0, sizeof(Token *));
   if (lparen->next->kind == TK_RPAREN) {
     rparen = lparen->next;
   } else if (lparen->next->kind == TK_COMMA) {
@@ -167,7 +168,7 @@ static Token *expand_function_like(Token *prev, Macro *macro) {
   }
 
   assert(rparen);
-  if (args->size != macro->nparams)
+  if ((!macro->is_variadic && args->size != macro->nparams) || (macro->is_variadic && args->size <= macro->nparams))
     error(&rparen->pos, "invalid number of arguments for macro expansion");
 
   // argument prescan
@@ -203,6 +204,23 @@ static Token *expand_function_like(Token *prev, Macro *macro) {
           *tail = *a;
           tail->pos = prev->next->pos;
           a = a->next;
+        }
+      } else if (b->is_identifier && same_string_nt(b->str, "__VA_ARGS__")) {
+        for (int i = macro->nparams; i < args->size; ++i) {
+          Token *a = *(Token **)vector_get(args, i);
+          while (a) {
+            tail->next = calloc(1, sizeof(Token));
+            tail = tail->next;
+            *tail = *a;
+            tail->pos = prev->next->pos;
+            a = a->next;
+          }
+          if (i != args->size - 1) {
+            tail->next = calloc(1, sizeof(Token));
+            tail = tail->next;
+            tail->pos = prev->next->pos;
+            tail->kind = TK_COMMA;
+          }
         }
       } else {
         tail->next = calloc(1, sizeof(Token));
@@ -458,6 +476,7 @@ Token *define_macro(Token *prev) {
   Token *lparen = macro_ident->next;
   Token *rparen = NULL;
   Vector *params; // Token
+  bool is_variadic = false;
   if (lparen->at_eol)
     error(&lparen->pos, "invalid function-like macro");
 
@@ -469,8 +488,14 @@ Token *define_macro(Token *prev) {
     Token *p = lparen;
     do {
       p = p->next;
-      if (p->at_eol || !p->is_identifier)
+      if (p->at_eol || (!p->is_identifier && p->kind != TK_3DOTS))
         error(&p->pos, "invalid function-like macro");
+      if (p->kind == TK_3DOTS) {
+        is_variadic = true;
+        p = p->next;
+        break;
+      }
+
       vector_push(params, &p);
       p = p->next;
     } while (p->kind == TK_COMMA);
@@ -483,6 +508,7 @@ Token *define_macro(Token *prev) {
     Macro *m = new_macro(macro_ident->str, NULL);
     m->is_function_like = true;
     m->nparams = params->size;
+    m->is_variadic = is_variadic;
     prev->next = rparen->next;
     return prev;
   }
@@ -505,6 +531,7 @@ Token *define_macro(Token *prev) {
   Macro *m = new_macro(macro_ident->str, rparen->next);
   m->is_function_like = true;
   m->nparams = params->size;
+  m->is_variadic = is_variadic;
   return prev;
 }
 

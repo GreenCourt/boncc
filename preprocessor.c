@@ -622,6 +622,69 @@ Token *process_directive(Token *prev) {
   return NULL;
 }
 
+bool skip_unsupported_keywords(Token *prev) {
+  // return true if skipped
+  if (prev->next->kind != TK_IDENT)
+    return false;
+
+  if (same_string_nt(prev->next->str, "volatile")) {
+    prev->next = prev->next->next;
+    return true;
+  }
+
+  if (same_string_nt(prev->next->str, "__restrict")) {
+    prev->next = prev->next->next;
+    return true;
+  }
+
+  if (same_string_nt(prev->next->str, "__inline")) {
+    prev->next = prev->next->next;
+    return true;
+  }
+
+  if (same_string_nt(prev->next->str, "__extension__")) {
+    prev->next = prev->next->next;
+    return true;
+  }
+
+  if (same_string_nt(prev->next->str, "__attribute__") && prev->next->next->kind == TK_LPAREN && prev->next->next->next->kind == TK_LPAREN) {
+    int count = 2;
+    Token *t = prev->next->next->next;
+    while (count) {
+      t = t->next;
+      if (t->kind == TK_EOF)
+        error(&prev->next->pos, "failed to skip __attribute__ (currently __attribute__ is not supported and will be skipped)");
+      if (t->kind == TK_LPAREN)
+        count++;
+      if (t->kind == TK_RPAREN)
+        count--;
+    }
+    assert(t->kind == TK_RPAREN);
+    prev->next = t->next;
+    return true;
+  }
+
+  if (same_string_nt(prev->next->str, "__asm__")) {
+    Token *p = prev->next->next;
+    while (p->kind != TK_LPAREN) {
+      if (p->kind == TK_EOF)
+        error(&prev->next->pos, "failed to skip __asm__ (currently __asm__ is not supported and will be skipped)");
+      p = p->next;
+    }
+    assert(p->kind == TK_LPAREN);
+    while (p->kind != TK_RPAREN) {
+      if (p->kind == TK_EOF)
+        error(&prev->next->pos, "failed to skip __asm__ (currently __asm__ is not supported and will be skipped)");
+      p = p->next;
+    }
+    assert(p->kind == TK_RPAREN);
+    prev->next = p->next;
+    return true;
+  }
+
+  return false;
+}
+
 Token *preprocess(Token *input) {
   assert(input);
 
@@ -647,6 +710,9 @@ Token *preprocess(Token *input) {
   Token *tail = &head;
 
   while (tail->next->kind != TK_EOF) {
+    if (skip_unsupported_keywords(tail))
+      continue;
+
     if (tail->next->kind == TK_HASH) {
       if (!tail->next->at_bol || tail->next->at_eol)
         error(&tail->next->pos, "invalid # here");

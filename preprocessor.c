@@ -31,7 +31,7 @@ static Macro *new_macro(String *ident, Token *body) {
   return m;
 }
 
-static Token *expand(Token *prev);
+static Token *expand(Token *prev, Token **stop);
 
 static Token *expand_dynamic(Token *prev, Macro *macro) {
   // expand prev->next and return the tail of expanded tokens
@@ -56,15 +56,14 @@ static Token *expand_dynamic(Token *prev, Macro *macro) {
   return NULL;
 }
 
-static Token *expand_object_like(Token *prev, Macro *macro) {
+static Token *expand_object_like(Token *prev, Macro *macro, Token **stop) {
   // expand prev->next and return the tail of expanded tokens
   assert(!macro->is_dynamic);
   assert(!macro->is_function_like);
-  Token *token = prev->next;
-  Token *nx = token->next;
+  Token *expanded = prev->next;
 
   if (macro->body == NULL) { // empty macro
-    prev->next = nx;
+    prev->next = expanded->next;
     return prev;
   }
 
@@ -78,38 +77,51 @@ static Token *expand_object_like(Token *prev, Macro *macro) {
       tail->next = calloc(1, sizeof(Token));
       tail = tail->next;
       *tail = *b;
-      tail->pos = token->pos;
+      tail->pos = expanded->pos;
       b = b->next;
     }
-    tail->next = nx;
+    tail->next = expanded->next;
+    assert(&head != tail);
   }
 
-  if (tail != &head) { // recusive expansion
+  if (stop == NULL)
+    stop = &expanded->next; // maybe modified by recursive expansion
+
+  { // recursive expansion
     macro->flag = true;
     Token *t = &head;
-    while (t->next != tail)
-      t = expand(t);
-    tail = expand(t);
+    while (t->next != expanded->next && t->next != *stop)
+      t = expand(t, stop);
+    tail = t;
     macro->flag = false;
   }
 
-  if (tail == &head) { // detect empty macro after expansion
-    prev->next = tail->next;
+  if (head.next == expanded->next) { // detect empty macro after expansion
+    prev->next = expanded->next;
     return prev;
   }
 
-  *token = *head.next;
+  if (head.next == *stop) { // detect empty macro after expansion
+    prev->next = *stop;
+    return prev;
+  }
+
+  assert(head.next);
+  prev->next = head.next;
   return tail;
 }
 
-static Token *expand_function_like(Token *prev, Macro *macro) {
+static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
   // expand prev->next and return the tail of expanded tokens
   assert(!macro->is_dynamic);
   assert(macro->is_function_like);
 
-  Token *lparen = prev->next->next;
+  Token *expanded = prev->next;
+  Token *lparen = expanded->next;
   if (lparen->kind != TK_LPAREN)
     error(&lparen->pos, "left-paren expected for a function-like marco");
+
+  bool need_to_extend_stop = stop == NULL || lparen == *stop;
 
   Token *rparen = NULL;
   Vector *args = new_vector(0, sizeof(Token *));
@@ -121,8 +133,11 @@ static Token *expand_function_like(Token *prev, Macro *macro) {
     // read args
     Token *p = lparen;
     vector_push(args, &p->next);
-    Vector *stack = new_vector(0, sizeof(Token *));
+    Vector *stack = new_vector(0, sizeof(int));
     while (true) {
+      if (stop && p->next == *stop)
+        need_to_extend_stop = true;
+
       if (p->kind == TK_EOF)
         error(&p->pos, "invalid macro expansion");
 
@@ -142,7 +157,7 @@ static Token *expand_function_like(Token *prev, Macro *macro) {
 
       { // paren, brace, bracket
         if (p->next->kind == TK_LBRACKET || p->next->kind == TK_LBRACE || p->next->kind == TK_LPAREN) {
-          vector_push(stack, &(p->next));
+          vector_pushi(stack, p->next->kind);
           p = p->next;
           continue;
         }
@@ -151,7 +166,7 @@ static Token *expand_function_like(Token *prev, Macro *macro) {
         bool cont = false;
         for (int i = 0; i < 3; ++i) {
           if (p->next->kind == right[i]) {
-            if (stack->size == 0 || ((*(Token **)vector_last(stack))->kind != left[i]))
+            if (stack->size == 0 || (TokenKind)vector_lasti(stack) != left[i])
               error(&p->next->pos, "invalid macro expansion");
             vector_pop(stack);
             cont = true;
@@ -168,6 +183,7 @@ static Token *expand_function_like(Token *prev, Macro *macro) {
   }
 
   assert(rparen);
+  assert(rparen->kind == TK_RPAREN);
   if ((!macro->is_variadic && args->size != macro->nparams) || (macro->is_variadic && args->size <= macro->nparams))
     error(&rparen->pos, "invalid number of arguments for macro expansion");
 
@@ -175,17 +191,22 @@ static Token *expand_function_like(Token *prev, Macro *macro) {
   {
     Token head;
     for (int i = 0; i < args->size; ++i) {
-      head.next = *(Token **)vector_get(args, i);
+      Token **orig = (Token **)vector_get(args, i);
+      head.next = *orig;
       Token *a = &head;
       while (a->next)
-        a = expand(a);
+        a = expand(a, NULL);
+      *orig = head.next;
     }
   }
 
-  Token *nx = rparen->next;
+  if (stop == NULL)
+    stop = &rparen->next;
+  else if (need_to_extend_stop)
+    *stop = rparen->next;
 
   if (macro->body == NULL) { // empty macro
-    prev->next = nx;
+    prev->next = rparen->next;
     return prev;
   }
 
@@ -202,7 +223,7 @@ static Token *expand_function_like(Token *prev, Macro *macro) {
           tail->next = calloc(1, sizeof(Token));
           tail = tail->next;
           *tail = *a;
-          tail->pos = prev->next->pos;
+          tail->pos = expanded->pos;
           a = a->next;
         }
       } else if (b->is_identifier && same_string_nt(b->str, "__VA_ARGS__")) {
@@ -212,13 +233,13 @@ static Token *expand_function_like(Token *prev, Macro *macro) {
             tail->next = calloc(1, sizeof(Token));
             tail = tail->next;
             *tail = *a;
-            tail->pos = prev->next->pos;
+            tail->pos = expanded->pos;
             a = a->next;
           }
           if (i != args->size - 1) {
             tail->next = calloc(1, sizeof(Token));
             tail = tail->next;
-            tail->pos = prev->next->pos;
+            tail->pos = expanded->pos;
             tail->kind = TK_COMMA;
           }
         }
@@ -226,45 +247,50 @@ static Token *expand_function_like(Token *prev, Macro *macro) {
         tail->next = calloc(1, sizeof(Token));
         tail = tail->next;
         *tail = *b;
-        tail->pos = prev->next->pos;
+        tail->pos = expanded->pos;
       }
       b = b->next;
     }
-    tail->next = nx;
+    tail->next = rparen->next;
+    assert(&head != tail);
   }
 
-  if (tail != &head) { // recusive expansion
+  { // recursive expansion
     macro->flag = true;
     Token *t = &head;
-    while (t->next != tail)
-      t = expand(t);
-    tail = expand(t);
+    while (t->next != rparen->next && t->next != *stop)
+      t = expand(t, stop);
+    tail = t;
     macro->flag = false;
   }
 
-  if (tail == &head) { // detect empty macro after expansion
-    prev->next = tail->next;
+  if (head.next == rparen->next) { // detect empty macro after expansion
+    prev->next = rparen->next;
     return prev;
   }
 
-  *(prev->next) = *head.next;
+  if (head.next == *stop) { // detect empty macro after expansion
+    prev->next = *stop;
+    return prev;
+  }
+
+  assert(head.next);
+  prev->next = head.next;
   return tail;
 }
 
-static Token *expand(Token *prev) {
+static Token *expand(Token *prev, Token **stop) {
   // expand prev->next and return the tail of expanded tokens
   Token *token = prev->next;
   if (token->kind == TK_IDENT) {
     Macro *m = map_get(macros, token->str);
     if (m && !m->flag) {
-      Token *tail = NULL;
       if (m->is_dynamic)
-        tail = expand_dynamic(prev, m);
+        return expand_dynamic(prev, m);
       else if (m->is_function_like)
-        tail = expand_function_like(prev, m);
+        return expand_function_like(prev, m, stop);
       else
-        tail = expand_object_like(prev, m);
-      return tail;
+        return expand_object_like(prev, m, stop);
     }
   }
 
@@ -358,7 +384,7 @@ Token *process_if(Token *prev) { // #if and #elif
 
   // expand expr
   for (Token *t = directive; t->next->kind != TK_EOF;)
-    t = expand(t);
+    t = expand(t, NULL);
 
   // replace unknown identifier to 0
   for (Token *t = directive; t->next->kind != TK_EOF; t = t->next) {
@@ -751,7 +777,7 @@ Token *preprocess(Token *input) {
       continue;
     }
 
-    tail = expand(tail);
+    tail = expand(tail, NULL);
   }
 
   tail = &head;

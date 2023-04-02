@@ -15,6 +15,7 @@ int sprintf(char *s, char *fmt, ...);
 #define EMPTY3(X, Y)
 #define EMPTY4 EMPTY3
 #define EMPTY5(X) EMPTY2
+#define EMPTY6 EMPTY3(2, 3)
 #define A0 1
 #define A1 2
 #define B0 4
@@ -30,6 +31,7 @@ int main() {
   verify(2, line2, __FILE__, __LINE__);
   verify(12, 5 + EMPTY + 7, EMPTY2 __FILE__, __LINE__);
   verify(12, 5 + EMPTY3(6, 7) + EMPTY5(12) 7, EMPTY4(8, 9) __FILE__, __LINE__);
+  verify(12, 5 + EMPTY6 7, __FILE__, __LINE__);
   verify('t', __FILE__[0], __FILE__, __LINE__);
   verify('e', __FILE__[1], __FILE__, __LINE__);
   verify('s', __FILE__[2], __FILE__, __LINE__);

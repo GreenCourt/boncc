@@ -744,9 +744,6 @@ Token *preprocess(Token *input) {
   Token *tail = &head;
 
   while (tail->next->kind != TK_EOF) {
-    if (skip_unsupported_keywords(tail))
-      continue;
-
     if (tail->next->kind == TK_HASH) {
       if (!tail->next->at_bol || tail->next->at_eol)
         error(&tail->next->pos, "invalid # here");
@@ -756,6 +753,11 @@ Token *preprocess(Token *input) {
 
     tail = expand(tail);
   }
+
+  tail = &head;
+  while (tail->next->kind != TK_EOF)
+    if (!skip_unsupported_keywords(tail))
+      tail = tail->next;
 
   return head.next;
 }

@@ -25,6 +25,7 @@ int sprintf(char *s, char *fmt, ...);
 #define SUM_AB A01 + B01
 #define MUL(X, Y) ((X) * (Y))
 #define SUM(X, Y) ((X) + (Y))
+#define NOPARAM() 8
 
 int main() {
   verify(1, line1, __FILE__, __LINE__);
@@ -32,6 +33,7 @@ int main() {
   verify(12, 5 + EMPTY + 7, EMPTY2 __FILE__, __LINE__);
   verify(12, 5 + EMPTY3(6, 7) + EMPTY5(12) 7, EMPTY4(8, 9) __FILE__, __LINE__);
   verify(12, 5 + EMPTY6 7, __FILE__, __LINE__);
+  verify(8, NOPARAM(), __FILE__, __LINE__);
   verify('t', __FILE__[0], __FILE__, __LINE__);
   verify('e', __FILE__[1], __FILE__, __LINE__);
   verify('s', __FILE__[2], __FILE__, __LINE__);

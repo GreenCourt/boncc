@@ -501,7 +501,7 @@ Token *define_macro(Token *prev) {
   // function-like macro
   Token *lparen = macro_ident->next;
   Token *rparen = NULL;
-  Vector *params; // Token
+  Vector *params = new_vector(0, sizeof(Token *));
   bool is_variadic = false;
   if (lparen->at_eol)
     error(&lparen->pos, "invalid function-like macro");
@@ -510,7 +510,6 @@ Token *define_macro(Token *prev) {
     rparen = lparen->next;
   } else {
     // read params
-    params = new_vector(0, sizeof(Token *));
     Token *p = lparen;
     do {
       p = p->next;

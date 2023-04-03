@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  Token *tokens = tokenize(input_path);
+  Token *tokens = tokenize(read_file(input_path), input_path);
   tokens = preprocess(tokens);
   parse(tokens);
 

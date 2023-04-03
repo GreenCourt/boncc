@@ -4,6 +4,7 @@
 
 typedef enum {
   TK_HASH,      // #
+  TK_2HASH,     // ##
   TK_PLUS,      // +
   TK_MINUS,     // -
   TK_STAR,      // *
@@ -322,7 +323,7 @@ String *new_string(char *str, int len);
 bool same_string(String *a, String *b);
 bool same_string_nt(String *s, char *null_terminated);
 
-Token *tokenize(char *input_path);
+Token *tokenize(char *src, char *input_path);
 Token *preprocess(Token *input);
 void parse(Token *input);
 void generate_code(FILE *output_stream);

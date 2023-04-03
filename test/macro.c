@@ -26,6 +26,10 @@ int sprintf(char *s, char *fmt, ...);
 #define MUL(X, Y) ((X) * (Y))
 #define SUM(X, Y) ((X) + (Y))
 #define NOPARAM() 8
+#define JOIN(A, B) A##B
+#define VAR12 var##1##2
+#define VAR_HASH(...) var##__VA_ARGS__
+#define THIRTEEN 1######3
 
 int main() {
   verify(1, line1, __FILE__, __LINE__);
@@ -58,6 +62,13 @@ int main() {
   verify(24, MUL(10 + 2, 2), __FILE__, __LINE__);
   verify(24, MUL(SUM(10, 2), SUM(1, 1)), __FILE__, __LINE__);
   verify(24, MUL(SUM(10, 2), MUL(2, 1)), __FILE__, __LINE__);
+  verify(13, THIRTEEN, __FILE__, __LINE__);
+  {
+    int var12 = 12;
+    verify(12, VAR12, __FILE__, __LINE__);
+    verify(12, JOIN(var, 12), __FILE__, __LINE__);
+    verify(12, JOIN(var1, 2), __FILE__, __LINE__);
+  }
   {
     char buf[10];
     int x = SPRINTF(buf, "%d_%c_%d", 12, 't', 3);
@@ -66,6 +77,19 @@ int main() {
     verify('2', buf[1], __FILE__, __LINE__);
     verify('_', buf[2], __FILE__, __LINE__);
     verify('t', buf[3], __FILE__, __LINE__);
+    verify('_', buf[4], __FILE__, __LINE__);
+    verify('3', buf[5], __FILE__, __LINE__);
+    verify('\0', buf[6], __FILE__, __LINE__);
+  }
+  {
+    char buf[10];
+    int var1 = 12;
+    int x = SPRINTF(buf, "%d_%d_%d", VAR_HASH(1, 2, 3));
+    verify(6, x, __FILE__, __LINE__);
+    verify('1', buf[0], __FILE__, __LINE__);
+    verify('2', buf[1], __FILE__, __LINE__);
+    verify('_', buf[2], __FILE__, __LINE__);
+    verify('2', buf[3], __FILE__, __LINE__);
     verify('_', buf[4], __FILE__, __LINE__);
     verify('3', buf[5], __FILE__, __LINE__);
     verify('\0', buf[6], __FILE__, __LINE__);

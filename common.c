@@ -16,6 +16,7 @@ Vector *static_local_variables;
 const char *token_text[] = {
     // corresponding to TokenKind
     "#",
+    "##",
     "+",
     "-",
     "*",

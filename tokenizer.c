@@ -40,8 +40,7 @@ static void new_token(TokenKind kind, Token **tail, Position *p, int len, bool i
   advance(p, len);
 }
 
-Token *tokenize(char *input_path) {
-  char *src = read_file(input_path);
+Token *tokenize(char *src, char *input_path) {
   Token head;
   head.next = NULL;
   head.at_eol = true;
@@ -135,6 +134,7 @@ Token *tokenize(char *input_path) {
           TK_COLON,
           TK_SEMICOLON,
           TK_COMMA,
+          TK_2HASH,
           TK_HASH,
       };
 

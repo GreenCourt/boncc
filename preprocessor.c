@@ -56,6 +56,27 @@ static Token *expand_dynamic(Token *prev, Macro *macro) {
   return NULL;
 }
 
+Token *operator_double_hash(Token const *left, Token const *right) {
+  assert(left->next->kind == TK_2HASH);
+  assert(left->next->next == right);
+  int len = left->str->len + right->str->len;
+  char *p = calloc(len + 2, sizeof(char));
+  char *q = p + snprintf(p, left->str->len + 1, "%.*s", left->str->len, left->str->str);
+  snprintf(q, right->str->len + 1, "%.*s", right->str->len, right->str->str);
+  p[len] = '\n';
+  p[len + 1] = '\0';
+  Token *t = tokenize(p, left->pos.file_name);
+  t->pos = left->pos;
+  Token *tail = t;
+  while (tail->next->kind != TK_EOF) {
+    tail = tail->next;
+    tail->pos = left->pos;
+  }
+  tail->pos = left->pos;
+  tail->next = right->next;
+  return t;
+}
+
 static Token *expand_object_like(Token *prev, Macro *macro, Token **stop) {
   // expand prev->next and return the tail of expanded tokens
   assert(!macro->is_dynamic);
@@ -80,9 +101,27 @@ static Token *expand_object_like(Token *prev, Macro *macro, Token **stop) {
       tail->pos = expanded->pos;
       b = b->next;
     }
-    tail->next = expanded->next;
+    assert(tail->next == NULL);
     assert(&head != tail);
   }
+
+  { // ## operator
+    tail = &head;
+    while (tail->next) {
+      if (tail->next->kind != TK_2HASH) {
+        tail = tail->next;
+        continue;
+      }
+      if (tail == &head || tail->next->next == NULL)
+        error(&expanded->pos, "## operator is not allowed here");
+
+      *tail = *operator_double_hash(tail, tail->next->next);
+    }
+    assert(tail->next == NULL);
+    assert(&head != tail);
+  }
+
+  tail->next = expanded->next;
 
   if (stop == NULL)
     stop = &expanded->next; // maybe modified by recursive expansion
@@ -108,6 +147,39 @@ static Token *expand_object_like(Token *prev, Macro *macro, Token **stop) {
 
   assert(head.next);
   prev->next = head.next;
+  return tail;
+}
+
+static Token *clone_macro_argument(Token *head, Token *arg, Position *pos) {
+  // clone a macro argument, link it to head->next and return the tail of the cloned argument
+  Token *tail = head;
+  while (arg) {
+    tail->next = calloc(1, sizeof(Token));
+    tail = tail->next;
+    *tail = *arg;
+    tail->pos = *pos;
+    arg = arg->next;
+  }
+  assert(tail != head);
+  assert(tail->next == NULL);
+  return tail;
+}
+
+static Token *clone_va_args(Token *head, Macro *macro, Vector *args, Position *pos) {
+  // clone arguments of variadic part, link them to head->next and return the tail of the cloned arguments
+  Token *tail = head;
+  assert(macro->is_variadic);
+  for (int i = macro->nparams; i < args->size; ++i) {
+    tail = clone_macro_argument(tail, *(Token **)vector_get(args, i), pos);
+    if (i != args->size - 1) {
+      tail->next = calloc(1, sizeof(Token));
+      tail = tail->next;
+      tail->pos = *pos;
+      tail->kind = TK_COMMA;
+    }
+  }
+  assert(tail != head);
+  assert(tail->next == NULL);
   return tail;
 }
 
@@ -217,32 +289,10 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
   { // replace
     Token *b = macro->body;
     while (b) {
-      if (b->idx) { // expand an argument
-        Token *a = *(Token **)vector_get(args, b->idx - 1 /* 1-indexed */);
-        while (a) {
-          tail->next = calloc(1, sizeof(Token));
-          tail = tail->next;
-          *tail = *a;
-          tail->pos = expanded->pos;
-          a = a->next;
-        }
+      if (b->idx) {
+        tail = clone_macro_argument(tail, *(Token **)vector_get(args, b->idx - 1 /* 1-indexed */), &expanded->pos);
       } else if (b->is_identifier && same_string_nt(b->str, "__VA_ARGS__")) {
-        for (int i = macro->nparams; i < args->size; ++i) {
-          Token *a = *(Token **)vector_get(args, i);
-          while (a) {
-            tail->next = calloc(1, sizeof(Token));
-            tail = tail->next;
-            *tail = *a;
-            tail->pos = expanded->pos;
-            a = a->next;
-          }
-          if (i != args->size - 1) {
-            tail->next = calloc(1, sizeof(Token));
-            tail = tail->next;
-            tail->pos = expanded->pos;
-            tail->kind = TK_COMMA;
-          }
-        }
+        tail = clone_va_args(tail, macro, args, &expanded->pos);
       } else {
         tail->next = calloc(1, sizeof(Token));
         tail = tail->next;
@@ -251,9 +301,27 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
       }
       b = b->next;
     }
-    tail->next = rparen->next;
+    assert(tail->next == NULL);
     assert(&head != tail);
   }
+
+  { // ## operator
+    tail = &head;
+    while (tail->next) {
+      if (tail->next->kind != TK_2HASH) {
+        tail = tail->next;
+        continue;
+      }
+      if (tail == &head || tail->next->next == NULL)
+        error(&expanded->pos, "## operator is not allowed here");
+
+      *tail = *operator_double_hash(tail, tail->next->next);
+    }
+    assert(tail->next == NULL);
+    assert(&head != tail);
+  }
+
+  tail->next = rparen->next;
 
   { // recursive expansion
     macro->flag = true;
@@ -636,7 +704,7 @@ Token *process_include(Token *prev) {
   assert(filepath);
   Token *next_line = get_eol(directive)->next;
 
-  prev->next = tokenize(filepath);
+  prev->next = tokenize(read_file(filepath), filepath);
   Token *t = prev->next;
   while (t->next->kind != TK_EOF)
     t = t->next;

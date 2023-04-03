@@ -646,11 +646,14 @@ Token *undef_macro(Token *prev) {
   return prev;
 }
 
-char *path_join(char *dir, char *file) {
-  int len = strlen(dir) + strlen(file) + 1;
-  char *path = calloc(len + 1, sizeof(char));
-  snprintf(path, len + 1, "%s/%s", dir, file);
-  return path;
+char *search_include_path(char *fname, Token *t) {
+  for (int i = 0; i < include_path->size; ++i) {
+    char *p = path_join(*(char **)vector_get(include_path, i), fname);
+    if (access(p, R_OK) == 0) // if file is readable
+      return p;
+  }
+  error(&t->pos, "failed to include file: %s", fname);
+  return NULL;
 }
 
 Token *process_include(Token *prev) {
@@ -674,8 +677,7 @@ Token *process_include(Token *prev) {
     if (access(p, R_OK) == 0) // if file is readable
       filepath = p;
     else
-      // TODO: search include path
-      error(&directive->next->pos, "failed to include file");
+      filepath = search_include_path(directive->next->string_literal, directive->next);
   } else if (directive->next->kind == TK_LT && !directive->next->at_eol) {
     Token *left = directive->next->next;
     Token *right = left;
@@ -694,9 +696,7 @@ Token *process_include(Token *prev) {
       q += snprintf(q, t->str->len + 1, "%.*s", t->str->len, t->str->str);
     p[len] = '\0';
 
-    // TODO unimplemented. currently just skip #include<file>
-    prev->next = get_eol(directive)->next;
-    return prev;
+    filepath = search_include_path(p, directive->next);
   } else {
     error(&directive->next->pos, "filename required after #include but not found.");
   }

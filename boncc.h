@@ -313,11 +313,13 @@ void map_erase(Map *map, String *key);
 extern Scope *global_scope;
 extern Map *strings;                   // Variable*
 extern Vector *static_local_variables; // Variable*
+extern Vector *include_path;           // char*
 
 bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);
 void error(Position *pos, char *fmt, ...);
 char *read_file(char *path);
+char *path_join(char *dir, char *file);
 
 String *new_string(char *str, int len);
 bool same_string(String *a, String *b);

@@ -12,6 +12,7 @@ Map *functions;
 Map *strings;
 Scope *global_scope;
 Vector *static_local_variables;
+Vector *include_path;
 
 const char *token_text[] = {
     // corresponding to TokenKind
@@ -169,6 +170,13 @@ char *read_file(char *path) {
   fputc('\0', stream);
   fclose(stream);
   return content;
+}
+
+char *path_join(char *dir, char *file) {
+  int len = strlen(dir) + strlen(file) + 1;
+  char *path = calloc(len + 1, sizeof(char));
+  snprintf(path, len + 1, "%s/%s", dir, file);
+  return path;
 }
 
 String *new_string(char *str, int len) {

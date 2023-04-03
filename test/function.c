@@ -1,4 +1,5 @@
 #include "common.h"
+#include <stdarg.h>
 
 int foo() { return 12; }
 int add2(int x, int y) { return x + y; }
@@ -59,28 +60,11 @@ _Bool retbool(int a) {
 
 void empty() {}
 
-#ifdef BONCC
-typedef struct {
-  unsigned int gp_offset;
-  unsigned int fp_offset;
-  void *overflow_arg_area;
-  void *reg_save_area;
-} __va_list;
-typedef __va_list va_list[1];
-static void va_start(va_list ap, void *last) {}
-#else
-#include <stdarg.h>
-#endif
-
 int vsprintf(char *, char *, va_list);
 
 int sprintf_(char *s, char *fmt, ...) {
   va_list ap;
-#ifdef BONCC
-  *ap = *(__va_list *)__hidden_va_area__;
-#else
   va_start(ap, fmt);
-#endif
   return vsprintf(s, fmt, ap);
 }
 

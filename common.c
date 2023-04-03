@@ -101,20 +101,8 @@ const char *token_text[] = {
 };
 
 void error(Position *pos, char *fmt, ...) {
-#ifdef BONCC
-  typedef struct {
-    unsigned int gp_offset;
-    unsigned int fp_offset;
-    void *overflow_arg_area;
-    void *reg_save_area;
-  } __va_list;
-  typedef __va_list va_list[1];
-  va_list ap;
-  *ap = *(__va_list *)__hidden_va_area__;
-#else
   va_list ap;
   va_start(ap, fmt);
-#endif
 
   if (pos) {
     char *line_start = pos->pos - pos->column_number + 1;

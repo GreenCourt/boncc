@@ -823,7 +823,7 @@ Token *preprocess(Token *input) {
 
     {
       static String idents[] = {
-          {"BONCC", 5},
+          {"NDEBUG", 6},
           {"__x86_64__", 10},
           {"__LP64__", 8},
       };

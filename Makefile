@@ -48,6 +48,7 @@ $(TEST_EXE_DIR)/gcc_%: test/%.c test/common.c
 stage1test: $(addprefix $(TEST_EXE_DIR)/,$(TESTS))
 	for i in $^; do echo $$i; $$i || exit $$?; done
 
+$(TEST_EXE_DIR)/vector: $(OBJ_DIR)/vector.o
 $(TEST_EXE_DIR)/%: $(addprefix $(TEST_OBJ_DIR)/,%.o common.o)
 	@mkdir -p $(TEST_EXE_DIR)
 	$(CC) -o $@ $^ $(LDFLAGS)
@@ -57,33 +58,23 @@ $(TEST_OBJ_DIR)/%.o: test/%.c boncc
 	./boncc $< -o $(basename $@).s
 	as -g -o $@ $(basename $@).s
 
-$(TEST_EXE_DIR)/vector: $(TEST_OBJ_DIR)/vector.o $(OBJ_DIR)/vector.o
-	@mkdir -p $(TEST_EXE_DIR)
-	$(CC) -o $@ $^ $(LDFLAGS)
-
-$(TEST_OBJ_DIR)/vector.o: test/vector.c
-	@mkdir -p $(TEST_OBJ_DIR)
-	$(CC) $(CFLAGS) -c -o $@ $<
-
 #########################################
 #
 # stage2 test
 #
 #########################################
 
-$(OBJ_DIR)/%.pp.c:%.c
-	$(CC) -DNDEBUG -DBONCC -E -P $< -o $@
-
 boncc2: $(addprefix $(OBJ_DIR)/,$(addsuffix 2.o,$(DEP)))
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-$(OBJ_DIR)/%2.o:$(OBJ_DIR)/%.pp.c boncc
+$(OBJ_DIR)/%2.o: %.c boncc
 	./boncc $< -o $(basename $@).s
 	as -g $(basename $@).s -o $@
 
-stage2test: $(addprefix $(TEST_EXE_DIR)/,$(addsuffix 2,$(filter-out vector,$(TESTS))))
+stage2test: $(addprefix $(TEST_EXE_DIR)/,$(addsuffix 2,$(TESTS)))
 	for i in $^; do echo $$i; $$i || exit $$?; done
 
+$(TEST_EXE_DIR)/vector2: $(OBJ_DIR)/vector2.o
 $(TEST_EXE_DIR)/%2: $(addprefix $(TEST_OBJ_DIR)/,%2.o common2.o)
 	@mkdir -p $(TEST_EXE_DIR)
 	$(CC) -o $@ $^ $(LDFLAGS)
@@ -102,5 +93,5 @@ $(TEST_OBJ_DIR)/%2.o: test/%.c boncc2
 stage3test: $(addprefix $(OBJ_DIR)/,$(addsuffix 3.s,$(DEP)))
 	for i in $(DEP); do diff -sq $(OBJ_DIR)/$${i}2.s $(OBJ_DIR)/$${i}3.s || exit $$?; done
 
-$(OBJ_DIR)/%3.s:$(OBJ_DIR)/%.pp.c boncc2
+$(OBJ_DIR)/%3.s: %.c boncc2
 	./boncc2 $< -o $@

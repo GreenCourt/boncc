@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int printf(const char *, ...);
-void exit(int);
-
 int external_int = 1234;
 char external_char = 56;
 short external_short = 789;

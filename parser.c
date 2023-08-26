@@ -1579,17 +1579,16 @@ Node *stmt_if(Token **nx) {
   node->kind = ND_IF;
   node->label_index = label_index++;
 
-  expect(TK_LPAREN, nx);
-  node->condition = expr(nx);
-  Token *tok = expect(TK_RPAREN, nx);
+  Token *lp = expect(TK_LPAREN, nx);
+  node->condition = new_node_cast(lp, base_type(TYPE_BOOL), expr(nx));
+  expect(TK_RPAREN, nx);
 
   new_scope();
   node->body = stmt(nx);
   restore_scope();
 
-  if ((tok = consume(TK_ELSE, nx)))
+  if (consume(TK_ELSE, nx))
     node->else_ = stmt(nx);
-
   return node;
 }
 
@@ -1605,8 +1604,8 @@ Node *stmt_do(Token **nx) {
   restore_scope();
 
   expect(TK_WHILE, nx);
-  expect(TK_LPAREN, nx);
-  node->condition = expr(nx);
+  Token *lp = expect(TK_LPAREN, nx);
+  node->condition = new_node_cast(lp, base_type(TYPE_BOOL), expr(nx));
   expect(TK_RPAREN, nx);
   expect(TK_SEMICOLON, nx);
 
@@ -1623,8 +1622,8 @@ Node *stmt_while(Token **nx) {
   vector_pushi(continue_label, node->label_index);
   vector_pushi(break_label, node->label_index);
 
-  expect(TK_LPAREN, nx);
-  node->condition = expr(nx);
+  Token *lp = expect(TK_LPAREN, nx);
+  node->condition = new_node_cast(lp, base_type(TYPE_BOOL), expr(nx));
   expect(TK_RPAREN, nx);
 
   new_scope();
@@ -1663,8 +1662,9 @@ Node *stmt_for(Token **nx) {
     }
   }
 
-  if (!consume(TK_SEMICOLON, nx)) {
-    node->condition = expr(nx);
+  Token *lp;
+  if ((lp = consume(TK_SEMICOLON, nx)) == NULL) {
+    node->condition = new_node_cast(lp, base_type(TYPE_BOOL), expr(nx));
     expect(TK_SEMICOLON, nx);
   }
 

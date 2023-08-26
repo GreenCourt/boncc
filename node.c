@@ -412,7 +412,7 @@ Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int lab
   }
 
   Node *node = new_node(ND_COND, lhs, rhs, lhs->type);
-  node->condition = cond;
+  node->condition = new_node_cast(tok, base_type(TYPE_BOOL), cond);
   node->token = tok;
   node->label_index = label_index;
   return node;

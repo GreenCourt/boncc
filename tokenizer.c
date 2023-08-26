@@ -40,6 +40,10 @@ static void new_token(TokenKind kind, Token **tail, Position *p, int len, bool i
   advance(p, len);
 }
 
+static void tokenize_char_literal(Position *p, Token **tail);
+static void tokenize_string_literal(Position *p, Token **tail);
+static void tokenize_number(Position *p, Token **tail);
+
 Token *tokenize(char *src, char *input_path) {
   Token head;
   head.next = NULL;
@@ -200,137 +204,18 @@ Token *tokenize(char *src, char *input_path) {
         continue;
     }
 
-    if (*p.pos == '\'') { // character literal
-      advance(&p, 1);
-      if (*p.pos == '\'')
-        error(&p, "invalid character literal");
-
-      if (*p.pos == '\\') {
-        char val = -1;
-        switch (*(p.pos + 1)) {
-        case 'a':
-          val = '\a';
-          break;
-        case 'b':
-          val = '\b';
-          break;
-        case 'n':
-          val = '\n';
-          break;
-        case 'r':
-          val = '\r';
-          break;
-        case 'f':
-          val = '\f';
-          break;
-        case 't':
-          val = '\t';
-          break;
-        case 'v':
-          val = '\v';
-          break;
-        case '\\':
-          val = '\\';
-          break;
-        case '?':
-          val = '\?';
-          break;
-        case '\'':
-          val = '\'';
-          break;
-        case '0':
-          val = '\0';
-          break;
-        default:
-          error(&p, "unsupported escaped literal");
-        }
-        new_token(TK_NUM, &tail, &p, 2, false);
-        tail->val = val;
-        tail->type = base_type(TYPE_CHAR);
-        advance(&p, 1);
-        continue;
-      }
-
-      if (*(p.pos + 1) != '\'')
-        error(&p, "invalid character literal");
-
-      new_token(TK_NUM, &tail, &p, 1, false);
-      tail->val = *(tail->pos.pos);
-      tail->type = base_type(TYPE_CHAR);
-      advance(&p, 1);
+    if (*p.pos == '\'') {
+      tokenize_char_literal(&p, &tail);
       continue;
     }
 
-    if (*p.pos == '"') { // string literal
-      advance(&p, 1);
-      char *q = p.pos;
-      while (true) {
-        char c = *q;
-        char d = *(q + 1);
-        if (c == '"')
-          break;
-
-        if (c == '\\') { // escape
-          if (d == '\0')
-            error(&p, "missing terminating \" character");
-          q += 2;
-          continue;
-        }
-
-        q++;
-        if (*q == '\0' || *q == '\n')
-          error(&p, "missing terminating \" character");
-      }
-      int len = q - p.pos;
-      char *string_literal = calloc(len + 1, sizeof(char));
-      strncpy(string_literal, p.pos, len);
-      new_token(TK_STR, &tail, &p, len, false);
-      tail->string_literal = string_literal;
-      advance(&p, 1);
+    if (*p.pos == '"') {
+      tokenize_string_literal(&p, &tail);
       continue;
     }
 
     if (isdigit(*p.pos)) {
-      char *q = p.pos;
-      long long val;
-
-      if (*q == '0' && (*(q + 1) == 'X' || *(q + 1) == 'x'))
-        val = strtol(q + 2, &q, 16);
-      else if (*q == '0')
-        val = strtol(q, &q, 8);
-      else
-        val = strtol(q, &q, 10);
-
-      bool is_long = !(-2147483648 <= val && val <= 2147483647);
-      bool is_unsigned = false;
-
-      if (*q == 'U' || *q == 'u') {
-        is_unsigned = true;
-        q++;
-      }
-
-      if (*q == 'L' || *q == 'l') {
-        is_long = true;
-        if (*(q + 1) == *q)
-          q++;
-        q++;
-      }
-
-      int len = q - p.pos;
-      new_token(TK_NUM, &tail, &p, len, false);
-      tail->val = val;
-
-      TypeKind kind;
-      if (is_long && is_unsigned)
-        kind = TYPE_ULONG;
-      else if (is_long)
-        kind = TYPE_LONG;
-      else if (is_unsigned)
-        kind = TYPE_UINT;
-      else
-        kind = TYPE_INT;
-
-      tail->type = base_type(kind);
+      tokenize_number(&p, &tail);
       continue;
     }
 
@@ -347,4 +232,138 @@ Token *tokenize(char *src, char *input_path) {
   }
   new_token(TK_EOF, &tail, &p, 0, false);
   return head.next;
+}
+
+void tokenize_char_literal(Position *p, Token **tail) {
+  assert(*p->pos == '\'');
+  advance(p, 1);
+  if (*p->pos == '\'')
+    error(p, "invalid character literal");
+
+  if (*p->pos == '\\') {
+    char val = -1;
+    switch (*(p->pos + 1)) {
+    case 'a':
+      val = '\a';
+      break;
+    case 'b':
+      val = '\b';
+      break;
+    case 'n':
+      val = '\n';
+      break;
+    case 'r':
+      val = '\r';
+      break;
+    case 'f':
+      val = '\f';
+      break;
+    case 't':
+      val = '\t';
+      break;
+    case 'v':
+      val = '\v';
+      break;
+    case '\\':
+      val = '\\';
+      break;
+    case '?':
+      val = '\?';
+      break;
+    case '\'':
+      val = '\'';
+      break;
+    case '0':
+      val = '\0';
+      break;
+    default:
+      error(p, "unsupported escaped literal");
+    }
+    new_token(TK_NUM, tail, p, 2, false);
+    (*tail)->val = val;
+    (*tail)->type = base_type(TYPE_CHAR);
+    advance(p, 1);
+    return;
+  }
+
+  if (*(p->pos + 1) != '\'')
+    error(p, "invalid character literal");
+
+  new_token(TK_NUM, tail, p, 1, false);
+  (*tail)->val = *((*tail)->pos.pos);
+  (*tail)->type = base_type(TYPE_CHAR);
+  advance(p, 1);
+}
+
+void tokenize_string_literal(Position *p, Token **tail) {
+  assert(*p->pos == '"');
+  advance(p, 1);
+  char *q = p->pos;
+  while (true) {
+    char c = *q;
+    char d = *(q + 1);
+    if (c == '"')
+      break;
+
+    if (c == '\\') { // escape
+      if (d == '\0')
+        error(p, "missing terminating \" character");
+      q += 2;
+      continue;
+    }
+
+    q++;
+    if (*q == '\0' || *q == '\n')
+      error(p, "missing terminating \" character");
+  }
+  int len = q - p->pos;
+  char *string_literal = calloc(len + 1, sizeof(char));
+  strncpy(string_literal, p->pos, len);
+  new_token(TK_STR, tail, p, len, false);
+  (*tail)->string_literal = string_literal;
+  advance(p, 1);
+}
+
+void tokenize_number(Position *p, Token **tail) {
+  assert(isdigit(*p->pos));
+  char *q = p->pos;
+  long long val;
+
+  if (*q == '0' && (*(q + 1) == 'X' || *(q + 1) == 'x'))
+    val = strtol(q + 2, &q, 16);
+  else if (*q == '0')
+    val = strtol(q, &q, 8);
+  else
+    val = strtol(q, &q, 10);
+
+  bool is_long = !(-2147483648 <= val && val <= 2147483647);
+  bool is_unsigned = false;
+
+  if (*q == 'U' || *q == 'u') {
+    is_unsigned = true;
+    q++;
+  }
+
+  if (*q == 'L' || *q == 'l') {
+    is_long = true;
+    if (*(q + 1) == *q)
+      q++;
+    q++;
+  }
+
+  int len = q - p->pos;
+  new_token(TK_NUM, tail, p, len, false);
+  (*tail)->val = val;
+
+  TypeKind kind;
+  if (is_long && is_unsigned)
+    kind = TYPE_ULONG;
+  else if (is_long)
+    kind = TYPE_LONG;
+  else if (is_unsigned)
+    kind = TYPE_UINT;
+  else
+    kind = TYPE_INT;
+
+  (*tail)->type = base_type(kind);
 }

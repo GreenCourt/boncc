@@ -78,8 +78,8 @@ void gen_address(Node *node) {
 }
 
 void load(Type *type) {
-  // src  : rax
-  // dest : the address from stack top
+  // src  : the address where rax is pointing to
+  // dest : rax
   comment(NULL, "load %s", type_text(type->kind), type->size);
 
   if (type->kind == TYPE_ARRAY || is_struct_union(type))

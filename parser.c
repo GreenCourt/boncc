@@ -201,14 +201,6 @@ Token *expect(TokenKind kind, Token **nx) {
   return tok;
 }
 
-long long expect_number(Token **nx) {
-  if ((*nx)->kind != TK_NUM)
-    error(&(*nx)->pos, "number expected but not found");
-  long long val = (*nx)->val;
-  *nx = (*nx)->next;
-  return val;
-}
-
 Type *find_typedef(String *id) {
   Scope *scope = current_scope;
   while (scope) {

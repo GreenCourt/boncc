@@ -387,7 +387,7 @@ void gen_global_pointer_init(VariableInit *init, Type *type) {
                 right_addr->ident->str,
                 eval(init->expr->lhs));
     } else {
-      error(NULL, "unsupported initalization of a global pointer.");
+      error(NULL, "unsupported initialization of a global pointer.");
     }
     return;
   }
@@ -405,7 +405,7 @@ void gen_global_pointer_init(VariableInit *init, Type *type) {
     return;
   }
 
-  error(NULL, "unsupported initalization of a global pointer.");
+  error(NULL, "unsupported initialization of a global pointer.");
 }
 
 void gen_global_integer_init(VariableInit *init, Type *type) {

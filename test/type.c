@@ -1,13 +1,12 @@
 #include "common.h"
 
 typedef enum global_enum typedef_global_enum;
-enum global_enum { X0,
-                   X1,
-                   X2 } g = X2;
+enum global_enum { X0, X1, X2 } g = X2;
 
-typedef enum { A,
-               B,
-               C,
+typedef enum {
+  A,
+  B,
+  C,
 } typedef_global_unnamed_enum;
 typedef struct {
   short a;
@@ -112,9 +111,7 @@ int main() {
 
   {
     // named enum
-    enum X { X0,
-             X1,
-             X2 };
+    enum X { X0, X1, X2 };
     enum X a = X1;
     verify(4, sizeof(a), __FILE__, __LINE__);
     verify(4, sizeof(enum X), __FILE__, __LINE__);
@@ -128,9 +125,7 @@ int main() {
   }
   {
     // named enum and vardec at same time
-    enum X { X0,
-             X1,
-             X2 } a = X1;
+    enum X { X0, X1, X2 } a = X1;
     verify(4, sizeof(a), __FILE__, __LINE__);
     verify(4, sizeof(enum X), __FILE__, __LINE__);
     verify(4, sizeof(X0), __FILE__, __LINE__);
@@ -143,28 +138,24 @@ int main() {
   }
   {
     // shadow
-    enum X { X0,
-             X1 };
+    enum X { X0, X1 };
     verify(0, X0, __FILE__, __LINE__);
     verify(1, X1, __FILE__, __LINE__);
     {
-      enum Y { X1,
-               X0 };
+      enum Y { X1, X0 };
       verify(1, X0, __FILE__, __LINE__);
       verify(0, X1, __FILE__, __LINE__);
     }
   }
   {
     // unnamed enum
-    enum { X0,
-           X1 };
+    enum { X0, X1 };
     verify(0, X0, __FILE__, __LINE__);
     verify(1, X1, __FILE__, __LINE__);
   }
   {
     // unnamed enum and vardec at same time
-    enum { X0,
-           X1 } a = X1;
+    enum { X0, X1 } a = X1;
     verify(0, X0, __FILE__, __LINE__);
     verify(1, X1, __FILE__, __LINE__);
     verify(1, a, __FILE__, __LINE__);
@@ -172,8 +163,7 @@ int main() {
   {
     // forward declaration
     enum E;
-    enum E { A,
-             B };
+    enum E { A, B };
     enum E a;
     enum E; // declare twice
     verify(4, sizeof(enum E), __FILE__, __LINE__);
@@ -235,11 +225,7 @@ int main() {
   {
     // typdedef enum
     typedef enum T T;
-    enum T {
-      A,
-      B,
-      C
-    };
+    enum T { A, B, C };
     typedef enum T T; // twice
     T x;
     verify(4, sizeof(T), __FILE__, __LINE__);
@@ -254,11 +240,7 @@ int main() {
   }
   {
     // typdedef and enum definition at same time
-    typedef enum T {
-      A,
-      B,
-      C
-    } T;
+    typedef enum T { A, B, C } T;
     T x;
     verify(4, sizeof(T), __FILE__, __LINE__);
     verify(4, sizeof(enum T), __FILE__, __LINE__);
@@ -271,13 +253,7 @@ int main() {
     verify(2, C, __FILE__, __LINE__);
   }
   {
-    enum T {
-      A,
-      B = 5,
-      C,
-      D = 4,
-      E
-    };
+    enum T { A, B = 5, C, D = 4, E };
     verify(0, A, __FILE__, __LINE__);
     verify(5, B, __FILE__, __LINE__);
     verify(6, C, __FILE__, __LINE__);

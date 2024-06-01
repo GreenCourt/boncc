@@ -51,24 +51,29 @@ cdef"),
   verify(0, global_array_of_char_ptr[2][3], __FILE__, __LINE__);
   verify(24, sizeof(global_array_of_char_ptr), __FILE__, __LINE__);
 
-  verify(1, "abc" == "ab"
-                     "c",
+  verify(1,
+         "abc" == "ab"
+                  "c",
          __FILE__, __LINE__);
-  verify(1, "abc" == "a"
-                     "b"
-                     "c",
-         __FILE__, __LINE__);
-
-  verify(0, "a2c" == "ab"
-                     "c",
+  verify(1,
+         "abc" == "a"
+                  "b"
+                  "c",
          __FILE__, __LINE__);
 
-  verify(0, "abc" == "a2"
-                     "c",
+  verify(0,
+         "a2c" == "ab"
+                  "c",
          __FILE__, __LINE__);
-  verify(0, "abc" == "a"
-                     "b"
-                     "2",
+
+  verify(0,
+         "abc" == "a2"
+                  "c",
+         __FILE__, __LINE__);
+  verify(0,
+         "abc" == "a"
+                  "b"
+                  "2",
          __FILE__, __LINE__);
 
   {

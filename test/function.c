@@ -43,7 +43,9 @@ int static_test2(void) {
 }
 
 int static_struct() {
-  static struct { int a; } x;
+  static struct {
+    int a;
+  } x;
   x.a = x.a + 3;
   return x.a;
 }
@@ -54,9 +56,7 @@ int static_enum() {
   return d;
 }
 
-_Bool retbool(int a) {
-  return a;
-}
+_Bool retbool(int a) { return a; }
 
 void empty() {}
 

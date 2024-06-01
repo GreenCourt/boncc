@@ -8,8 +8,10 @@ int sprintf(char *s, char *fmt, ...);
 
 #define FOO 10
 #define FOO 12 // redefine
+// clang-format off
 #define BAR \
   "bar"
+// clang-format on
 #define EMPTY // empty macro
 #define EMPTY2 EMPTY
 #define EMPTY3(X, Y)

@@ -32,7 +32,8 @@ void comment(Token *tok, char *fmt, ...) {
   fprintf(ostream, "  # ");
   vfprintf(ostream, fmt, ap);
   if (tok)
-    fprintf(ostream, "    %s:%d:%d", tok->pos.file_name, tok->pos.line_number, tok->pos.column_number);
+    fprintf(ostream, "    %s:%d:%d", tok->pos.file_name, tok->pos.line_number,
+            tok->pos.column_number);
   fprintf(ostream, "\n");
 }
 
@@ -46,29 +47,41 @@ void gen_address(Node *node) {
   case ND_VAR:
     if (node->variable->kind == OBJ_LVAR) {
       if (node->variable->is_static) {
-        comment(NULL, "gen_address ND_VAR static-local: %.*s", node->variable->ident->len, node->variable->ident->str);
-        writeline("  lea rax, %.*s[rip]", node->variable->internal_ident->len, node->variable->internal_ident->str);
+        comment(NULL, "gen_address ND_VAR static-local: %.*s",
+                node->variable->ident->len, node->variable->ident->str);
+        writeline("  lea rax, %.*s[rip]", node->variable->internal_ident->len,
+                  node->variable->internal_ident->str);
       } else if (node->variable->is_extern) {
-        comment(NULL, "gen_address ND_VAR extern-local: %.*s", node->variable->ident->len, node->variable->ident->str);
-        writeline("  lea rax, %.*s[rip]", node->variable->ident->len, node->variable->ident->str);
+        comment(NULL, "gen_address ND_VAR extern-local: %.*s",
+                node->variable->ident->len, node->variable->ident->str);
+        writeline("  lea rax, %.*s[rip]", node->variable->ident->len,
+                  node->variable->ident->str);
       } else {
-        comment(NULL, "gen_address ND_VAR local: %.*s", node->variable->ident->len, node->variable->ident->str);
+        comment(NULL, "gen_address ND_VAR local: %.*s",
+                node->variable->ident->len, node->variable->ident->str);
         writeline("  lea rax, [rbp-%d]", node->variable->offset);
       }
     } else if (node->variable->kind == OBJ_GVAR) {
-      comment(NULL, "gen_address ND_VAR global: %.*s", node->variable->ident->len, node->variable->ident->str);
-      writeline("  lea rax, %.*s[rip]", node->variable->ident->len, node->variable->ident->str);
+      comment(NULL, "gen_address ND_VAR global: %.*s",
+              node->variable->ident->len, node->variable->ident->str);
+      writeline("  lea rax, %.*s[rip]", node->variable->ident->len,
+                node->variable->ident->str);
     } else if (node->variable->kind == OBJ_STRLIT) {
-      comment(NULL, "gen_address ND_VAR strlit: \"%s\"", node->variable->string_literal);
-      writeline("  lea rax, %.*s[rip]", node->variable->ident->len, node->variable->ident->str);
+      comment(NULL, "gen_address ND_VAR strlit: \"%s\"",
+              node->variable->string_literal);
+      writeline("  lea rax, %.*s[rip]", node->variable->ident->len,
+                node->variable->ident->str);
     } else if (node->variable->kind == OBJ_FUNC) {
-      comment(NULL, "gen_address ND_VAR function: %.*s", node->variable->ident->len, node->variable->ident->str);
-      writeline("  lea rax, %.*s[rip]", node->variable->ident->len, node->variable->ident->str);
+      comment(NULL, "gen_address ND_VAR function: %.*s",
+              node->variable->ident->len, node->variable->ident->str);
+      writeline("  lea rax, %.*s[rip]", node->variable->ident->len,
+                node->variable->ident->str);
     } else
       assert(false);
     return;
   case ND_MEMBER:
-    comment(NULL, "gen_address ND_MEMBER %.*s", node->member->ident->len, node->member->ident->str);
+    comment(NULL, "gen_address ND_MEMBER %.*s", node->member->ident->len,
+            node->member->ident->str);
     gen_address(node->lhs);
     writeline("  add rax, %d", node->member->offset);
     return;
@@ -231,7 +244,8 @@ void gen_call(Node *node) {
   writeline("  jnz .Lcall%d", l);
   if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC) {
     writeline("  mov al, 0");
-    writeline("  call %.*s", node->lhs->variable->ident->len, node->lhs->variable->ident->str);
+    writeline("  call %.*s", node->lhs->variable->ident->len,
+              node->lhs->variable->ident->str);
   } else {
     gen(node->lhs);
     writeline("  mov r10, rax");
@@ -243,7 +257,8 @@ void gen_call(Node *node) {
   writeline("  sub rsp, 8");
   if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC) {
     writeline("  mov al, 0");
-    writeline("  call %.*s", node->lhs->variable->ident->len, node->lhs->variable->ident->str);
+    writeline("  call %.*s", node->lhs->variable->ident->len,
+              node->lhs->variable->ident->str);
   } else {
     gen(node->lhs);
     writeline("  mov r10, rax");
@@ -265,16 +280,19 @@ void gen_global_array_init(VariableInit *init, Type *type) {
   assert(type->kind == TYPE_ARRAY);
 
   if (init->expr) {
-    if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == OBJ_STRLIT) {
+    if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR &&
+        init->expr->variable->kind == OBJ_STRLIT) {
       // initilize the array as a string
       Variable *lit = init->expr->variable;
       if (type->array_size != lit->type->array_size)
-        error(&init->expr->token->pos, "miss-match between array-size and string-length");
+        error(&init->expr->token->pos,
+              "miss-match between array-size and string-length");
       writeline("  .ascii \"%s\\0\"", lit->string_literal);
       return;
     }
 
-    // When init->expr is given for an array, only the first element will be initialized.
+    // When init->expr is given for an array,
+    // only the first element will be initialized.
     Type *ty = type;
     while (ty->kind == TYPE_ARRAY)
       ty = ty->base;
@@ -361,14 +379,17 @@ void gen_global_union_init(VariableInit *init, Type *type) {
 
 void gen_global_pointer_init(VariableInit *init, Type *type) {
   assert(type->kind == TYPE_PTR);
-  while (init->vec) { // for non-array primitive types, only the first element in the brace will be used
+  while (init->vec) { // for non-array primitive types,
+                      // only the first element in the brace will be used
     assert(init->vec->size > 0);
     init = *(VariableInit **)vector_get(init->vec, 0);
   }
   assert(init->expr);
-  if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == OBJ_STRLIT) {
+  if (type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR &&
+      init->expr->variable->kind == OBJ_STRLIT) {
     // initilize the pointer to a string-literal
-    writeline("  .quad %.*s", init->expr->variable->ident->len, init->expr->variable->ident->str);
+    writeline("  .quad %.*s", init->expr->variable->ident->len,
+              init->expr->variable->ident->str);
     return;
   }
 
@@ -377,15 +398,11 @@ void gen_global_pointer_init(VariableInit *init, Type *type) {
     Variable *right_addr = is_const_var_addr(init->expr->rhs);
 
     if (left_addr && is_constant_number(init->expr->rhs)) {
-      writeline("  .quad %.*s+%d",
-                left_addr->ident->len,
-                left_addr->ident->str,
+      writeline("  .quad %.*s+%d", left_addr->ident->len, left_addr->ident->str,
                 eval(init->expr->rhs));
     } else if (right_addr && is_constant_number(init->expr->lhs)) {
-      writeline("  .quad %.*s+%d",
-                right_addr->ident->len,
-                right_addr->ident->str,
-                eval(init->expr->lhs));
+      writeline("  .quad %.*s+%d", right_addr->ident->len,
+                right_addr->ident->str, eval(init->expr->lhs));
     } else {
       error(NULL, "unsupported initialization of a global pointer.");
     }
@@ -394,9 +411,7 @@ void gen_global_pointer_init(VariableInit *init, Type *type) {
 
   if (is_const_var_addr(init->expr)) {
     Variable *var = is_const_var_addr(init->expr);
-    writeline("  .quad %.*s",
-              var->ident->len,
-              var->ident->str);
+    writeline("  .quad %.*s", var->ident->len, var->ident->str);
     return;
   }
 
@@ -410,7 +425,8 @@ void gen_global_pointer_init(VariableInit *init, Type *type) {
 
 void gen_global_integer_init(VariableInit *init, Type *type) {
   assert(is_integer(type));
-  while (init->vec) { // for non-array primitive types, only the first element in the brace will be used
+  while (init->vec) { // for non-array primitive types,
+                      // only the first element in the brace will be used
     assert(init->vec->size > 0);
     init = *(VariableInit **)vector_get(init->vec, 0);
   }
@@ -516,13 +532,15 @@ void gen_func(Function *func) {
     // va_list
     comment(NULL, "va_list: %.*s", func->ident->len, func->ident->str);
     writeline("  mov dword ptr [rbp-%d], %d", ofs, num_gp * 8); // gp_offset
-    writeline("  mov dword ptr [rbp-%d], 0", ofs - 4);          // fp_offset (TODO)
-    writeline("  movq [rbp-%d], 0", ofs - 8);                   // overflow_arg_area (TODO)
-    writeline("  movq [rbp-%d], rbp", ofs - 16);                // reg_save_area = rbp
-    writeline("  subq [rbp-%d], %d", ofs - 16, ofs - 24);       // reg_save_area -= ofs - 24
+    writeline("  mov dword ptr [rbp-%d], 0", ofs - 4); // fp_offset (TODO)
+    writeline("  movq [rbp-%d], 0", ofs - 8);    // overflow_arg_area (TODO)
+    writeline("  movq [rbp-%d], rbp", ofs - 16); // reg_save_area = rbp
+    writeline("  subq [rbp-%d], %d", ofs - 16,
+              ofs - 24); // reg_save_area -= ofs - 24
 
     // register save area
-    comment(NULL, "register save area: %.*s", func->ident->len, func->ident->str);
+    comment(NULL, "register save area: %.*s", func->ident->len,
+            func->ident->str);
     writeline("  movq [rbp-%d], rdi", ofs - 24);
     writeline("  movq [rbp-%d], rsi", ofs - 32);
     writeline("  movq [rbp-%d], rdx", ofs - 40);
@@ -548,7 +566,9 @@ void gen_func(Function *func) {
 }
 
 void gen_cast(Node *node) {
-  Type *from = node->lhs->type->kind == TYPE_ARRAY ? pointer_type(node->lhs->type->base) : node->lhs->type;
+  Type *from = node->lhs->type->kind == TYPE_ARRAY
+                   ? pointer_type(node->lhs->type->base)
+                   : node->lhs->type;
   Type *to = node->type;
 
   gen(node->lhs);
@@ -790,7 +810,8 @@ void gen(Node *node) {
   switch (node->kind) {
   case ND_CALL:
     if (node->lhs->kind == ND_VAR)
-      comment(node->token, "ND_CALL %.*s", node->lhs->variable->ident->len, node->lhs->variable->ident->str);
+      comment(node->token, "ND_CALL %.*s", node->lhs->variable->ident->len,
+              node->lhs->variable->ident->str);
     else
       comment(node->token, "ND_CALL");
     gen_call(node);
@@ -846,11 +867,13 @@ void gen(Node *node) {
     writeline("  jmp .Lend%d", node->label_index);
     return;
   case ND_GOTO:
-    comment(node->token, "ND_GOTO %.*s", node->token->str->len, node->token->str->str);
+    comment(node->token, "ND_GOTO %.*s", node->token->str->len,
+            node->token->str->str);
     writeline("  jmp .Lgoto%d", node->label_index);
     return;
   case ND_LABEL:
-    comment(node->token, "ND_LABEL %.*s", node->token->str->len, node->token->str->str);
+    comment(node->token, "ND_LABEL %.*s", node->token->str->len,
+            node->token->str->str);
     writeline(".Lgoto%d:", node->label_index);
     if (node->body)
       gen(node->body);
@@ -1068,7 +1091,8 @@ void gen(Node *node) {
     writeline("  movzb rax, al");
     return;
   case ND_CAST:
-    comment(node->token, "ND_CAST %s --> %s", type_text(node->lhs->type->kind), type_text(node->type->kind));
+    comment(node->token, "ND_CAST %s --> %s", type_text(node->lhs->type->kind),
+            type_text(node->type->kind));
     gen_cast(node);
     return;
   case ND_COMMA:

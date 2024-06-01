@@ -16,88 +16,18 @@ Vector *include_path;
 
 const char *token_text[] = {
     // corresponding to TokenKind
-    "#",
-    "##",
-    "+",
-    "-",
-    "*",
-    "/",
-    "%",
-    "&",
-    "~",
-    "^",
-    "|",
-    "<<",
-    ">>",
-    "++",
-    "--",
-    "+=",
-    "-=",
-    "*=",
-    "/=",
-    "%=",
-    "^=",
-    "&=",
-    "|=",
-    "<<=",
-    ">>=",
-    "==",
-    "!=",
-    "<",
-    "<=",
-    ">",
-    ">=",
-    "&&",
-    "||",
-    "!",
-    "=",
-    "(",
-    ")",
-    "{",
-    "}",
-    "[",
-    "]",
-    "?",
-    ":",
-    ";",
-    ",",
-    ".",
-    "...",
-    "->",
-    "return",
-    "if",
-    "else",
-    "do",
-    "while",
-    "for",
-    "switch",
-    "case",
-    "default",
-    "break",
-    "continue",
-    "goto",
-    "void",
-    "int",
-    "char",
-    "short",
-    "long",
-    "float",
-    "double",
-    "_Bool",
-    "sizeof",
-    "struct",
-    "union",
-    "enum",
-    "typedef",
-    "static",
-    "extern",
-    "const",
-    "signed",
-    "unsigned",
-    "str",
-    "identifier",
-    "number",
-    "eof",
+    "#",        "##",    "+",          "-",      "*",      "/",      "%",
+    "&",        "~",     "^",          "|",      "<<",     ">>",     "++",
+    "--",       "+=",    "-=",         "*=",     "/=",     "%=",     "^=",
+    "&=",       "|=",    "<<=",        ">>=",    "==",     "!=",     "<",
+    "<=",       ">",     ">=",         "&&",     "||",     "!",      "=",
+    "(",        ")",     "{",          "}",      "[",      "]",      "?",
+    ":",        ";",     ",",          ".",      "...",    "->",     "return",
+    "if",       "else",  "do",         "while",  "for",    "switch", "case",
+    "default",  "break", "continue",   "goto",   "void",   "int",    "char",
+    "short",    "long",  "float",      "double", "_Bool",  "sizeof", "struct",
+    "union",    "enum",  "typedef",    "static", "extern", "const",  "signed",
+    "unsigned", "str",   "identifier", "number", "eof",
 };
 
 void error(Position *pos, char *fmt, ...) {
@@ -110,7 +40,8 @@ void error(Position *pos, char *fmt, ...) {
     while (*line_end != '\n')
       line_end++;
 
-    int indent = fprintf(stderr, "%s:%d:%d: ", pos->file_name, pos->line_number, pos->column_number);
+    int indent = fprintf(stderr, "%s:%d:%d: ", pos->file_name, pos->line_number,
+                         pos->column_number);
     fprintf(stderr, "%.*s\n", (int)(line_end - line_start), line_start);
 
     int sp = pos->pos - line_start + indent;
@@ -123,9 +54,14 @@ void error(Position *pos, char *fmt, ...) {
   exit(1);
 }
 
-bool is_alphabet(char c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
+bool is_alphabet(char c) {
+  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
+}
 
-bool is_alphanumeric_or_underscore(char c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || isdigit(c) || c == '_'; }
+bool is_alphanumeric_or_underscore(char c) {
+  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || isdigit(c) ||
+         c == '_';
+}
 
 char *read_file(char *path) {
   FILE *fp;

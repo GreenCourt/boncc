@@ -90,23 +90,27 @@ Node *new_node_mod(Token *tok, Node *lhs, Node *rhs) {
 }
 
 Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
-  bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
-  bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+  bool left_is_ptr =
+      lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
+  bool right_is_ptr =
+      rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   if ((left_is_ptr && right_is_ptr) ||
       (!left_is_ptr && !is_scalar(lhs->type)) ||
       (!right_is_ptr && !is_scalar(rhs->type)) ||
       (left_is_ptr && lhs->type->base->size < 0) ||
-      (right_is_ptr && rhs->type->base->size < 0) ||
-      is_funcptr(lhs->type) || is_funcptr(rhs->type))
+      (right_is_ptr && rhs->type->base->size < 0) || is_funcptr(lhs->type) ||
+      is_funcptr(rhs->type))
     error(tok ? &tok->pos : NULL, "invalid operands to binary + operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   if (left_is_ptr) {
     rhs = new_node_cast(NULL, type, rhs);
-    rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size, type), type);
+    rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size, type),
+                   type);
   } else if (right_is_ptr) {
     lhs = new_node_cast(NULL, type, lhs);
-    lhs = new_node(ND_MUL, lhs, new_node_num(NULL, rhs->type->base->size, type), type);
+    lhs = new_node(ND_MUL, lhs, new_node_num(NULL, rhs->type->base->size, type),
+                   type);
   }
 
   lhs = new_node_cast(NULL, type, lhs);
@@ -117,35 +121,41 @@ Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
 }
 
 Node *new_node_sub(Token *tok, Node *lhs, Node *rhs) {
-  bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
-  bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+  bool left_is_ptr =
+      lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
+  bool right_is_ptr =
+      rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
 
   if ((!left_is_ptr && right_is_ptr) ||
       (!left_is_ptr && !is_scalar(lhs->type)) ||
       (!right_is_ptr && !is_scalar(rhs->type)) ||
       (left_is_ptr && lhs->type->base->size < 0) ||
-      (right_is_ptr && rhs->type->base->size < 0) ||
-      is_funcptr(lhs->type) || is_funcptr(rhs->type))
+      (right_is_ptr && rhs->type->base->size < 0) || is_funcptr(lhs->type) ||
+      is_funcptr(rhs->type))
     error(tok ? &tok->pos : NULL, "invalid operands to binary - operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   if (left_is_ptr && !right_is_ptr) {
     rhs = new_node_cast(NULL, type, rhs);
-    rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size, type), type);
+    rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size, type),
+                   type);
   }
 
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_SUB, lhs, rhs, type);
   if (left_is_ptr && right_is_ptr)
-    node = new_node(ND_DIV, node, new_node_num(NULL, lhs->type->base->size, type), type);
+    node = new_node(ND_DIV, node,
+                    new_node_num(NULL, lhs->type->base->size, type), type);
   node->token = tok;
   return node;
 }
 
 Node *new_node_eq(Token *tok, Node *lhs, Node *rhs) {
-  bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
-  bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+  bool left_is_ptr =
+      lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
+  bool right_is_ptr =
+      rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   bool left_is_zero = lhs->kind == ND_NUM && lhs->val == 0;
   bool right_is_zero = rhs->kind == ND_NUM && rhs->val == 0;
   bool left_is_voidptr = left_is_ptr && lhs->type->base->kind == TYPE_VOID;
@@ -155,7 +165,8 @@ Node *new_node_eq(Token *tok, Node *lhs, Node *rhs) {
       (!is_scalar(rhs->type) && !right_is_ptr) ||
       (left_is_ptr && (!right_is_ptr && !right_is_zero)) ||
       (right_is_ptr && (!left_is_ptr && !left_is_zero)) ||
-      (left_is_ptr && right_is_ptr && !left_is_voidptr && !right_is_voidptr && !same_type(lhs->type->base, rhs->type->base)))
+      (left_is_ptr && right_is_ptr && !left_is_voidptr && !right_is_voidptr &&
+       !same_type(lhs->type->base, rhs->type->base)))
     error(tok ? &tok->pos : NULL, "invalid operands to == operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
@@ -167,8 +178,10 @@ Node *new_node_eq(Token *tok, Node *lhs, Node *rhs) {
 }
 
 Node *new_node_ne(Token *tok, Node *lhs, Node *rhs) {
-  bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
-  bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+  bool left_is_ptr =
+      lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
+  bool right_is_ptr =
+      rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   bool left_is_zero = lhs->kind == ND_NUM && lhs->val == 0;
   bool right_is_zero = rhs->kind == ND_NUM && rhs->val == 0;
   bool left_is_voidptr = left_is_ptr && lhs->type->base->kind == TYPE_VOID;
@@ -178,7 +191,8 @@ Node *new_node_ne(Token *tok, Node *lhs, Node *rhs) {
       (!is_scalar(rhs->type) && !right_is_ptr) ||
       (left_is_ptr && (!right_is_ptr && !right_is_zero)) ||
       (right_is_ptr && (!left_is_ptr && !left_is_zero)) ||
-      (left_is_ptr && right_is_ptr && !left_is_voidptr && !right_is_voidptr && !same_type(lhs->type->base, rhs->type->base)))
+      (left_is_ptr && right_is_ptr && !left_is_voidptr && !right_is_voidptr &&
+       !same_type(lhs->type->base, rhs->type->base)))
     error(tok ? &tok->pos : NULL, "invalid operands to != operator");
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
@@ -190,13 +204,16 @@ Node *new_node_ne(Token *tok, Node *lhs, Node *rhs) {
 }
 
 Node *new_node_lt(Token *tok, Node *lhs, Node *rhs) {
-  bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
-  bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+  bool left_is_ptr =
+      lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
+  bool right_is_ptr =
+      rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
 
   if ((!is_scalar(lhs->type) && !left_is_ptr) ||
       (!is_scalar(rhs->type) && !right_is_ptr) ||
       (left_is_ptr != right_is_ptr) ||
-      (left_is_ptr && right_is_ptr && !same_type(lhs->type->base, rhs->type->base)) ||
+      (left_is_ptr && right_is_ptr &&
+       !same_type(lhs->type->base, rhs->type->base)) ||
       is_funcptr(lhs->type) || is_funcptr(rhs->type))
     error(tok ? &tok->pos : NULL, "invalid operands to relational operator");
 
@@ -209,13 +226,16 @@ Node *new_node_lt(Token *tok, Node *lhs, Node *rhs) {
 }
 
 Node *new_node_le(Token *tok, Node *lhs, Node *rhs) {
-  bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
-  bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+  bool left_is_ptr =
+      lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
+  bool right_is_ptr =
+      rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
 
   if ((!is_scalar(lhs->type) && !left_is_ptr) ||
       (!is_scalar(rhs->type) && !right_is_ptr) ||
       (left_is_ptr != right_is_ptr) ||
-      (left_is_ptr && right_is_ptr && !same_type(lhs->type->base, rhs->type->base)) ||
+      (left_is_ptr && right_is_ptr &&
+       !same_type(lhs->type->base, rhs->type->base)) ||
       is_funcptr(lhs->type) || is_funcptr(rhs->type))
     error(tok ? &tok->pos : NULL, "invalid operands to relational operator");
 
@@ -250,7 +270,8 @@ Node *new_node_deref(Token *tok, Node *operand) {
 }
 
 Node *new_node_lognot(Token *tok, Node *operand) {
-  bool is_ptr = operand->type->kind == TYPE_PTR || operand->type->kind == TYPE_ARRAY;
+  bool is_ptr =
+      operand->type->kind == TYPE_PTR || operand->type->kind == TYPE_ARRAY;
   if (!is_scalar(operand->type) && !is_ptr)
     error(tok ? &tok->pos : NULL, "invalid operand to unary ! operator");
   Node *node = new_node(ND_LOGNOT, operand, NULL, base_type(TYPE_INT));
@@ -259,8 +280,10 @@ Node *new_node_lognot(Token *tok, Node *operand) {
 }
 
 Node *new_node_logand(Token *tok, Node *lhs, Node *rhs, int label_index) {
-  bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
-  bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+  bool left_is_ptr =
+      lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
+  bool right_is_ptr =
+      rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   if ((!left_is_ptr && !is_scalar(lhs->type)) ||
       (!right_is_ptr && !is_scalar(rhs->type)))
     error(tok ? &tok->pos : NULL, "invalid operands to binary && operator");
@@ -275,8 +298,10 @@ Node *new_node_logand(Token *tok, Node *lhs, Node *rhs, int label_index) {
 }
 
 Node *new_node_logor(Token *tok, Node *lhs, Node *rhs, int label_index) {
-  bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
-  bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+  bool left_is_ptr =
+      lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
+  bool right_is_ptr =
+      rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   if ((!left_is_ptr && !is_scalar(lhs->type)) ||
       (!right_is_ptr && !is_scalar(rhs->type)))
     error(tok ? &tok->pos : NULL, "invalid operands to binary && operator");
@@ -361,7 +386,8 @@ Node *new_node_comma(Token *tok, Node *lhs, Node *rhs) {
 }
 
 Node *new_node_assign_ignore_const(Token *tok, Node *lhs, Node *rhs) {
-  if ((is_struct_union(lhs->type) || is_struct_union(rhs->type)) && !same_type(lhs->type, rhs->type))
+  if ((is_struct_union(lhs->type) || is_struct_union(rhs->type)) &&
+      !same_type(lhs->type, rhs->type))
     error(tok ? &tok->pos : NULL, "unmatched type");
 
   if (lhs->kind == ND_VAR && lhs->variable->kind == OBJ_FUNC)
@@ -386,23 +412,29 @@ Node *new_node_assign(Token *tok, Node *lhs, Node *rhs) {
   if (lhs->kind == ND_MEMBER && lhs->member->type->is_const)
     error(tok ? &tok->pos : NULL, "cannot assignning to a const member");
 
-  if (lhs->kind == ND_MEMBER && lhs->lhs->kind == ND_VAR && lhs->lhs->variable->type->is_const)
+  if (lhs->kind == ND_MEMBER && lhs->lhs->kind == ND_VAR &&
+      lhs->lhs->variable->type->is_const)
     error(tok ? &tok->pos : NULL, "cannot assignning to a const variable");
 
   return new_node_assign_ignore_const(tok, lhs, rhs);
 }
 
-Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int label_index) {
-  bool left_is_ptr = lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
-  bool right_is_ptr = rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
+Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs,
+                           int label_index) {
+  bool left_is_ptr =
+      lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
+  bool right_is_ptr =
+      rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
   bool left_is_voidptr = left_is_ptr && lhs->type->base->kind == TYPE_VOID;
   bool right_is_voidptr = right_is_ptr && rhs->type->base->kind == TYPE_VOID;
 
   if ((left_is_ptr != right_is_ptr) ||
-      (left_is_ptr && right_is_ptr && !left_is_voidptr && !right_is_voidptr && !same_type(lhs->type->base, rhs->type->base)))
+      (left_is_ptr && right_is_ptr && !left_is_voidptr && !right_is_voidptr &&
+       !same_type(lhs->type->base, rhs->type->base)))
     error(tok ? &tok->pos : NULL, "invalid operands to conditional operator");
 
-  if ((is_struct_union(lhs->type) || is_struct_union(rhs->type)) && !same_type(lhs->type, rhs->type))
+  if ((is_struct_union(lhs->type) || is_struct_union(rhs->type)) &&
+      !same_type(lhs->type, rhs->type))
     error(tok ? &tok->pos : NULL, "unmatched type");
 
   if (!is_struct_union(lhs->type)) {
@@ -434,7 +466,8 @@ Node *new_node_var(Token *tok, Variable *var) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_VAR;
   node->variable = var;
-  node->type = var->type->kind == TYPE_FUNC ? pointer_type(var->type) : var->type;
+  node->type =
+      var->type->kind == TYPE_FUNC ? pointer_type(var->type) : var->type;
   node->token = tok;
   return node;
 }
@@ -443,7 +476,9 @@ Node *new_node_array_access(Token *tok, Node *array, int idx) {
   assert(array->type->kind == TYPE_ARRAY);
   assert(idx >= 0);
   idx *= array->type->base->size;
-  return new_node_deref(tok, new_node(ND_ADD, array, new_node_num(tok, idx, base_type(TYPE_INT)), pointer_type(array->type->base)));
+  return new_node_deref(
+      tok, new_node(ND_ADD, array, new_node_num(tok, idx, base_type(TYPE_INT)),
+                    pointer_type(array->type->base)));
 }
 
 Node *new_node_array_access_as_1D(Token *tok, Node *array, int idx) {
@@ -456,7 +491,9 @@ Node *new_node_array_access_as_1D(Token *tok, Node *array, int idx) {
     base = base->base;
   idx *= base->size;
 
-  return new_node_deref(tok, new_node(ND_ADD, array, new_node_num(tok, idx, base_type(TYPE_INT)), pointer_type(array->type->base)));
+  return new_node_deref(
+      tok, new_node(ND_ADD, array, new_node_num(tok, idx, base_type(TYPE_INT)),
+                    pointer_type(array->type->base)));
 }
 
 Variable *is_const_var_addr(Node *node) {
@@ -507,7 +544,8 @@ int is_constant_number(Node *node) {
   case ND_CAST:
     return is_constant_number(node->lhs);
   case ND_COND:
-    return is_constant_number(node->condition) && is_constant_number(node->lhs) && is_constant_number(node->rhs);
+    return is_constant_number(node->condition) &&
+           is_constant_number(node->lhs) && is_constant_number(node->rhs);
   case ND_NUM:
     return true;
   default:

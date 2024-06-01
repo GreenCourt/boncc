@@ -385,7 +385,8 @@ int main() {
   }
   {
     // local initializer
-    struct global_struct_to_test_initializer x = {1, {2}, {3}, {{5}, {7, {8, 9}}}};
+    struct global_struct_to_test_initializer x = {
+        1, {2}, {3}, {{5}, {7, {8, 9}}}};
     struct global_struct_to_test_initializer y = {1, 2, {3}, 5};
     verify(36, sizeof(x), __FILE__, __LINE__);
     verify(1, x.a, __FILE__, __LINE__);

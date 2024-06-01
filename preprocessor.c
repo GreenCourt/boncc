@@ -61,7 +61,8 @@ Token *operator_double_hash(Token const *left, Token const *right) {
   assert(left->next->next == right);
   int len = left->str->len + right->str->len;
   char *p = calloc(len + 2, sizeof(char));
-  char *q = p + snprintf(p, left->str->len + 1, "%.*s", left->str->len, left->str->str);
+  char *q = p + snprintf(p, left->str->len + 1, "%.*s", left->str->len,
+                         left->str->str);
   snprintf(q, right->str->len + 1, "%.*s", right->str->len, right->str->str);
   p[len] = '\n';
   p[len + 1] = '\0';
@@ -151,7 +152,8 @@ static Token *expand_object_like(Token *prev, Macro *macro, Token **stop) {
 }
 
 static Token *clone_macro_argument(Token *head, Token *arg, Position *pos) {
-  // clone a macro argument, link it to head->next and return the tail of the cloned argument
+  // clone a macro argument, link it to head->next
+  // and return the tail of the cloned argument
   Token *tail = head;
   while (arg) {
     tail->next = calloc(1, sizeof(Token));
@@ -165,8 +167,10 @@ static Token *clone_macro_argument(Token *head, Token *arg, Position *pos) {
   return tail;
 }
 
-static Token *clone_va_args(Token *head, Macro *macro, Vector *args, Position *pos) {
-  // clone arguments of variadic part, link them to head->next and return the tail of the cloned arguments
+static Token *clone_va_args(Token *head, Macro *macro, Vector *args,
+                            Position *pos) {
+  // clone arguments of variadic part, link them to head->next
+  // and return the tail of the cloned arguments
   Token *tail = head;
   assert(macro->is_variadic);
   for (int i = macro->nparams; i < args->size; ++i) {
@@ -228,7 +232,8 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
       }
 
       { // paren, brace, bracket
-        if (p->next->kind == TK_LBRACKET || p->next->kind == TK_LBRACE || p->next->kind == TK_LPAREN) {
+        if (p->next->kind == TK_LBRACKET || p->next->kind == TK_LBRACE ||
+            p->next->kind == TK_LPAREN) {
           vector_pushi(stack, p->next->kind);
           p = p->next;
           continue;
@@ -256,7 +261,8 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
 
   assert(rparen);
   assert(rparen->kind == TK_RPAREN);
-  if ((!macro->is_variadic && args->size != macro->nparams) || (macro->is_variadic && args->size <= macro->nparams))
+  if ((!macro->is_variadic && args->size != macro->nparams) ||
+      (macro->is_variadic && args->size <= macro->nparams))
     error(&rparen->pos, "invalid number of arguments for macro expansion");
 
   // argument prescan
@@ -290,7 +296,9 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
     Token *b = macro->body;
     while (b) {
       if (b->idx) {
-        tail = clone_macro_argument(tail, *(Token **)vector_get(args, b->idx - 1 /* 1-indexed */), &expanded->pos);
+        tail = clone_macro_argument(
+            tail, *(Token **)vector_get(args, b->idx - 1 /* 1-indexed */),
+            &expanded->pos);
       } else if (b->is_identifier && same_string_nt(b->str, "__VA_ARGS__")) {
         tail = clone_va_args(tail, macro, args, &expanded->pos);
       } else {
@@ -366,7 +374,8 @@ static Token *expand(Token *prev, Token **stop) {
 }
 
 bool match_directive(Token *t, char *directive) {
-  return t->at_bol && !t->at_eol && t->kind == TK_HASH && t->next->is_identifier && same_string_nt(t->next->str, directive);
+  return t->at_bol && !t->at_eol && t->kind == TK_HASH &&
+         t->next->is_identifier && same_string_nt(t->next->str, directive);
 }
 
 Token *get_eol(Token *t) {
@@ -393,7 +402,9 @@ Token *find_elif_or_else_or_endif(Token *prev) {
       return t;
     } else if (match_directive(t->next, "else") && nest == 0) {
       return t;
-    } else if (match_directive(t->next, "if") || match_directive(t->next, "ifdef") || match_directive(t->next, "ifndef")) {
+    } else if (match_directive(t->next, "if") ||
+               match_directive(t->next, "ifdef") ||
+               match_directive(t->next, "ifndef")) {
       nest++;
     }
     t = t->next;
@@ -403,7 +414,8 @@ Token *find_elif_or_else_or_endif(Token *prev) {
 }
 
 Token *process_if(Token *prev) { // #if and #elif
-  assert(match_directive(prev->next, "if") || match_directive(prev->next, "elif"));
+  assert(match_directive(prev->next, "if") ||
+         match_directive(prev->next, "elif"));
   Token *directive = prev->next->next;
 
   if (directive->at_eol)
@@ -498,12 +510,14 @@ Token *process_if(Token *prev) { // #if and #elif
 }
 
 Token *process_ifdef(Token *prev) { // #ifdef and #ifndef
-  assert(match_directive(prev->next, "ifdef") || match_directive(prev->next, "ifndef"));
+  assert(match_directive(prev->next, "ifdef") ||
+         match_directive(prev->next, "ifndef"));
   Token *directive = prev->next->next;
   bool is_ifndef = match_directive(prev->next, "ifndef");
 
   if (directive->at_eol)
-    error(&directive->pos, "identifier required after the directive but not found.");
+    error(&directive->pos,
+          "identifier required after the directive but not found.");
 
   Token *macro_ident = directive->next;
   if (!macro_ident->is_identifier)
@@ -670,21 +684,24 @@ Token *process_include(Token *prev) {
     if (p[0] != '/') {
       // copy string before calling dirname() since it modifies the string
       char *f = calloc(strlen(directive->pos.file_name) + 1, sizeof(char));
-      snprintf(f, strlen(directive->pos.file_name) + 1, "%s", directive->pos.file_name);
+      snprintf(f, strlen(directive->pos.file_name) + 1, "%s",
+               directive->pos.file_name);
       p = path_join(dirname(f), p);
     }
 
     if (access(p, R_OK) == 0) // if file is readable
       filepath = p;
     else
-      filepath = search_include_path(directive->next->string_literal, directive->next);
+      filepath =
+          search_include_path(directive->next->string_literal, directive->next);
   } else if (directive->next->kind == TK_LT && !directive->next->at_eol) {
     Token *left = directive->next->next;
     Token *right = left;
     int len = left->str->len;
     while (right->next->kind != TK_GT) {
       if (right->next->at_eol)
-        error(&directive->next->pos, "filename required after #include but not found.");
+        error(&directive->next->pos,
+              "filename required after #include but not found.");
       right = right->next;
       len += right->str->len;
     }
@@ -698,7 +715,8 @@ Token *process_include(Token *prev) {
 
     filepath = search_include_path(p, directive->next);
   } else {
-    error(&directive->next->pos, "filename required after #include but not found.");
+    error(&directive->next->pos,
+          "filename required after #include but not found.");
   }
 
   assert(filepath);
@@ -727,7 +745,8 @@ Token *process_directive(Token *prev) {
     return process_if(prev);
 
   // #ifdef or #ifndef
-  if (same_string_nt(directive->str, "ifdef") || same_string_nt(directive->str, "ifndef"))
+  if (same_string_nt(directive->str, "ifdef") ||
+      same_string_nt(directive->str, "ifndef"))
     return process_ifdef(prev);
 
   // #undef
@@ -767,13 +786,17 @@ bool skip_unsupported_keywords(Token *prev) {
     return true;
   }
 
-  if (same_string_nt(prev->next->str, "__attribute__") && prev->next->next->kind == TK_LPAREN && prev->next->next->next->kind == TK_LPAREN) {
+  if (same_string_nt(prev->next->str, "__attribute__") &&
+      prev->next->next->kind == TK_LPAREN &&
+      prev->next->next->next->kind == TK_LPAREN) {
     int count = 2;
     Token *t = prev->next->next->next;
     while (count) {
       t = t->next;
       if (t->kind == TK_EOF)
-        error(&prev->next->pos, "failed to skip __attribute__ (currently __attribute__ is not supported and will be skipped)");
+        error(&prev->next->pos,
+              "failed to skip __attribute__ (currently __attribute__ is not "
+              "supported and will be skipped)");
       if (t->kind == TK_LPAREN)
         count++;
       if (t->kind == TK_RPAREN)
@@ -788,13 +811,15 @@ bool skip_unsupported_keywords(Token *prev) {
     Token *p = prev->next->next;
     while (p->kind != TK_LPAREN) {
       if (p->kind == TK_EOF)
-        error(&prev->next->pos, "failed to skip __asm__ (currently __asm__ is not supported and will be skipped)");
+        error(&prev->next->pos, "failed to skip __asm__ (currently __asm__ is "
+                                "not supported and will be skipped)");
       p = p->next;
     }
     assert(p->kind == TK_LPAREN);
     while (p->kind != TK_RPAREN) {
       if (p->kind == TK_EOF)
-        error(&prev->next->pos, "failed to skip __asm__ (currently __asm__ is not supported and will be skipped)");
+        error(&prev->next->pos, "failed to skip __asm__ (currently __asm__ is "
+                                "not supported and will be skipped)");
       p = p->next;
     }
     assert(p->kind == TK_RPAREN);

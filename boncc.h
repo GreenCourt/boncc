@@ -131,26 +131,27 @@ struct Member {
   Member *next; // liked list
 };
 
-typedef enum { TYPE_VOID,
-               TYPE_PTR,
-               TYPE_ARRAY,
-               TYPE_STRUCT,
-               TYPE_UNION,
-               TYPE_ENUM,
-               TYPE_INT,
-               TYPE_CHAR,
-               TYPE_SHORT,
-               TYPE_LONG,
-               TYPE_UINT,
-               TYPE_UCHAR,
-               TYPE_USHORT,
-               TYPE_ULONG,
-               TYPE_FLOAT,
-               TYPE_DOUBLE,
-               TYPE_LDOUBLE,
-               TYPE_BOOL,
-               TYPE_FUNC,
-               TYPE_NONE, // internally used for declarator
+typedef enum {
+  TYPE_VOID,
+  TYPE_PTR,
+  TYPE_ARRAY,
+  TYPE_STRUCT,
+  TYPE_UNION,
+  TYPE_ENUM,
+  TYPE_INT,
+  TYPE_CHAR,
+  TYPE_SHORT,
+  TYPE_LONG,
+  TYPE_UINT,
+  TYPE_UCHAR,
+  TYPE_USHORT,
+  TYPE_ULONG,
+  TYPE_FLOAT,
+  TYPE_DOUBLE,
+  TYPE_LDOUBLE,
+  TYPE_BOOL,
+  TYPE_FUNC,
+  TYPE_NONE, // internally used for declarator
 } TypeKind;
 
 typedef struct Type Type;
@@ -181,10 +182,11 @@ struct VariableInit {
   bool nested; // true if vec is nested
 };
 
-typedef enum { OBJ_GVAR,
-               OBJ_LVAR,
-               OBJ_STRLIT,
-               OBJ_FUNC,
+typedef enum {
+  OBJ_GVAR,
+  OBJ_LVAR,
+  OBJ_STRLIT,
+  OBJ_FUNC,
 } ObjectKind;
 typedef struct Object Variable;
 typedef struct Object Function;

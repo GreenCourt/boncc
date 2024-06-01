@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+// clang-format off
 /* BNF
 program     = declaration*
 declaration = func | vardec | (struct ";") | (enum ";") | typedef
@@ -78,6 +79,7 @@ primary     = "(" expr ")"
               | num
               | str
 */
+// clang-format on
 
 // node.c -->
 Node *new_node_nop();
@@ -105,7 +107,8 @@ Node *new_node_bitnot(Token *tok, Node *lhs);
 Node *new_node_comma(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_assign(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_assign_ignore_const(Token *tok, Node *lhs, Node *rhs);
-Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs, int label_index);
+Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs,
+                           int label_index);
 Node *new_node_cast(Token *tok, Type *type, Node *lhs);
 Node *new_node_member(Token *tok, Node *x, Member *y);
 Node *new_node_var(Token *tok, Variable *var);
@@ -330,7 +333,8 @@ Type *consume_struct(TypeKind kind, Token **nx) {
 
         while (m) {
           Type *type = m->type;
-          tail->padding = (offset % type->align) ? type->align - (offset % type->align) : 0;
+          tail->padding =
+              (offset % type->align) ? type->align - (offset % type->align) : 0;
           offset += tail->padding;
           m->offset = offset;
           offset += type->size;
@@ -346,7 +350,8 @@ Type *consume_struct(TypeKind kind, Token **nx) {
       }
 
       if (base->kind == TYPE_UNION) {
-        tail->padding = (offset % base->align) ? base->align - (offset % base->align) : 0;
+        tail->padding =
+            (offset % base->align) ? base->align - (offset % base->align) : 0;
         offset += tail->padding;
 
         Member *m = base->member;
@@ -388,7 +393,8 @@ Type *consume_struct(TypeKind kind, Token **nx) {
         if (align < type->align)
           align = type->align;
       } else {
-        tail->padding = (offset % type->align) ? type->align - (offset % type->align) : 0;
+        tail->padding =
+            (offset % type->align) ? type->align - (offset % type->align) : 0;
         offset += tail->padding;
         m->offset = offset;
         offset += type->size;
@@ -530,14 +536,10 @@ Type *consume_type(Token **nx) {
   int has_double = 0;
 
   Token *itok = NULL;
-  while ((itok = consume(TK_UNSIGNED, nx)) ||
-         (itok = consume(TK_SIGNED, nx)) ||
-         (itok = consume(TK_INT, nx)) ||
-         (itok = consume(TK_CHAR, nx)) ||
-         (itok = consume(TK_SHORT, nx)) ||
-         (itok = consume(TK_LONG, nx)) ||
-         (itok = consume(TK_FLOAT, nx)) ||
-         (itok = consume(TK_DOUBLE, nx))) {
+  while ((itok = consume(TK_UNSIGNED, nx)) || (itok = consume(TK_SIGNED, nx)) ||
+         (itok = consume(TK_INT, nx)) || (itok = consume(TK_CHAR, nx)) ||
+         (itok = consume(TK_SHORT, nx)) || (itok = consume(TK_LONG, nx)) ||
+         (itok = consume(TK_FLOAT, nx)) || (itok = consume(TK_DOUBLE, nx))) {
 
     switch (itok->kind) {
     case TK_SIGNED:
@@ -573,12 +575,14 @@ Type *consume_type(Token **nx) {
       has_long++;
       break;
     case TK_FLOAT:
-      if (has_signed || has_unsigned || has_char || has_short || has_int || has_long || has_float || has_double)
+      if (has_signed || has_unsigned || has_char || has_short || has_int ||
+          has_long || has_float || has_double)
         error(&itok->pos, "conflicted type");
       has_float = 1;
       break;
     case TK_DOUBLE:
-      if (has_signed || has_unsigned || has_char || has_short || has_int || has_float || has_double)
+      if (has_signed || has_unsigned || has_char || has_short || has_int ||
+          has_float || has_double)
         error(&itok->pos, "conflicted type");
       if (has_long == 2)
         error(&itok->pos, "too long double");
@@ -629,7 +633,8 @@ Type *consume_array_brackets(Type *type, Token **nx) {
   Token *r = expect(TK_RBRACKET, nx);
   type = consume_array_brackets(type, nx);
   if (type->size < 0)
-    error(&r->pos, "array size assumption is allowed only in the first dimension");
+    error(&r->pos,
+          "array size assumption is allowed only in the first dimension");
   return array_type(type, size);
 }
 
@@ -690,7 +695,8 @@ Variable *new_local_variable(Type *type, int qualifier) {
   Variable *prev = map_get(current_scope->objects, type->objdec->str);
   if (prev) {
     if (!is_extern || !prev->is_extern || !same_type(type, prev->type))
-      error(&type->objdec->pos, "conflicted identifier %.*s", type->objdec->str->len, type->objdec->str->str);
+      error(&type->objdec->pos, "conflicted identifier %.*s",
+            type->objdec->str->len, type->objdec->str->str);
     return prev;
   }
 
@@ -734,7 +740,8 @@ Variable *new_global(Type *type, int qualifier) {
     if (!is_extern)
       prev->is_extern = false;
 
-    if (prev->type->kind == TYPE_ARRAY && prev->type->size < -1 && type->size >= 0)
+    if (prev->type->kind == TYPE_ARRAY && prev->type->size < -1 &&
+        type->size >= 0)
       prev->type = type;
     return prev;
   }
@@ -766,7 +773,8 @@ Variable *new_string_literal(Token *tok) {
   var->is_static = true;
   var->is_extern = false;
 
-  // Because of escaped charactors, actual array length is not always equal to (strlen(var->string_literal) + 1).
+  // Because of escaped charactors, actual array length is not always equal to
+  // (strlen(var->string_literal) + 1).
   int len = strlen(var->string_literal);
   int array_length = len + 1;
   for (int i = 0; i < len; ++i) {
@@ -789,7 +797,8 @@ Vector *vardec(Type *type, ObjectKind kind, int qualifier, Token **nx) {
   assert(type->objdec);
 
   Type *base = type;
-  while (base->kind == TYPE_ARRAY || base->kind == TYPE_PTR || base->kind == TYPE_FUNC) {
+  while (base->kind == TYPE_ARRAY || base->kind == TYPE_PTR ||
+         base->kind == TYPE_FUNC) {
     if (base->base)
       base = base->base;
     else if (base->return_type)
@@ -818,14 +827,16 @@ Vector *vardec(Type *type, ObjectKind kind, int qualifier, Token **nx) {
       var->token = type->objdec;
       var->init = varinit(nx);
 
-      if (is_struct_union(var->type) && var->init->vec == NULL && !same_type(var->type, var->init->expr->type))
+      if (is_struct_union(var->type) && var->init->vec == NULL &&
+          !same_type(var->type, var->init->expr->type))
         error(&type->objdec->pos, "invalid initializer for a struct/union");
 
       if (var->type->kind == TYPE_ARRAY) {
         if (var->init->vec == NULL) {
           if (var->type->base->kind != TYPE_CHAR) {
             error(&type->objdec->pos, "invalid initializer for an array");
-          } else if (var->init->expr->kind != ND_VAR || var->init->expr->variable->kind != OBJ_STRLIT) {
+          } else if (var->init->expr->kind != ND_VAR ||
+                     var->init->expr->variable->kind != OBJ_STRLIT) {
             error(&type->objdec->pos, "invalid initializer for an array");
           } else if (var->type->array_size < 0) {
             var->type->array_size = var->init->expr->variable->type->array_size;
@@ -911,7 +922,8 @@ void func(Type *type, int qualifier, Token **nx) {
     vector_push(f->params, &var);
 
     if (is_struct_union(ty))
-      error(&f->token->pos, "currently struct/union parameter is not supported");
+      error(&f->token->pos,
+            "currently struct/union parameter is not supported");
   }
 
   if (f->params->size > 6)
@@ -925,7 +937,8 @@ void func(Type *type, int qualifier, Token **nx) {
     dummy_tok->str = new_string("__hidden_va_area__", 0);
 
     t->objdec = dummy_tok;
-    static const int sizeof_register_save_area = (/* gp */ 8 * 6) + (/* xmm0 - xmm7 */ 16 * 8);
+    static const int sizeof_register_save_area =
+        (/* gp */ 8 * 6) + (/* xmm0 - xmm7 */ 16 * 8);
     static const int sizeof_va_list = 24;
     t = array_type(t, sizeof_va_list + sizeof_register_save_area);
     Variable *var = new_local_variable(t, 0);
@@ -1002,7 +1015,8 @@ void funcparam(Type *ft, Token **nx) {
 int consume_qualifier(Token **nx) {
   int qualifier = 0;
   Token *tok = NULL;
-  while ((tok = consume(TK_CONST, nx)) || (tok = consume(TK_STATIC, nx)) || (tok = consume(TK_EXTERN, nx))) {
+  while ((tok = consume(TK_CONST, nx)) || (tok = consume(TK_STATIC, nx)) ||
+         (tok = consume(TK_EXTERN, nx))) {
     if (tok->kind == TK_CONST) {
       qualifier |= IS_CONST;
       continue;
@@ -1105,7 +1119,9 @@ Node *declaration(Token **nx) {
     return NULL;
   }
 
-  if ((type->kind == TYPE_STRUCT || type->kind == TYPE_UNION || type->kind == TYPE_ENUM) && consume(TK_SEMICOLON, nx)) {
+  if ((type->kind == TYPE_STRUCT || type->kind == TYPE_UNION ||
+       type->kind == TYPE_ENUM) &&
+      consume(TK_SEMICOLON, nx)) {
     // type declaration only (qualifier is allowed)
     return new_node_nop();
   }
@@ -1175,7 +1191,8 @@ Node *fill_struct_union_zero(Node *left, Member *member) {
     Node *s = NULL;
     Node *member_access = new_node_member(NULL, left, member);
     if (is_scalar(member->type))
-      s = new_node_assign_ignore_const(NULL, member_access, new_node_num(NULL, 0, member->type));
+      s = new_node_assign_ignore_const(NULL, member_access,
+                                       new_node_num(NULL, 0, member->type));
     else if (member->type->kind == TYPE_ARRAY)
       s = fill_array_zero(member_access, 0);
     else if (is_struct_union(member->type))
@@ -1196,7 +1213,8 @@ Node *fill_array_zero(Node *left, int start_index) {
   if (is_scalar(left->type->base)) {
     Node *zero = new_node_num(NULL, 0, base_type(TYPE_INT));
     for (int i = start_index; i < left->type->array_size; ++i) {
-      Node *s = new_node_assign_ignore_const(NULL, new_node_array_access(NULL, left, i), zero);
+      Node *s = new_node_assign_ignore_const(
+          NULL, new_node_array_access(NULL, left, i), zero);
       vector_push(node->blk_stmts, &s);
     }
     return node;
@@ -1212,7 +1230,8 @@ Node *fill_array_zero(Node *left, int start_index) {
 
   if (is_struct_union(left->type->base)) {
     for (int i = start_index; i < left->type->array_size; ++i) {
-      Node *s = fill_struct_union_zero(new_node_array_access(NULL, left, i), left->type->base->member);
+      Node *s = fill_struct_union_zero(new_node_array_access(NULL, left, i),
+                                       left->type->base->member);
       vector_push(node->blk_stmts, &s);
     }
     return node;
@@ -1231,7 +1250,8 @@ Node *init_local_struct(Variable *var, Node *left, VariableInit *init) {
     node->blk_stmts = new_vector(0, sizeof(Node *));
     Member *m = left->type->member;
     for (int i = 0; i < init->vec->size && m; i++, m = m->next) {
-      Node *s = init_local_variable(var, new_node_member(var->token, left, m), *(VariableInit **)vector_get(init->vec, i));
+      Node *s = init_local_variable(var, new_node_member(var->token, left, m),
+                                    *(VariableInit **)vector_get(init->vec, i));
       vector_push(node->blk_stmts, &s);
     }
     // fill zero
@@ -1250,7 +1270,8 @@ Node *init_local_struct(Variable *var, Node *left, VariableInit *init) {
   node->kind = ND_BLOCK;
   node->blk_stmts = new_vector(0, sizeof(Node *));
   Member *m = left->type->member;
-  Node *s = init_local_variable(var, new_node_member(var->token, left, m), init);
+  Node *s =
+      init_local_variable(var, new_node_member(var->token, left, m), init);
   vector_push(node->blk_stmts, &s);
   // fill zero
   s = fill_struct_union_zero(left, m->next);
@@ -1263,14 +1284,16 @@ Node *init_local_union(Variable *var, Node *left, VariableInit *init) {
   if (init->vec) {
     // init first member only
     Member *m = left->type->member;
-    return init_local_variable(var, new_node_member(var->token, left, m), *(VariableInit **)vector_get(init->vec, 0));
+    return init_local_variable(var, new_node_member(var->token, left, m),
+                               *(VariableInit **)vector_get(init->vec, 0));
   }
 
   assert(init->expr);
   if (same_type(init->expr->type, left->type))
     return new_node_assign_ignore_const(var->token, left, init->expr);
 
-  return init_local_variable(var, new_node_member(var->token, left, left->type->member), init);
+  return init_local_variable(
+      var, new_node_member(var->token, left, left->type->member), init);
 }
 
 Node *init_local_array(Variable *var, Node *left, VariableInit *init) {
@@ -1280,26 +1303,31 @@ Node *init_local_array(Variable *var, Node *left, VariableInit *init) {
   node->blk_stmts = new_vector(0, sizeof(Node *));
 
   if (init->expr) {
-    if (left->type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR && init->expr->variable->kind == OBJ_STRLIT) {
+    if (left->type->base->kind == TYPE_CHAR && init->expr->kind == ND_VAR &&
+        init->expr->variable->kind == OBJ_STRLIT) {
       // initilize the array as a string
       char *lit = init->expr->variable->string_literal;
       if (left->type->array_size != (int)strlen(lit) + 1)
-        error(&var->token->pos, "miss-match between array-size and string-length");
+        error(&var->token->pos,
+              "miss-match between array-size and string-length");
 
       for (int i = 0; i < left->type->array_size; ++i) {
         Node *c = new_node_num(NULL, lit[i], base_type(TYPE_CHAR));
-        Node *s = new_node_assign_ignore_const(var->token, new_node_array_access(var->token, left, i), c);
+        Node *s = new_node_assign_ignore_const(
+            var->token, new_node_array_access(var->token, left, i), c);
         vector_push(node->blk_stmts, &s);
       }
 
       return node;
     }
 
-    // When init->expr is given for an array, only the first element will be initialized.
+    // When init->expr is given for an array,
+    // only the first element will be initialized.
     Type *ty = left->type;
     while (ty->kind == TYPE_ARRAY)
       ty = ty->base;
-    Node *s = init_local_variable(var, new_node_array_access(NULL, left, 0), init);
+    Node *s =
+        init_local_variable(var, new_node_array_access(NULL, left, 0), init);
     vector_push(node->blk_stmts, &s);
 
     // fill zeros
@@ -1318,9 +1346,13 @@ Node *init_local_array(Variable *var, Node *left, VariableInit *init) {
 
     if (init->nested) {
       // init arrays recursively
-      int len = left->type->array_size < init->vec->size ? left->type->array_size : init->vec->size;
+      int len = left->type->array_size < init->vec->size
+                    ? left->type->array_size
+                    : init->vec->size;
       for (int i = 0; i < len; i++) {
-        Node *s = init_local_variable(var, new_node_array_access(var->token, left, i), *(VariableInit **)vector_get(init->vec, i));
+        Node *s =
+            init_local_variable(var, new_node_array_access(var->token, left, i),
+                                *(VariableInit **)vector_get(init->vec, i));
         vector_push(node->blk_stmts, &s);
       }
       // fill zero
@@ -1337,18 +1369,23 @@ Node *init_local_array(Variable *var, Node *left, VariableInit *init) {
     for (int i = 0; i < len; i++) {
       VariableInit *vi = *(VariableInit **)vector_get(init->vec, i);
       assert(vi->expr);
-      Node *s = new_node_assign_ignore_const(var->token, new_node_array_access_as_1D(var->token, left, i), vi->expr);
+      Node *s = new_node_assign_ignore_const(
+          var->token, new_node_array_access_as_1D(var->token, left, i),
+          vi->expr);
       vector_push(node->blk_stmts, &s);
     }
     // fill zero
     if (is_scalar(base)) {
       for (int i = len; i < len1d; i++) {
-        Node *s = new_node_assign_ignore_const(var->token, new_node_array_access_as_1D(var->token, left, i), new_node_num(var->token, 0, base_type(TYPE_INT)));
+        Node *s = new_node_assign_ignore_const(
+            var->token, new_node_array_access_as_1D(var->token, left, i),
+            new_node_num(var->token, 0, base_type(TYPE_INT)));
         vector_push(node->blk_stmts, &s);
       }
     } else if (is_struct_union(base)) {
       for (int i = len; i < len1d; i++) {
-        Node *s = fill_struct_union_zero(new_node_array_access_as_1D(var->token, left, i), base->member);
+        Node *s = fill_struct_union_zero(
+            new_node_array_access_as_1D(var->token, left, i), base->member);
         vector_push(node->blk_stmts, &s);
       }
     } else
@@ -1374,7 +1411,8 @@ Node *init_local_variable(Variable *var, Node *left, VariableInit *init) {
     return init_local_union(var, left, init);
 
   if (is_scalar(left->type)) {
-    while (init->vec) { // for non-array primitive types, only the first element in the brace will be used
+    while (init->vec) { // for non-array primitive types, only the first element
+                        // in the brace will be used
       assert(init->vec->size > 0);
       init = *(VariableInit **)vector_get(init->vec, 0);
     }
@@ -1410,7 +1448,8 @@ Node *init_multiple_local_variables(Vector *variables) {
 
   for (int i = 0; i < variables->size; ++i) {
     Variable *var = *(Variable **)vector_get(variables, i);
-    Node *s = init_local_variable(var, new_node_var(var->token, var), var->init);
+    Node *s =
+        init_local_variable(var, new_node_var(var->token, var), var->init);
     if (s)
       vector_push(node->blk_stmts, &s);
   }
@@ -1493,7 +1532,8 @@ Node *stmt(Token **nx) {
     node->kind = ND_RETURN;
     if (!consume(TK_SEMICOLON, nx)) {
       node->lhs = expr(nx);
-      node->lhs = new_node_cast(tok, current_function->type->return_type, node->lhs);
+      node->lhs =
+          new_node_cast(tok, current_function->type->return_type, node->lhs);
       expect(TK_SEMICOLON, nx);
     }
     return node;
@@ -1907,11 +1947,15 @@ Node *unary(Token **nx) {
   }
   if (consume(TK_INC, nx)) {
     Node *u = unary(nx);
-    return new_node_assign(NULL, u, new_node_add(NULL, u, new_node_num(NULL, 1, base_type(TYPE_INT))));
+    return new_node_assign(
+        NULL, u,
+        new_node_add(NULL, u, new_node_num(NULL, 1, base_type(TYPE_INT))));
   }
   if (consume(TK_DEC, nx)) {
     Node *u = unary(nx);
-    return new_node_assign(NULL, u, new_node_sub(NULL, u, new_node_num(NULL, 1, base_type(TYPE_INT))));
+    return new_node_assign(
+        NULL, u,
+        new_node_sub(NULL, u, new_node_num(NULL, 1, base_type(TYPE_INT))));
   }
 
   if (consume(TK_PLUS, nx))
@@ -1958,7 +2002,8 @@ Node *primary(Token **nx) {
 
     Variable *var = find_object(tok);
     if (!var)
-      error(&tok->pos, "undefined identifier: '%.*s'", tok->str->len, tok->str->str);
+      error(&tok->pos, "undefined identifier: '%.*s'", tok->str->len,
+            tok->str->str);
     return new_node_var(tok, var);
   }
 
@@ -1998,7 +2043,8 @@ Node *tail(Node *x, Token **nx) {
   if (consume(TK_ARROW, nx)) {
     // struct member access
     // x->y is (*x).y
-    if (x->type == NULL || x->type->kind != TYPE_PTR || !is_struct_union(x->type->base))
+    if (x->type == NULL || x->type->kind != TYPE_PTR ||
+        !is_struct_union(x->type->base))
       error(&op->pos, "not a struct/union pointer");
     Token *y = expect(TK_IDENT, nx);
     Member *member = find_member(x->type->base, y);
@@ -2009,12 +2055,22 @@ Node *tail(Node *x, Token **nx) {
 
   if (consume(TK_INC, nx)) {
     // (x = x + 1) - 1
-    return new_node_sub(NULL, new_node_assign(NULL, x, new_node_add(NULL, x, new_node_num(NULL, 1, base_type(TYPE_INT)))), new_node_num(NULL, 1, base_type(TYPE_INT)));
+    return new_node_sub(
+        NULL,
+        new_node_assign(
+            NULL, x,
+            new_node_add(NULL, x, new_node_num(NULL, 1, base_type(TYPE_INT)))),
+        new_node_num(NULL, 1, base_type(TYPE_INT)));
   }
 
   if (consume(TK_DEC, nx)) {
     // (x = x - 1) + 1
-    return new_node_add(NULL, new_node_assign(NULL, x, new_node_sub(NULL, x, new_node_num(NULL, 1, base_type(TYPE_INT)))), new_node_num(NULL, 1, base_type(TYPE_INT)));
+    return new_node_add(
+        NULL,
+        new_node_assign(
+            NULL, x,
+            new_node_sub(NULL, x, new_node_num(NULL, 1, base_type(TYPE_INT)))),
+        new_node_num(NULL, 1, base_type(TYPE_INT)));
   }
 
   if (consume(TK_LPAREN, nx)) {

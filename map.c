@@ -8,9 +8,7 @@ struct KeyValue {
   void *val;
 };
 
-Map *new_map() {
-  return new_vector(0, sizeof(KeyValue *));
-}
+Map *new_map() { return new_vector(0, sizeof(KeyValue *)); }
 
 void *map_geti(Map *map, int idx) {
   assert(0 <= idx && idx < map->size);

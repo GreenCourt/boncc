@@ -317,11 +317,22 @@ void tokenize_string_literal(Position *p, Token **tail) {
       error(p, "missing terminating \" character");
   }
   int len = q - p->pos;
-  char *string_literal = calloc(len + 1, sizeof(char));
-  strncpy(string_literal, p->pos, len);
-  new_token(TK_STR, tail, p, len, false);
-  (*tail)->string_literal = string_literal;
-  advance(p, 1);
+
+  if ((*tail)->kind == TK_STR) {
+    // concatenate consecutive string literals
+    int tail_len = strlen((*tail)->string_literal);
+    char *string_literal = calloc(len + tail_len + 1, sizeof(char));
+    strncpy(string_literal, (*tail)->string_literal, tail_len);
+    strncpy(string_literal + tail_len, p->pos, len);
+    (*tail)->string_literal = string_literal;
+    advance(p, len + 1);
+  } else {
+    char *string_literal = calloc(len + 1, sizeof(char));
+    strncpy(string_literal, p->pos, len);
+    new_token(TK_STR, tail, p, len, false);
+    (*tail)->string_literal = string_literal;
+    advance(p, 1);
+  }
 }
 
 void tokenize_number(Position *p, Token **tail) {

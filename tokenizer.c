@@ -170,6 +170,7 @@ Token *tokenize(char *src, char *input_path) {
 
     error(&p, "failed to tokenize");
   }
+  tail->at_eol = true;
   new_token(TK_EOF, &tail, &p, 0, false);
   return head.next;
 }

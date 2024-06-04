@@ -25,6 +25,22 @@ $(OBJ_DIR)/%.o:%.c
 -include $(OBJ_DIR)/*.d
 .PHONY: all test stage1test stage2test stage3test clean fmt gtest
 
+TEST_MACRO=-D COMMAND_ARG_OBJ_LIKE_ONE \
+	   -D COMMAND_ARG_FUNC_LIKE_ONE\(X,Y,...\) \
+	   -D COMMAND_ARG_OBJ_LIKE_EMPTY= \
+	   -D COMMAND_ARG_FUNC_LIKE_EMPTY\(X,Y,...\)= \
+	   -DCOMMAND_ARG_OBJ_LIKE_ONE2 \
+	   -DCOMMAND_ARG_FUNC_LIKE_ONE2\(X\) \
+	   -DCOMMAND_ARG_OBJ_LIKE_EMPTY2= \
+	   -DCOMMAND_ARG_FUNC_LIKE_EMPTY2\(X\)= \
+	   -D COMMAND_ARG_OBJ_LIKE_22=22 \
+	   -D COMMAND_ARG_FUNC_LIKE_JOIN\(X,Y\)=X\#\#Y \
+	   -DCOMMAND_ARG_OBJ_LIKE_24=24 \
+	   -DCOMMAND_ARG_FUNC_LIKE_MINUS\(X\)=-X
+$(TEST_EXE_DIR)/gcc_macro: EXTRA_TEST_FLAGS=$(TEST_MACRO)
+$(TEST_OBJ_DIR)/macro.o: EXTRA_TEST_FLAGS=$(TEST_MACRO)
+$(TEST_OBJ_DIR)/macro2.o: EXTRA_TEST_FLAGS=$(TEST_MACRO)
+
 #########################################
 #
 # verify test codes by gcc
@@ -37,7 +53,7 @@ gtest: $(addprefix $(TEST_EXE_DIR)/,$(addprefix gcc_,$(TESTS)))
 $(TEST_EXE_DIR)/gcc_vector: vector.c
 $(TEST_EXE_DIR)/gcc_%: test/%.c test/common.c
 	@mkdir -p $(TEST_EXE_DIR)
-	gcc -w -o $@ $^
+	gcc -w $(EXTRA_TEST_FLAGS) -o $@ $^
 
 #########################################
 #
@@ -55,7 +71,7 @@ $(TEST_EXE_DIR)/%: $(addprefix $(TEST_OBJ_DIR)/,%.o common.o)
 
 $(TEST_OBJ_DIR)/%.o: test/%.c boncc
 	@mkdir -p $(TEST_OBJ_DIR)
-	./boncc $< -o $(basename $@).s
+	./boncc $(EXTRA_TEST_FLAGS) $< -o $(basename $@).s
 	as -g -o $@ $(basename $@).s
 
 #########################################
@@ -81,7 +97,7 @@ $(TEST_EXE_DIR)/%2: $(addprefix $(TEST_OBJ_DIR)/,%2.o common2.o)
 
 $(TEST_OBJ_DIR)/%2.o: test/%.c boncc2
 	@mkdir -p $(TEST_OBJ_DIR)
-	./boncc2 $< -o $(basename $@).s
+	./boncc2 $(EXTRA_TEST_FLAGS) $< -o $(basename $@).s
 	as -g -o $@ $(basename $@).s
 
 #########################################

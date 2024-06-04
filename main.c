@@ -38,6 +38,18 @@ int main(int argc, char **argv) {
       }
       outpath = argv[i + 1];
       ++i;
+    } else if (strncmp(argv[i], "-D", 2) == 0) {
+      int len = strlen(argv[i]);
+      if (len == 2 && i == argc - 1) {
+        fprintf(stderr, "macro name required for -D option\n");
+        return 1;
+      }
+      if (len == 2) {
+        define_macro_from_command_line(argv[i + 1]);
+        ++i;
+      } else {
+        define_macro_from_command_line(argv[i] + 2);
+      }
     } else if (input_path) {
       fprintf(stderr, "invalid number of arguments\n");
       return 1;

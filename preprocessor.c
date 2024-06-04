@@ -31,6 +31,33 @@ static Macro *new_macro(String *ident, Token *body) {
   return m;
 }
 
+static void init_macro() {
+  if (macros != NULL)
+    return;
+
+  macros = new_map();
+  {
+    static String idents[] = {
+        {"__LINE__", 8},
+        {"__FILE__", 8},
+    };
+    for (int i = 0; i < (int)(sizeof(idents) / sizeof(String)); ++i) {
+      Macro *m = new_macro(&idents[i], NULL);
+      m->is_dynamic = true;
+    }
+  }
+
+  {
+    static String idents[] = {
+        {"NDEBUG", 6},
+        {"__x86_64__", 10},
+        {"__LP64__", 8},
+    };
+    for (int i = 0; i < (int)(sizeof(idents) / sizeof(String)); ++i)
+      new_macro(&idents[i], NULL);
+  }
+}
+
 static Token *expand(Token *prev, Token **stop);
 
 static Token *expand_dynamic(Token *prev, Macro *macro) {
@@ -558,6 +585,47 @@ Token *process_ifdef(Token *prev) { // #ifdef and #ifndef
   return prev;
 }
 
+Token *parse_function_like_macro_param(Token *lparen, Vector *params,
+                                       bool *is_variadic) {
+  if (lparen->next->kind == TK_RPAREN)
+    return lparen->next; // rparen
+
+  Token *p = lparen;
+  do {
+    p = p->next;
+    if (p->at_eol || (!p->is_identifier && p->kind != TK_3DOTS))
+      error(&p->pos, "invalid function-like macro");
+    if (p->kind == TK_3DOTS) {
+      *is_variadic = true;
+      p = p->next;
+      break;
+    }
+
+    vector_push(params, &p);
+    p = p->next;
+  } while (p->kind == TK_COMMA);
+  if (p->kind != TK_RPAREN)
+    error(&p->pos, "invalid function-like macro");
+  return p; // p-<kind == TK_RPAREN
+}
+
+Token *parse_function_like_macro_body(Token *prev, Vector *params) {
+  Token *macro_tail = prev;
+  while (!macro_tail->at_eol) {
+    macro_tail = macro_tail->next;
+    if (macro_tail->is_identifier) {
+      for (int i = 0; i < params->size; i++) {
+        Token *p = *(Token **)vector_get(params, i);
+        if (same_string(macro_tail->str, p->str)) {
+          macro_tail->idx = i + 1; // 1-indexed
+          break;
+        }
+      }
+    }
+  }
+  return macro_tail;
+}
+
 Token *define_macro(Token *prev) {
   assert(match_directive(prev->next, "define"));
   Token *directive = prev->next->next;
@@ -587,34 +655,12 @@ Token *define_macro(Token *prev) {
 
   // function-like macro
   Token *lparen = macro_ident->next;
-  Token *rparen = NULL;
   Vector *params = new_vector(0, sizeof(Token *));
   bool is_variadic = false;
   if (lparen->at_eol)
     error(&lparen->pos, "invalid function-like macro");
 
-  if (lparen->next->kind == TK_RPAREN) {
-    rparen = lparen->next;
-  } else {
-    // read params
-    Token *p = lparen;
-    do {
-      p = p->next;
-      if (p->at_eol || (!p->is_identifier && p->kind != TK_3DOTS))
-        error(&p->pos, "invalid function-like macro");
-      if (p->kind == TK_3DOTS) {
-        is_variadic = true;
-        p = p->next;
-        break;
-      }
-
-      vector_push(params, &p);
-      p = p->next;
-    } while (p->kind == TK_COMMA);
-    if (p->kind != TK_RPAREN)
-      error(&p->pos, "invalid function-like macro");
-    rparen = p;
-  }
+  Token *rparen = parse_function_like_macro_param(lparen, params, &is_variadic);
 
   if (rparen->at_eol) { // empty macro
     Macro *m = new_macro(macro_ident->str, NULL);
@@ -625,19 +671,8 @@ Token *define_macro(Token *prev) {
     return prev;
   }
 
-  Token *macro_tail = rparen;
-  while (!macro_tail->at_eol) {
-    macro_tail = macro_tail->next;
-    if (macro_tail->is_identifier) {
-      for (int i = 0; i < params->size; i++) {
-        Token *p = *(Token **)vector_get(params, i);
-        if (same_string(macro_tail->str, p->str)) {
-          macro_tail->idx = i + 1; // 1-indexed
-          break;
-        }
-      }
-    }
-  }
+  Token *macro_tail = parse_function_like_macro_body(rparen, params);
+
   prev->next = macro_tail->next;
   macro_tail->next = NULL;
   Macro *m = new_macro(macro_ident->str, rparen->next);
@@ -645,6 +680,98 @@ Token *define_macro(Token *prev) {
   m->nparams = params->size;
   m->is_variadic = is_variadic;
   return prev;
+}
+
+Token *dummy_token_one() {
+  // used for macros defined in command-line arguments
+  Token *one = calloc(1, sizeof(Token));
+  one->type = base_type(TYPE_INT);
+  one->val = 1;
+  one->kind = TK_NUM;
+  char *c = calloc(2, sizeof(char));
+  c[0] = '1';
+  one->str = new_string(c, 1);
+  one->at_eol = true;
+  return one;
+}
+
+void define_macro_from_command_line(char *arg) {
+  init_macro(); // This function is called before preprocess() function.
+
+  Token *macro_ident = tokenize(arg, "command-arg");
+
+  if (macro_ident->kind != TK_IDENT) {
+    fprintf(stderr, "invalid macro name for -D option: %s\n", arg);
+    exit(1);
+  }
+
+  if (macro_ident->at_eol) {
+    // When only a macro name is given, the value is 1.
+    new_macro(macro_ident->str, dummy_token_one());
+    return;
+  }
+
+  if (macro_ident->next->kind == TK_ASSIGN) {
+    // object-like macro
+    Token *tk_assign = macro_ident->next;
+
+    if (tk_assign->at_eol) { // empty macro
+      new_macro(macro_ident->str, NULL);
+      return;
+    }
+
+    Token *macro_head = tk_assign->next;
+    get_eol(macro_head)->next = NULL;
+    new_macro(macro_ident->str, macro_head);
+    return;
+  }
+
+  if (macro_ident->next->kind != TK_LPAREN) {
+    fprintf(stderr, "invalid macro definition for -D option: %s\n", arg);
+    exit(1);
+  }
+
+  // function-like macro
+  Token *lparen = macro_ident->next;
+  Vector *params = new_vector(0, sizeof(Token *));
+  bool is_variadic = false;
+  if (lparen->at_eol) {
+    fprintf(stderr, "invalid macro definition for -D option: %s\n", arg);
+    exit(1);
+  }
+
+  Token *rparen = parse_function_like_macro_param(lparen, params, &is_variadic);
+
+  if (rparen->at_eol) {
+    // When only a macro name is given, the value is 1.
+    Macro *m = new_macro(macro_ident->str, dummy_token_one());
+    m->is_function_like = true;
+    m->nparams = params->size;
+    m->is_variadic = is_variadic;
+    return;
+  }
+
+  Token *tk_assign = rparen->next;
+  if (tk_assign->kind != TK_ASSIGN) {
+    fprintf(stderr, "invalid macro definition for -D option: %s\n", arg);
+    exit(1);
+  }
+
+  if (tk_assign->at_eol) { // empty macro
+    Macro *m = new_macro(macro_ident->str, NULL);
+    m->is_function_like = true;
+    m->nparams = params->size;
+    m->is_variadic = is_variadic;
+    return;
+  }
+
+  Token *macro_tail = parse_function_like_macro_body(tk_assign, params);
+  macro_tail->next = NULL;
+
+  Macro *m = new_macro(macro_ident->str, tk_assign->next);
+  m->is_function_like = true;
+  m->nparams = params->size;
+  m->is_variadic = is_variadic;
 }
 
 Token *undef_macro(Token *prev) {
@@ -837,30 +964,7 @@ bool skip_unsupported_keywords(Token *prev) {
 
 Token *preprocess(Token *input) {
   assert(input);
-
-  if (macros == NULL) {
-    macros = new_map();
-    {
-      static String idents[] = {
-          {"__LINE__", 8},
-          {"__FILE__", 8},
-      };
-      for (int i = 0; i < (int)(sizeof(idents) / sizeof(String)); ++i) {
-        Macro *m = new_macro(&idents[i], NULL);
-        m->is_dynamic = true;
-      }
-    }
-
-    {
-      static String idents[] = {
-          {"NDEBUG", 6},
-          {"__x86_64__", 10},
-          {"__LP64__", 8},
-      };
-      for (int i = 0; i < (int)(sizeof(idents) / sizeof(String)); ++i)
-        new_macro(&idents[i], NULL);
-    }
-  }
+  init_macro();
 
   Token head;
   head.next = input;

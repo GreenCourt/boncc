@@ -327,6 +327,8 @@ String *new_string(char *str, int len);
 bool same_string(String *a, String *b);
 bool same_string_nt(String *s, char *null_terminated);
 
+void define_macro_from_command_line(char *arg);
+
 Token *tokenize(char *src, char *input_path);
 Token *preprocess(Token *input);
 void parse(Token *input);

@@ -70,6 +70,19 @@ int main() {
   verify(24, MUL(SUM(10, 2), MUL(2, 1)), __FILE__, __LINE__);
   verify(13, THIRTEEN, __FILE__, __LINE__);
 
+  verify(1, COMMAND_ARG_OBJ_LIKE_ONE, __FILE__, __LINE__);
+  verify(1, COMMAND_ARG_FUNC_LIKE_ONE(a, b, c, d, e, f), __FILE__, __LINE__);
+  verify(1, 4 COMMAND_ARG_OBJ_LIKE_EMPTY - 3, __FILE__, __LINE__);
+  verify(1, COMMAND_ARG_FUNC_LIKE_EMPTY(i, j) 2 - 1, __FILE__, __LINE__);
+  verify(1, COMMAND_ARG_OBJ_LIKE_ONE2, __FILE__, __LINE__);
+  verify(1, COMMAND_ARG_FUNC_LIKE_ONE2(aaaa), __FILE__, __LINE__);
+  verify(1, 3 - COMMAND_ARG_OBJ_LIKE_EMPTY2 2, __FILE__, __LINE__);
+  verify(1, 5 - 4 COMMAND_ARG_FUNC_LIKE_EMPTY2(ppp), __FILE__, __LINE__);
+  verify(22, COMMAND_ARG_OBJ_LIKE_22, __FILE__, __LINE__);
+  verify(2345, COMMAND_ARG_FUNC_LIKE_JOIN(23, 45), __FILE__, __LINE__);
+  verify(24, COMMAND_ARG_OBJ_LIKE_24, __FILE__, __LINE__);
+  verify(-34, COMMAND_ARG_FUNC_LIKE_MINUS(34), __FILE__, __LINE__);
+
   {
     int var12 = 12;
     verify(12, VAR12, __FILE__, __LINE__);

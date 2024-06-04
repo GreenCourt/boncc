@@ -32,6 +32,10 @@ int sprintf(char *s, char *fmt, ...);
 #define VAR12 var##1##2
 #define VAR_HASH(...) var##__VA_ARGS__
 #define THIRTEEN 1######3
+#define VARIADIC_EMPTY(A, B, ...)
+#define VARIADIC_PRE(A, B, ...) __VA_ARGS__, (A) + (B)
+#define VARIADIC_POST(A, B, ...) (A) + (B), __VA_ARGS__
+#define VARIADIC_ARGS_ONLY(...) __VA_ARGS__
 
 int main() {
   verify(1, line1, __FILE__, __LINE__);
@@ -65,6 +69,7 @@ int main() {
   verify(24, MUL(SUM(10, 2), SUM(1, 1)), __FILE__, __LINE__);
   verify(24, MUL(SUM(10, 2), MUL(2, 1)), __FILE__, __LINE__);
   verify(13, THIRTEEN, __FILE__, __LINE__);
+
   {
     int var12 = 12;
     verify(12, VAR12, __FILE__, __LINE__);
@@ -96,6 +101,68 @@ int main() {
     verify('3', buf[5], __FILE__, __LINE__);
     verify('\0', buf[6], __FILE__, __LINE__);
   }
+  {
+    verify(2, 1 + VARIADIC_EMPTY(aa, bb, cc) 1, __FILE__, __LINE__);
+    verify(2, 1 + VARIADIC_EMPTY(aa, bb) 1, __FILE__, __LINE__);
+    verify(2, 1 + 1 VARIADIC_ARGS_ONLY(), __FILE__, __LINE__);
+
+    {
+      char buf[10];
+      int x = sprintf(buf, "%d_%d_%d", VARIADIC_PRE(3, 4, 5, 6));
+      verify(5, x, __FILE__, __LINE__);
+      verify('5', buf[0], __FILE__, __LINE__);
+      verify('_', buf[1], __FILE__, __LINE__);
+      verify('6', buf[2], __FILE__, __LINE__);
+      verify('_', buf[3], __FILE__, __LINE__);
+      verify('7', buf[4], __FILE__, __LINE__);
+      verify('\0', buf[5], __FILE__, __LINE__);
+    }
+
+    {
+      char buf[10];
+      int x = sprintf(buf, "%d_%d", 4 VARIADIC_PRE(2, 3));
+      verify(3, x, __FILE__, __LINE__);
+      verify('4', buf[0], __FILE__, __LINE__);
+      verify('_', buf[1], __FILE__, __LINE__);
+      verify('5', buf[2], __FILE__, __LINE__);
+      verify('\0', buf[3], __FILE__, __LINE__);
+    }
+
+    {
+      char buf[10];
+      int x = sprintf(buf, "%d_%d_%d", VARIADIC_POST(3, 4, 5, 6));
+      verify(5, x, __FILE__, __LINE__);
+      verify('7', buf[0], __FILE__, __LINE__);
+      verify('_', buf[1], __FILE__, __LINE__);
+      verify('5', buf[2], __FILE__, __LINE__);
+      verify('_', buf[3], __FILE__, __LINE__);
+      verify('6', buf[4], __FILE__, __LINE__);
+      verify('\0', buf[5], __FILE__, __LINE__);
+    }
+
+    {
+      char buf[10];
+      int x = sprintf(buf, "%d_%d", VARIADIC_POST(2, 3) 4);
+      verify(3, x, __FILE__, __LINE__);
+      verify('5', buf[0], __FILE__, __LINE__);
+      verify('_', buf[1], __FILE__, __LINE__);
+      verify('4', buf[2], __FILE__, __LINE__);
+      verify('\0', buf[3], __FILE__, __LINE__);
+    }
+
+    {
+      char buf[10];
+      int x = sprintf(buf, "%d_%d_%d", VARIADIC_ARGS_ONLY(3, 4, 5));
+      verify(5, x, __FILE__, __LINE__);
+      verify('3', buf[0], __FILE__, __LINE__);
+      verify('_', buf[1], __FILE__, __LINE__);
+      verify('4', buf[2], __FILE__, __LINE__);
+      verify('_', buf[3], __FILE__, __LINE__);
+      verify('5', buf[4], __FILE__, __LINE__);
+      verify('\0', buf[5], __FILE__, __LINE__);
+    }
+  }
+
   {
 #define BBB
 #define CCC

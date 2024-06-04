@@ -173,6 +173,12 @@ static Token *clone_va_args(Token *head, Macro *macro, Vector *args,
   // and return the tail of the cloned arguments
   Token *tail = head;
   assert(macro->is_variadic);
+
+  if (macro->nparams == args->size) {
+    // arguments of variadic part are not given.
+    return head;
+  }
+
   for (int i = macro->nparams; i < args->size; ++i) {
     tail = clone_macro_argument(tail, *(Token **)vector_get(args, i), pos);
     if (i != args->size - 1) {
@@ -262,7 +268,7 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
   assert(rparen);
   assert(rparen->kind == TK_RPAREN);
   if ((!macro->is_variadic && args->size != macro->nparams) ||
-      (macro->is_variadic && args->size <= macro->nparams))
+      (macro->is_variadic && args->size < macro->nparams))
     error(&rparen->pos, "invalid number of arguments for macro expansion");
 
   // argument prescan
@@ -306,11 +312,11 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
         tail = tail->next;
         *tail = *b;
         tail->pos = expanded->pos;
+        tail->next = NULL;
       }
       b = b->next;
     }
     assert(tail->next == NULL);
-    assert(&head != tail);
   }
 
   { // ## operator
@@ -326,7 +332,6 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
       *tail = *operator_double_hash(tail, tail->next->next);
     }
     assert(tail->next == NULL);
-    assert(&head != tail);
   }
 
   tail->next = rparen->next;

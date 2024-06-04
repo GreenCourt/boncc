@@ -346,6 +346,33 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
     assert(tail->next == NULL);
   }
 
+  { // # operator
+    tail = &head;
+    while (tail->next) {
+      if (tail->next->kind != TK_HASH) {
+        tail = tail->next;
+        continue;
+      }
+
+      Token *operand = tail->next->next;
+
+      if (operand == NULL)
+        error(&expanded->pos, "# operator is not allowed here");
+
+      Token *tk = calloc(1, sizeof(Token));
+      *tk = *operand;
+
+      tk->string_literal = calloc(operand->str->len + 1, sizeof(char));
+      strncpy(tk->string_literal, operand->str->str, operand->str->len);
+      tk->kind = TK_STR;
+      tk->is_identifier = false;
+      tk->pos = expanded->pos;
+      tk->next = operand->next;
+      tail->next = tk;
+    }
+    assert(tail->next == NULL);
+  }
+
   { // ## operator
     tail = &head;
     while (tail->next) {

@@ -36,6 +36,8 @@ int sprintf(char *s, char *fmt, ...);
 #define VARIADIC_PRE(A, B, ...) __VA_ARGS__, (A) + (B)
 #define VARIADIC_POST(A, B, ...) (A) + (B), __VA_ARGS__
 #define VARIADIC_ARGS_ONLY(...) __VA_ARGS__
+#define TO_STRING_LITERAL(x) #x
+#define MACRO_VALUE_TO_STRING_LITERAL(x) TO_STRING_LITERAL(x)
 
 int main() {
   verify(1, line1, __FILE__, __LINE__);
@@ -174,6 +176,24 @@ int main() {
       verify('5', buf[4], __FILE__, __LINE__);
       verify('\0', buf[5], __FILE__, __LINE__);
     }
+  }
+  {
+    char buf[10];
+    int x = sprintf(buf, TO_STRING_LITERAL(4567));
+    verify(4, x, __FILE__, __LINE__);
+    verify('4', buf[0], __FILE__, __LINE__);
+    verify('5', buf[1], __FILE__, __LINE__);
+    verify('6', buf[2], __FILE__, __LINE__);
+    verify('7', buf[3], __FILE__, __LINE__);
+    verify('\0', buf[4], __FILE__, __LINE__);
+  }
+  {
+    char buf[10];
+    int x = sprintf(buf, MACRO_VALUE_TO_STRING_LITERAL(FOO));
+    verify(2, x, __FILE__, __LINE__);
+    verify('1', buf[0], __FILE__, __LINE__);
+    verify('2', buf[1], __FILE__, __LINE__);
+    verify('\0', buf[2], __FILE__, __LINE__);
   }
 
   {

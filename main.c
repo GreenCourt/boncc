@@ -4,12 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-char *get_boncc_include_path() {
-  char *tmp = calloc(strlen(__FILE__) + 1, sizeof(char));
-  snprintf(tmp, strlen(__FILE__) + 1, "%s", __FILE__);
-  return path_join(dirname(tmp), "include");
-}
-
 int main(int argc, char **argv) {
   if (argc == 1) {
     fprintf(stderr, "arguments required\n");
@@ -20,7 +14,7 @@ int main(int argc, char **argv) {
       "/usr/include",
       "/usr/local/include",
       "/usr/include/x86_64-linux-gnu",
-      get_boncc_include_path(),
+      BONCC_INCLUDE_PATH,
   };
 
   include_path = new_vector(0, sizeof(char *));

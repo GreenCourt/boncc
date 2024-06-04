@@ -20,10 +20,16 @@ fmt:
 
 $(OBJ_DIR)/%.o:%.c
 	@mkdir -p $(OBJ_DIR)
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
 
 -include $(OBJ_DIR)/*.d
 .PHONY: all test stage1test stage2test stage3test clean fmt gtest
+
+BONCC_INCLUDE_PATH?=$(abspath $(dir $(lastword $(MAKEFILE_LIST)))/include)
+EXTRA_CFLAGS:=
+$(OBJ_DIR)/main.o: EXTRA_CFLAGS:=-D BONCC_INCLUDE_PATH=\"$(BONCC_INCLUDE_PATH)\"
+$(OBJ_DIR)/main2.o: EXTRA_CFLAGS:=-D BONCC_INCLUDE_PATH=\"$(BONCC_INCLUDE_PATH)\"
+$(OBJ_DIR)/main3.s: EXTRA_CFLAGS:=-D BONCC_INCLUDE_PATH=\"$(BONCC_INCLUDE_PATH)\"
 
 TEST_MACRO=-D COMMAND_ARG_OBJ_LIKE_ONE \
 	   -D COMMAND_ARG_FUNC_LIKE_ONE\(X,Y,...\) \
@@ -84,7 +90,7 @@ boncc2: $(addprefix $(OBJ_DIR)/,$(addsuffix 2.o,$(DEP)))
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 $(OBJ_DIR)/%2.o: %.c boncc
-	./boncc $< -o $(basename $@).s
+	./boncc $(EXTRA_CFLAGS) $< -o $(basename $@).s
 	as -g $(basename $@).s -o $@
 
 stage2test: $(addprefix $(TEST_EXE_DIR)/,$(addsuffix 2,$(TESTS)))
@@ -110,4 +116,4 @@ stage3test: $(addprefix $(OBJ_DIR)/,$(addsuffix 3.s,$(DEP)))
 	for i in $(DEP); do diff -sq $(OBJ_DIR)/$${i}2.s $(OBJ_DIR)/$${i}3.s || exit $$?; done
 
 $(OBJ_DIR)/%3.s: %.c boncc2
-	./boncc2 $< -o $@
+	./boncc2 $(EXTRA_CFLAGS) $< -o $@

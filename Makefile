@@ -1,3 +1,6 @@
+# TOPDIR must be set here (before including other makefiles)
+TOPDIR:=$(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+
 CFLAGS=-std=c11 -g -static -Wall -Wextra -Werror -MMD
 OBJ_DIR=obj
 TEST_OBJ_DIR=test/obj
@@ -25,7 +28,7 @@ $(OBJ_DIR)/%.o:%.c
 -include $(OBJ_DIR)/*.d
 .PHONY: all test stage1test stage2test stage3test clean fmt gtest
 
-BONCC_INCLUDE_PATH?=$(abspath $(dir $(lastword $(MAKEFILE_LIST)))/include)
+BONCC_INCLUDE_PATH?=$(TOPDIR)/include
 EXTRA_CFLAGS:=
 $(OBJ_DIR)/main.o: EXTRA_CFLAGS:=-D BONCC_INCLUDE_PATH=\"$(BONCC_INCLUDE_PATH)\"
 $(OBJ_DIR)/main2.o: EXTRA_CFLAGS:=-D BONCC_INCLUDE_PATH=\"$(BONCC_INCLUDE_PATH)\"

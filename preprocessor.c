@@ -854,25 +854,10 @@ Token *process_include(Token *prev) {
       filepath =
           search_include_path(directive->next->string_literal, directive->next);
   } else if (directive->next->kind == TK_LT && !directive->next->at_eol) {
-    Token *left = directive->next->next;
-    Token *right = left;
-    int len = left->str->len;
-    while (right->next->kind != TK_GT) {
-      if (right->next->at_eol)
-        error(&directive->next->pos,
-              "filename required after #include but not found.");
-      right = right->next;
-      len += right->str->len;
-    }
-
-    // construct filename from tokens between < and >
-    char *p = calloc(len + 1, sizeof(char));
-    char *q = p;
-    for (Token *t = left; t != right->next; t = t->next)
-      q += snprintf(q, t->str->len + 1, "%.*s", t->str->len, t->str->str);
-    p[len] = '\0';
-
-    filepath = search_include_path(p, directive->next);
+    assert(directive->next->next->kind == TK_STR);
+    assert(directive->next->next->next->kind == TK_GT);
+    filepath = search_include_path(directive->next->next->string_literal,
+                                   directive->next);
   } else {
     error(&directive->next->pos,
           "filename required after #include but not found.");

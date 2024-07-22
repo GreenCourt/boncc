@@ -44,7 +44,40 @@ static void new_token(TokenKind kind, Token **tail, Position *p, int len,
 
 static void tokenize_char_literal(Position *p, Token **tail);
 static void tokenize_string_literal(Position *p, Token **tail);
+static void tokenize_include_filename(Position *p, Token **tail);
 static void tokenize_number(Position *p, Token **tail);
+
+static void skip_spaces_and_comments(Position *p, Token *tail) {
+  while (true) {
+    if (*p->pos != '\n' && isspace(*p->pos)) {
+      tail->has_right_space = true;
+      advance(p, 1);
+      continue;
+    }
+
+    if (*p->pos == '\\' && *(p->pos + 1) == '\n') {
+      advance(p, 2);
+      continue;
+    }
+
+    if (match(p->pos, "//")) { // line comments
+      advance(p, 2);
+      while (*p->pos != '\n')
+        advance(p, 1);
+      continue;
+    }
+
+    if (match(p->pos, "/*")) { // block comments
+      char *q = strstr(p->pos + 2, "*/");
+      if (!q)
+        error(p, "unclosed block comment");
+      advance(p, (q + 2) - p->pos);
+      continue;
+    }
+
+    break;
+  }
+}
 
 Token *tokenize(char *src, char *input_path) {
   Token head;
@@ -59,35 +92,11 @@ Token *tokenize(char *src, char *input_path) {
   p.pos = src;
 
   while (*p.pos) {
+    skip_spaces_and_comments(&p, tail);
+
     if (*p.pos == '\n') {
       tail->at_eol = true;
       advance(&p, 1);
-      continue;
-    }
-
-    if (isspace(*p.pos)) {
-      tail->has_right_space = true;
-      advance(&p, 1);
-      continue;
-    }
-
-    if (*p.pos == '\\' && *(p.pos + 1) == '\n') {
-      advance(&p, 2);
-      continue;
-    }
-
-    if (match(p.pos, "//")) { // line comments
-      advance(&p, 2);
-      while (*p.pos != '\n')
-        advance(&p, 1);
-      continue;
-    }
-
-    if (match(p.pos, "/*")) { // block comments
-      char *q = strstr(p.pos + 2, "*/");
-      if (!q)
-        error(&p, "unclosed block comment");
-      advance(&p, (q + 2) - p.pos);
       continue;
     }
 
@@ -164,7 +173,16 @@ Token *tokenize(char *src, char *input_path) {
       while (is_alphanumeric_or_underscore(*(q + 1)))
         q++;
       int len = q + 1 - p.pos;
+      bool hash_include = tail->kind == TK_HASH && tail->at_bol &&
+                          strncmp(p.pos, "include", len) == 0;
+
       new_token(TK_IDENT, &tail, &p, len, true);
+
+      if (hash_include) { // #include
+        skip_spaces_and_comments(&p, tail);
+        if (*p.pos == '"' || *p.pos == '<')
+          tokenize_include_filename(&p, &tail);
+      }
       continue;
     }
 
@@ -272,6 +290,37 @@ void tokenize_string_literal(Position *p, Token **tail) {
     strncpy(string_literal, p->pos, len);
     new_token(TK_STR, tail, p, len, false);
     (*tail)->string_literal = string_literal;
+    advance(p, 1);
+  }
+}
+
+void tokenize_include_filename(Position *p, Token **tail) {
+  assert(*p->pos == '"' || *p->pos == '<');
+  char stop = *p->pos == '"' ? '"' : '>';
+  if (*p->pos == '<')
+    new_token(TK_LT, tail, p, 1, false);
+  else
+    advance(p, 1);
+
+  // Within #include, treat backslash as an ordinary character
+  char *q = p->pos;
+  while (*q != stop) {
+    if (*q == '\0' || *q == '\n')
+      error(p, "missing terminating %c character", stop);
+    q++;
+  }
+  int len = q - p->pos;
+
+  char *string_literal = calloc(len + 1, sizeof(char));
+  strncpy(string_literal, p->pos, len);
+  new_token(TK_STR, tail, p, len, false);
+  (*tail)->string_literal = string_literal;
+
+  if (stop == '>') {
+    assert(*p->pos == '>');
+    new_token(TK_GT, tail, p, 1, false);
+  } else {
+    assert(*p->pos == '"');
     advance(p, 1);
   }
 }

@@ -252,8 +252,11 @@ Type *implicit_type_conversion(Type *l, Type *r) {
   if (r->kind == TYPE_ARRAY)
     return pointer_type(r->base);
 
-  if (l->kind == TYPE_PTR || r->kind == TYPE_PTR)
+  if (l->kind == TYPE_PTR)
     return l;
+
+  if (r->kind == TYPE_PTR)
+    return r;
 
   if (l->size > r->size)
     return l;

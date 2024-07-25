@@ -1,6 +1,8 @@
 #include "boncc.h"
 #include <assert.h>
 #include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -239,8 +241,10 @@ void tokenize_char_literal(Position *p, Token **tail) {
       error(p, "unsupported escaped literal");
     }
     new_token(TK_NUM, tail, p, 2, false);
-    (*tail)->val = val;
-    (*tail)->type = base_type(TYPE_CHAR);
+    (*tail)->num = calloc(1, sizeof(Number));
+    (*tail)->num->value.long_value = val;
+    (*tail)->type = (*tail)->num->type = base_type(TYPE_CHAR);
+
     advance(p, 1);
     return;
   }
@@ -249,8 +253,9 @@ void tokenize_char_literal(Position *p, Token **tail) {
     error(p, "invalid character literal");
 
   new_token(TK_NUM, tail, p, 1, false);
-  (*tail)->val = *((*tail)->pos.pos);
-  (*tail)->type = base_type(TYPE_CHAR);
+  (*tail)->num = calloc(1, sizeof(Number));
+  (*tail)->num->value.long_value = *((*tail)->pos.pos);
+  (*tail)->type = (*tail)->num->type = base_type(TYPE_CHAR);
   advance(p, 1);
 }
 
@@ -328,33 +333,36 @@ void tokenize_include_filename(Position *p, Token **tail) {
 void tokenize_number(Position *p, Token **tail) {
   assert(isdigit(*p->pos));
   char *q = p->pos;
-  long long val;
+  bool is_hex = *q == '0' && (*(q + 1) == 'X' || *(q + 1) == 'x');
 
-  if (*q == '0' && (*(q + 1) == 'X' || *(q + 1) == 'x'))
-    val = strtol(q + 2, &q, 16);
+  if (is_hex && !is_hexdigit(*(q + 2)))
+    error(p, "invalid number literal");
+
+  int integer_base = 10;
+  if (is_hex)
+    integer_base = 16;
   else if (*q == '0')
-    val = strtol(q, &q, 8);
-  else
-    val = strtol(q, &q, 10);
+    integer_base = 8;
 
-  bool is_long = !(-2147483648 <= val && val <= 2147483647);
+  strtoll(q, &q, integer_base);
+
+  bool is_long = false;
   bool is_unsigned = false;
+  int suffix_length = 0;
 
   if (*q == 'U' || *q == 'u') {
     is_unsigned = true;
-    q++;
+    suffix_length++;
+    q++; // increment q to check the suffix "ull"
   }
 
   if (*q == 'L' || *q == 'l') {
     is_long = true;
-    if (*(q + 1) == *q)
-      q++;
-    q++;
+    if (*(q + 1) == *q) { // if LL or ll
+      suffix_length++;
+    }
+    suffix_length++;
   }
-
-  int len = q - p->pos;
-  new_token(TK_NUM, tail, p, len, false);
-  (*tail)->val = val;
 
   TypeKind kind;
   if (is_long && is_unsigned)
@@ -366,5 +374,43 @@ void tokenize_number(Position *p, Token **tail) {
   else
     kind = TYPE_INT;
 
-  (*tail)->type = base_type(kind);
+  errno = 0;
+
+  Number *num = calloc(1, sizeof(Number));
+  q = p->pos;
+  switch (kind) {
+  case TYPE_ULONG:
+    num->value.ulong_value = strtoull(q, &q, integer_base);
+    break;
+  case TYPE_UINT:
+    num->value.ulong_value = strtoull(q, &q, integer_base);
+    if (num->value.ulong_value > UINT_MAX)
+      kind = TYPE_ULONG;
+    break;
+  case TYPE_LONG:
+    num->value.long_value = strtoll(q, &q, integer_base);
+    break;
+  case TYPE_INT:
+    num->value.long_value = strtoll(q, &q, integer_base);
+    if (num->value.long_value > INT_MAX || num->value.long_value < INT_MIN)
+      kind = TYPE_LONG;
+    break;
+  default:
+    assert(false);
+    break;
+  }
+  if (errno == ERANGE)
+    error(p, "out-of-range");
+
+  q += suffix_length;
+
+  num->type = base_type(kind);
+
+  if (isalnum(*q) || *q == '_')
+    error(p, "invalid number literal");
+
+  int len = q - p->pos;
+  new_token(TK_NUM, tail, p, len, false);
+  (*tail)->type = num->type;
+  (*tail)->num = num;
 }

@@ -8,12 +8,72 @@ Node *new_node_nop() {
   return node;
 }
 
-Node *new_node_num(Token *tok, long long val, Type *type) {
+Node *new_node_num_int(Token *tok, int val) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_NUM;
+  Number *num = calloc(1, sizeof(Number));
+  num->value.long_value = val;
+  num->type = base_type(TYPE_INT);
+  node->num = num;
+  node->type = num->type;
+  node->token = tok;
+  return node;
+}
+
+Node *new_node_num_char(Token *tok, char val) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_NUM;
+  Number *num = calloc(1, sizeof(Number));
+  num->value.long_value = val;
+  num->type = base_type(TYPE_CHAR);
+  node->num = num;
+  node->type = num->type;
+  node->token = tok;
+  return node;
+}
+
+Node *new_node_num_ulong(Token *tok, unsigned long long val) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_NUM;
+  Number *num = calloc(1, sizeof(Number));
+  num->value.ulong_value = val;
+  num->type = base_type(TYPE_ULONG);
+  node->num = num;
+  node->type = num->type;
+  node->token = tok;
+  return node;
+}
+
+Node *new_node_num_pointer(Token *tok, unsigned long long val, Type *type) {
+  assert(type->kind == TYPE_PTR);
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_NUM;
+  Number *num = calloc(1, sizeof(Number));
+  num->value.ulong_value = val;
+  num->type = type;
+  node->num = num;
+  node->type = num->type;
+  node->token = tok;
+  return node;
+}
+
+Node *new_node_num_zero(Token *tok, Type *type) {
   assert(is_scalar(type));
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_NUM;
-  node->val = val;
-  node->type = type;
+  Number *num = calloc(1, sizeof(Number));
+  num->type = type;
+  node->num = num;
+  node->type = num->type;
+  node->token = tok;
+  return node;
+}
+
+Node *new_node_num(Token *tok, Number *num) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_NUM;
+  node->num = num;
+  node->type = num->type;
   node->token = tok;
   return node;
 }
@@ -104,13 +164,17 @@ Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
 
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   if (left_is_ptr) {
+    assert(type->kind == TYPE_PTR);
     rhs = new_node_cast(NULL, type, rhs);
-    rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size, type),
-                   type);
+    rhs =
+        new_node(ND_MUL, rhs,
+                 new_node_num_pointer(NULL, lhs->type->base->size, type), type);
   } else if (right_is_ptr) {
+    assert(type->kind == TYPE_PTR);
     lhs = new_node_cast(NULL, type, lhs);
-    lhs = new_node(ND_MUL, lhs, new_node_num(NULL, rhs->type->base->size, type),
-                   type);
+    lhs =
+        new_node(ND_MUL, lhs,
+                 new_node_num_pointer(NULL, rhs->type->base->size, type), type);
   }
 
   lhs = new_node_cast(NULL, type, lhs);
@@ -131,22 +195,30 @@ Node *new_node_sub(Token *tok, Node *lhs, Node *rhs) {
       (!right_is_ptr && !is_scalar(rhs->type)) ||
       (left_is_ptr && lhs->type->base->size < 0) ||
       (right_is_ptr && rhs->type->base->size < 0) || is_funcptr(lhs->type) ||
+      (left_is_ptr && right_is_ptr &&
+       !same_type(lhs->type->base, rhs->type->base)) ||
       is_funcptr(rhs->type))
     error(tok ? &tok->pos : NULL, "invalid operands to binary - operator");
 
-  Type *type = implicit_type_conversion(lhs->type, rhs->type);
+  Type *type = left_is_ptr && right_is_ptr
+                   ? base_type(TYPE_ULONG)
+                   : implicit_type_conversion(lhs->type, rhs->type);
   if (left_is_ptr && !right_is_ptr) {
+    assert(type->kind == TYPE_PTR);
     rhs = new_node_cast(NULL, type, rhs);
-    rhs = new_node(ND_MUL, rhs, new_node_num(NULL, lhs->type->base->size, type),
-                   type);
+    rhs =
+        new_node(ND_MUL, rhs,
+                 new_node_num_pointer(NULL, lhs->type->base->size, type), type);
   }
 
+  Type *base = lhs->type->base;
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_SUB, lhs, rhs, type);
-  if (left_is_ptr && right_is_ptr)
-    node = new_node(ND_DIV, node,
-                    new_node_num(NULL, lhs->type->base->size, type), type);
+  if (left_is_ptr && right_is_ptr) {
+    assert(type->kind == TYPE_ULONG);
+    node = new_node(ND_DIV, node, new_node_num_ulong(NULL, base->size), type);
+  }
   node->token = tok;
   return node;
 }
@@ -156,8 +228,8 @@ Node *new_node_eq(Token *tok, Node *lhs, Node *rhs) {
       lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr =
       rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
-  bool left_is_zero = lhs->kind == ND_NUM && lhs->val == 0;
-  bool right_is_zero = rhs->kind == ND_NUM && rhs->val == 0;
+  bool left_is_zero = lhs->kind == ND_NUM && is_integer_zero(lhs->num);
+  bool right_is_zero = rhs->kind == ND_NUM && is_integer_zero(rhs->num);
   bool left_is_voidptr = left_is_ptr && lhs->type->base->kind == TYPE_VOID;
   bool right_is_voidptr = right_is_ptr && rhs->type->base->kind == TYPE_VOID;
 
@@ -182,8 +254,8 @@ Node *new_node_ne(Token *tok, Node *lhs, Node *rhs) {
       lhs->type->kind == TYPE_PTR || lhs->type->kind == TYPE_ARRAY;
   bool right_is_ptr =
       rhs->type->kind == TYPE_PTR || rhs->type->kind == TYPE_ARRAY;
-  bool left_is_zero = lhs->kind == ND_NUM && lhs->val == 0;
-  bool right_is_zero = rhs->kind == ND_NUM && rhs->val == 0;
+  bool left_is_zero = lhs->kind == ND_NUM && is_integer_zero(lhs->num);
+  bool right_is_zero = rhs->kind == ND_NUM && is_integer_zero(rhs->num);
   bool left_is_voidptr = left_is_ptr && lhs->type->base->kind == TYPE_VOID;
   bool right_is_voidptr = right_is_ptr && rhs->type->base->kind == TYPE_VOID;
 
@@ -476,9 +548,8 @@ Node *new_node_array_access(Token *tok, Node *array, int idx) {
   assert(array->type->kind == TYPE_ARRAY);
   assert(idx >= 0);
   idx *= array->type->base->size;
-  return new_node_deref(
-      tok, new_node(ND_ADD, array, new_node_num(tok, idx, base_type(TYPE_INT)),
-                    pointer_type(array->type->base)));
+  return new_node_deref(tok, new_node(ND_ADD, array, new_node_num_int(tok, idx),
+                                      pointer_type(array->type->base)));
 }
 
 Node *new_node_array_access_as_1D(Token *tok, Node *array, int idx) {
@@ -491,9 +562,8 @@ Node *new_node_array_access_as_1D(Token *tok, Node *array, int idx) {
     base = base->base;
   idx *= base->size;
 
-  return new_node_deref(
-      tok, new_node(ND_ADD, array, new_node_num(tok, idx, base_type(TYPE_INT)),
-                    pointer_type(array->type->base)));
+  return new_node_deref(tok, new_node(ND_ADD, array, new_node_num_int(tok, idx),
+                                      pointer_type(array->type->base)));
 }
 
 Variable *is_const_var_addr(Node *node) {
@@ -519,7 +589,7 @@ Variable *is_const_var_addr(Node *node) {
   return NULL;
 }
 
-int is_constant_number(Node *node) {
+bool is_constant_number(Node *node) {
   assert(node);
   switch (node->kind) {
   case ND_ADD:
@@ -553,50 +623,50 @@ int is_constant_number(Node *node) {
   }
 }
 
-long long eval(Node *node) {
+Number *eval(Node *node) {
   switch (node->kind) {
   case ND_ADD:
-    return eval(node->lhs) + eval(node->rhs);
+    return number_add(eval(node->lhs), eval(node->rhs));
   case ND_SUB:
-    return eval(node->lhs) - eval(node->rhs);
+    return number_sub(eval(node->lhs), eval(node->rhs));
   case ND_MUL:
-    return eval(node->lhs) * eval(node->rhs);
+    return number_mul(eval(node->lhs), eval(node->rhs));
   case ND_DIV:
-    return eval(node->lhs) / eval(node->rhs);
+    return number_div(eval(node->lhs), eval(node->rhs));
   case ND_MOD:
-    return eval(node->lhs) % eval(node->rhs);
+    return number_mod(eval(node->lhs), eval(node->rhs));
   case ND_BITXOR:
-    return eval(node->lhs) ^ eval(node->rhs);
+    return number_bitxor(eval(node->lhs), eval(node->rhs));
   case ND_BITOR:
-    return eval(node->lhs) | eval(node->rhs);
+    return number_bitor(eval(node->lhs), eval(node->rhs));
   case ND_BITAND:
-    return eval(node->lhs) & eval(node->rhs);
+    return number_bitand(eval(node->lhs), eval(node->rhs));
   case ND_BITNOT:
-    return ~eval(node->lhs);
+    return number_bitnot(eval(node->lhs));
   case ND_LSHIFT:
-    return eval(node->lhs) << eval(node->rhs);
+    return number_lshift(eval(node->lhs), eval(node->rhs));
   case ND_RSHIFT:
-    return eval(node->lhs) >> eval(node->rhs);
+    return number_rshift(eval(node->lhs), eval(node->rhs));
   case ND_EQ:
-    return eval(node->lhs) == eval(node->rhs);
+    return number_eq(eval(node->lhs), eval(node->rhs));
   case ND_NE:
-    return eval(node->lhs) != eval(node->rhs);
+    return number_ne(eval(node->lhs), eval(node->rhs));
   case ND_LT:
-    return eval(node->lhs) < eval(node->rhs);
+    return number_lt(eval(node->lhs), eval(node->rhs));
   case ND_LE:
-    return eval(node->lhs) <= eval(node->rhs);
+    return number_le(eval(node->lhs), eval(node->rhs));
   case ND_COND:
-    return eval(node->condition) ? eval(node->lhs) : eval(node->rhs);
+    return number_cond(eval(node->condition), eval(node->lhs), eval(node->rhs));
   case ND_LOGNOT:
-    return !eval(node->lhs);
+    return number_lognot(eval(node->lhs));
   case ND_LOGAND:
-    return eval(node->lhs) && eval(node->rhs);
+    return number_logand(eval(node->lhs), eval(node->rhs));
   case ND_LOGOR:
-    return eval(node->lhs) || eval(node->rhs);
+    return number_logor(eval(node->lhs), eval(node->rhs));
   case ND_CAST:
-    return eval(node->lhs);
+    return number_cast(eval(node->lhs), node->type);
   case ND_NUM:
-    return node->val;
+    return node->num;
   default:
     error(node->token ? &node->token->pos : NULL, "not a constant expr");
     return 0;

@@ -6,7 +6,7 @@ OBJ_DIR=obj
 TEST_OBJ_DIR=test/obj
 TEST_EXE_DIR=test/exe
 
-DEP=main common tokenizer parser generator preprocessor vector type node map
+DEP=main common tokenizer parser generator preprocessor vector type node map number
 TESTS=$(basename $(filter-out common.c,$(notdir $(wildcard test/*.c))))
 
 boncc: $(addprefix $(OBJ_DIR)/,$(addsuffix .o,$(DEP)))

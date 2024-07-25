@@ -83,7 +83,11 @@ primary     = "(" expr ")"
 
 // node.c -->
 Node *new_node_nop();
-Node *new_node_num(Token *tok, long long val, Type *type);
+Node *new_node_num_int(Token *tok, int val);
+Node *new_node_num_char(Token *tok, char val);
+Node *new_node_num_ulong(Token *tok, unsigned long long val);
+Node *new_node_num_zero(Token *tok, Type *type);
+Node *new_node_num(Token *tok, Number *num);
 Node *new_node_mul(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_div(Token *tok, Node *lhs, Node *rhs);
 Node *new_node_mod(Token *tok, Node *lhs, Node *rhs);
@@ -114,7 +118,7 @@ Node *new_node_member(Token *tok, Node *x, Member *y);
 Node *new_node_var(Token *tok, Variable *var);
 Node *new_node_array_access(Token *tok, Node *array, int idx);
 Node *new_node_array_access_as_1D(Token *tok, Node *array, int idx);
-int eval(Node *node);
+Number *eval(Node *node);
 // <-- node.c
 
 typedef enum {
@@ -471,8 +475,12 @@ Type *consume_enum(Token **nx) {
     if (map_get(current_scope->enum_elements, id->str))
       error(&id->pos, "duplicated identifier for enum element");
 
-    if (consume(TK_ASSIGN, nx))
-      val = eval(assign(nx)) - 1;
+    if (consume(TK_ASSIGN, nx)) {
+      Number *num = eval(assign(nx));
+      if (!is_integer(num->type))
+        error(&id->pos, "enum value must be an integer");
+      val = number2int(num) - 1;
+    }
     int *v = calloc(1, sizeof(int));
     *v = ++val;
     map_push(current_scope->enum_elements, id->str, v);
@@ -625,8 +633,9 @@ Type *consume_array_brackets(Type *type, Token **nx) {
     Token *tok_sz = *nx;
     Node *expr_sz = expr(nx);
     if (expr_sz) {
-      size = eval(expr_sz);
-      if (size < 0)
+      Number *num_size = eval(expr_sz);
+      size = number2int(num_size);
+      if (!is_integer(num_size->type) || size < 0)
         error(&tok_sz->pos, "invalid array size");
     }
   }
@@ -1192,7 +1201,7 @@ Node *fill_struct_union_zero(Node *left, Member *member) {
     Node *member_access = new_node_member(NULL, left, member);
     if (is_scalar(member->type))
       s = new_node_assign_ignore_const(NULL, member_access,
-                                       new_node_num(NULL, 0, member->type));
+                                       new_node_num_zero(NULL, member->type));
     else if (member->type->kind == TYPE_ARRAY)
       s = fill_array_zero(member_access, 0);
     else if (is_struct_union(member->type))
@@ -1211,7 +1220,7 @@ Node *fill_array_zero(Node *left, int start_index) {
   node->blk_stmts = new_vector(0, sizeof(Node *));
 
   if (is_scalar(left->type->base)) {
-    Node *zero = new_node_num(NULL, 0, base_type(TYPE_INT));
+    Node *zero = new_node_num_zero(NULL, base_type(TYPE_INT));
     for (int i = start_index; i < left->type->array_size; ++i) {
       Node *s = new_node_assign_ignore_const(
           NULL, new_node_array_access(NULL, left, i), zero);
@@ -1312,7 +1321,7 @@ Node *init_local_array(Variable *var, Node *left, VariableInit *init) {
               "miss-match between array-size and string-length");
 
       for (int i = 0; i < left->type->array_size; ++i) {
-        Node *c = new_node_num(NULL, lit[i], base_type(TYPE_CHAR));
+        Node *c = new_node_num_char(NULL, lit[i]);
         Node *s = new_node_assign_ignore_const(
             var->token, new_node_array_access(var->token, left, i), c);
         vector_push(node->blk_stmts, &s);
@@ -1379,7 +1388,7 @@ Node *init_local_array(Variable *var, Node *left, VariableInit *init) {
       for (int i = len; i < len1d; i++) {
         Node *s = new_node_assign_ignore_const(
             var->token, new_node_array_access_as_1D(var->token, left, i),
-            new_node_num(var->token, 0, base_type(TYPE_INT)));
+            new_node_num_zero(var->token, base_type(TYPE_INT)));
         vector_push(node->blk_stmts, &s);
       }
     } else if (is_struct_union(base)) {
@@ -1494,15 +1503,17 @@ Node *stmt(Token **nx) {
     node->label_index = label_index++;
 
     Node *e = expr(nx);
-    long long val = eval(e);
+    Number *val = eval(e);
+    if (!is_integer(val->type))
+      error(&(*nx)->pos, "case label must be an integer");
     Node *c = sw->next_case;
     while (c) {
       assert(c->condition->kind == ND_NUM);
-      if (c->condition->val == val)
+      if (number2bool(number_eq(c->condition->num, val)))
         error(&tok->pos, "duplicated case value detected");
       c = c->next_case;
     }
-    node->condition = new_node_num(NULL, val, e->type);
+    node->condition = new_node_num(NULL, val);
     expect(TK_COLON, nx);
     node->body = stmt(nx);
     node->next_case = sw->next_case;
@@ -1732,6 +1743,8 @@ Node *stmt_switch(Token **nx) {
 
   expect(TK_LPAREN, nx);
   node->condition = expr(nx);
+  if (!is_integer(node->condition->type))
+    error(&(*nx)->pos, "switch quantity must be an integer");
   expect(TK_RPAREN, nx);
 
   new_scope();
@@ -1943,19 +1956,17 @@ Node *unary(Token **nx) {
       error(&tok->pos, "invalud sizeof operation for void type");
     if (type->size < 0)
       error(&tok->pos, "invalud sizeof operation for incomplete type");
-    return new_node_num(tok, type->size, base_type(TYPE_ULONG));
+    return new_node_num_ulong(tok, type->size);
   }
   if (consume(TK_INC, nx)) {
     Node *u = unary(nx);
-    return new_node_assign(
-        NULL, u,
-        new_node_add(NULL, u, new_node_num(NULL, 1, base_type(TYPE_INT))));
+    return new_node_assign(NULL, u,
+                           new_node_add(NULL, u, new_node_num_int(NULL, 1)));
   }
   if (consume(TK_DEC, nx)) {
     Node *u = unary(nx);
-    return new_node_assign(
-        NULL, u,
-        new_node_sub(NULL, u, new_node_num(NULL, 1, base_type(TYPE_INT))));
+    return new_node_assign(NULL, u,
+                           new_node_sub(NULL, u, new_node_num_int(NULL, 1)));
   }
 
   if (consume(TK_PLUS, nx))
@@ -1963,7 +1974,7 @@ Node *unary(Token **nx) {
 
   if (consume(TK_MINUS, nx)) {
     Node *u = unary(nx);
-    return new_node_sub(tok, new_node_num(NULL, 0, u->type), u);
+    return new_node_sub(tok, new_node_num_zero(NULL, u->type), u);
   }
 
   if (consume(TK_AMP, nx))
@@ -1998,7 +2009,7 @@ Node *primary(Token **nx) {
   if ((tok = consume(TK_IDENT, nx))) {
     int *enum_val = find_enum_element(tok->str);
     if (enum_val)
-      return new_node_num(tok, *enum_val, base_type(TYPE_INT));
+      return new_node_num_int(tok, *enum_val);
 
     Variable *var = find_object(tok);
     if (!var)
@@ -2013,7 +2024,7 @@ Node *primary(Token **nx) {
   }
 
   if ((tok = consume(TK_NUM, nx)))
-    return new_node_num(tok, tok->val, tok->type);
+    return new_node_num(tok, tok->num);
 
   error(&(*nx)->pos, "primary expected but not found");
   return NULL;
@@ -2057,20 +2068,18 @@ Node *tail(Node *x, Token **nx) {
     // (x = x + 1) - 1
     return new_node_sub(
         NULL,
-        new_node_assign(
-            NULL, x,
-            new_node_add(NULL, x, new_node_num(NULL, 1, base_type(TYPE_INT)))),
-        new_node_num(NULL, 1, base_type(TYPE_INT)));
+        new_node_assign(NULL, x,
+                        new_node_add(NULL, x, new_node_num_int(NULL, 1))),
+        new_node_num_int(NULL, 1));
   }
 
   if (consume(TK_DEC, nx)) {
     // (x = x - 1) + 1
     return new_node_add(
         NULL,
-        new_node_assign(
-            NULL, x,
-            new_node_sub(NULL, x, new_node_num(NULL, 1, base_type(TYPE_INT)))),
-        new_node_num(NULL, 1, base_type(TYPE_INT)));
+        new_node_assign(NULL, x,
+                        new_node_sub(NULL, x, new_node_num_int(NULL, 1))),
+        new_node_num_int(NULL, 1));
   }
 
   if (consume(TK_LPAREN, nx)) {

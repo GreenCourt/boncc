@@ -30,7 +30,8 @@ const char *token_text[] = {
     "unsigned", "str",   "identifier", "number", "eof",
 };
 
-void error(Position *pos, char *fmt, ...) {
+__attribute__((format(printf, 2, 3))) void error(Position *pos, char *fmt,
+                                                 ...) {
   va_list ap;
   va_start(ap, fmt);
 
@@ -61,6 +62,10 @@ bool is_alphabet(char c) {
 bool is_alphanumeric_or_underscore(char c) {
   return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || isdigit(c) ||
          c == '_';
+}
+
+bool is_hexdigit(char c) {
+  return ('a' <= c && c <= 'f') || ('A' <= c && c <= 'f') || isdigit(c);
 }
 
 char *read_file(char *path) {

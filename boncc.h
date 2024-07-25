@@ -97,6 +97,16 @@ struct Position {
   int column_number;
 };
 
+typedef struct Type Type;
+typedef struct Number Number;
+struct Number {
+  Type *type;
+  union {
+    unsigned long long ulong_value;
+    long long long_value;
+  } value;
+};
+
 typedef struct String String;
 struct String {
   // a string that is not null-terminated
@@ -112,7 +122,7 @@ struct Token {
   Position pos;
   String *str;
   bool is_identifier;   // true iff TK_IDENT or reserved identifiers
-  long long val;        // only for TK_NUM
+  Number *num;          // only for TK_NUM
   char *string_literal; // null terminated, only for TK_STR
   Type *type;           // TK_NUM
   bool at_bol;
@@ -263,7 +273,7 @@ struct Node {
   Token *token; // for error messages
   Node *lhs;
   Node *rhs;
-  long long val;      // only for ND_NUM
+  Number *num;        // only for ND_NUM
   Variable *variable; // only for ND_VAR
   Type *type;
 
@@ -319,6 +329,7 @@ extern Vector *include_path;           // char*
 
 bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);
+bool is_hexdigit(char c);
 void error(Position *pos, char *fmt, ...);
 char *read_file(char *path);
 char *path_join(char *dir, char *file);
@@ -351,3 +362,35 @@ bool is_signed(Type *type);
 bool is_funcptr(Type *type);
 bool is_struct_union(Type *type);
 Type *implicit_type_conversion(Type *l, Type *r);
+
+Number *new_number_int(int val);
+bool is_integer_zero(Number *num);
+int number2int(Number *num);
+unsigned int number2uint(Number *num);
+long long number2long(Number *num);
+unsigned long long number2ulong(Number *num);
+short number2short(Number *num);
+unsigned short number2ushort(Number *num);
+char number2char(Number *num);
+unsigned char number2uchar(Number *num);
+bool number2bool(Number *num);
+Number *number_add(Number *l, Number *r);
+Number *number_sub(Number *l, Number *r);
+Number *number_mul(Number *l, Number *r);
+Number *number_div(Number *l, Number *r);
+Number *number_mod(Number *l, Number *r);
+Number *number_bitxor(Number *l, Number *r);
+Number *number_bitor(Number *l, Number *r);
+Number *number_bitand(Number *l, Number *r);
+Number *number_bitnot(Number *l);
+Number *number_lshift(Number *l, Number *r);
+Number *number_rshift(Number *l, Number *r);
+Number *number_eq(Number *l, Number *r);
+Number *number_ne(Number *l, Number *r);
+Number *number_lt(Number *l, Number *r);
+Number *number_le(Number *l, Number *r);
+Number *number_cond(Number *cond, Number *l, Number *r);
+Number *number_lognot(Number *l);
+Number *number_logand(Number *l, Number *r);
+Number *number_logor(Number *l, Number *r);
+Number *number_cast(Number *l, Type *type);

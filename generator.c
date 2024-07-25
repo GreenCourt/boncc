@@ -14,19 +14,19 @@ static const char *reg_args8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 // node.c -->
 bool is_constant_number(Node *node);
 Variable *is_const_var_addr(Node *node);
-int eval(Node *node);
+Number *eval(Node *node);
 // <-- node.c
 
 void gen(Node *node);
 
-void writeline(char *fmt, ...) {
+__attribute__((format(printf, 1, 2))) void writeline(char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   vfprintf(ostream, fmt, ap);
   fprintf(ostream, "\n");
 }
 
-void comment(Token *tok, char *fmt, ...) {
+__attribute__((format(printf, 2, 3))) void comment(Token *tok, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   fprintf(ostream, "  # ");
@@ -93,7 +93,7 @@ void gen_address(Node *node) {
 void load(Type *type) {
   // src  : the address where rax is pointing to
   // dest : rax
-  comment(NULL, "load %s", type_text(type->kind), type->size);
+  comment(NULL, "load %s (size:%d)", type_text(type->kind), type->size);
 
   if (type->kind == TYPE_ARRAY || is_struct_union(type))
     return; // nothing todo
@@ -202,7 +202,11 @@ void gen_switch(Node *node) {
   while (c) {
     assert(c->condition);
     assert(c->condition->kind == ND_NUM);
-    writeline("  cmp rax, %ld", c->condition->val);
+    assert(is_integer(c->condition->type));
+    if (is_signed(c->condition->type))
+      writeline("  cmp rax, %lld", number2long(c->condition->num));
+    else
+      writeline("  cmp rax, %llu", number2ulong(c->condition->num));
     writeline("  je .Lcase%d", c->label_index);
     c = c->next_case;
   }
@@ -398,11 +402,11 @@ void gen_global_pointer_init(VariableInit *init, Type *type) {
     Variable *right_addr = is_const_var_addr(init->expr->rhs);
 
     if (left_addr && is_constant_number(init->expr->rhs)) {
-      writeline("  .quad %.*s+%d", left_addr->ident->len, left_addr->ident->str,
-                eval(init->expr->rhs));
+      writeline("  .quad %.*s+%lld", left_addr->ident->len,
+                left_addr->ident->str, number2ulong(eval(init->expr->rhs)));
     } else if (right_addr && is_constant_number(init->expr->lhs)) {
-      writeline("  .quad %.*s+%d", right_addr->ident->len,
-                right_addr->ident->str, eval(init->expr->lhs));
+      writeline("  .quad %.*s+%lld", right_addr->ident->len,
+                right_addr->ident->str, number2ulong(eval(init->expr->lhs)));
     } else {
       error(NULL, "unsupported initialization of a global pointer.");
     }
@@ -416,7 +420,8 @@ void gen_global_pointer_init(VariableInit *init, Type *type) {
   }
 
   if (is_constant_number(init->expr)) {
-    writeline("  .quad %d", eval(init->expr));
+    assert(is_integer(init->expr->type) || init->expr->type->kind == TYPE_PTR);
+    writeline("  .quad %llu", number2ulong(eval(init->expr)));
     return;
   }
 
@@ -431,24 +436,35 @@ void gen_global_integer_init(VariableInit *init, Type *type) {
     init = *(VariableInit **)vector_get(init->vec, 0);
   }
   assert(init->expr);
-  int val = eval(init->expr);
+  Number *val = eval(init->expr);
   switch (type->kind) {
   case TYPE_LONG:
+    writeline("  .quad %lld", number2long(val));
+    break;
   case TYPE_ULONG:
-    writeline("  .quad %d", val);
+    writeline("  .quad %llu", number2ulong(val));
     break;
   case TYPE_INT:
-  case TYPE_UINT:
   case TYPE_ENUM:
-    writeline("  .long %d", val);
+    writeline("  .long %d", number2int(val));
+    break;
+  case TYPE_UINT:
+    writeline("  .long %u", number2uint(val));
     break;
   case TYPE_SHORT:
+    writeline("  .value %d", number2short(val));
+    break;
   case TYPE_USHORT:
-    writeline("  .value %d", val);
+    writeline("  .value %d", number2ushort(val));
     break;
   case TYPE_CHAR:
+    writeline("  .byte %d", number2char(val));
+    break;
   case TYPE_BOOL:
-    writeline("  .byte %d", val);
+    writeline("  .byte %d", number2bool(val));
+    break;
+  case TYPE_UCHAR:
+    writeline("  .byte %u", number2uchar(val));
     break;
   default:
     assert(false);
@@ -880,7 +896,38 @@ void gen(Node *node) {
     return;
   case ND_NUM:
     comment(node->token, "ND_NUM");
-    writeline("  mov rax, %lld", node->val);
+    switch (node->type->kind) {
+    case TYPE_LONG:
+      writeline("  mov rax, %lld", number2long(node->num));
+      break;
+    case TYPE_ULONG:
+    case TYPE_PTR:
+      writeline("  mov rax, %llu", number2ulong(node->num));
+      break;
+    case TYPE_INT:
+      writeline("  mov rax, %d", number2int(node->num));
+      break;
+    case TYPE_UINT:
+      writeline("  mov rax, %u", number2uint(node->num));
+      break;
+    case TYPE_SHORT:
+      writeline("  mov rax, %d", number2short(node->num));
+      break;
+    case TYPE_USHORT:
+      writeline("  mov rax, %u", number2ushort(node->num));
+      break;
+    case TYPE_CHAR:
+      writeline("  mov rax, %d", number2char(node->num));
+      break;
+    case TYPE_UCHAR:
+      writeline("  mov rax, %u", number2uchar(node->num));
+      break;
+    case TYPE_BOOL:
+      writeline("  mov rax, %d", number2bool(node->num));
+      break;
+    default:
+      assert(false);
+    }
     return;
   case ND_VAR:
     comment(node->token, "ND_VAR");

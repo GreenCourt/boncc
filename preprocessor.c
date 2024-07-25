@@ -5,8 +5,8 @@
 #include <string.h>
 #include <unistd.h>
 
-Node *expr(Token **nx);     // parse.c
-long long eval(Node *node); // node.c
+Node *expr(Token **nx);   // parse.c
+Number *eval(Node *node); // node.c
 
 static Map *macros;
 
@@ -74,8 +74,8 @@ static Token *expand_dynamic(Token *prev, Macro *macro) {
 
   if (same_string_nt(macro->ident, "__LINE__")) {
     token->kind = TK_NUM;
-    token->val = token->pos.line_number;
-    token->type = base_type(TYPE_INT);
+    token->num = new_number_int(token->pos.line_number);
+    token->type = token->num->type;
     return token;
   }
 
@@ -514,8 +514,8 @@ Token *process_if(Token *prev) { // #if and #elif
     Token *e = calloc(1, sizeof(Token));
     e->kind = TK_NUM;
     e->pos = t->pos;
-    e->val = map_get(macros, ident->str) != NULL;
-    e->type = base_type(TYPE_INT);
+    e->num = new_number_int(map_get(macros, ident->str) != NULL);
+    e->type = e->num->type;
     e->next = nx;
     t->next = e;
     t = e;
@@ -532,16 +532,16 @@ Token *process_if(Token *prev) { // #if and #elif
     Token *zero = calloc(1, sizeof(Token));
     zero->kind = TK_NUM;
     zero->pos = t->pos;
-    zero->val = 0;
-    zero->type = base_type(TYPE_INT);
+    zero->num = new_number_int(0);
+    zero->type = zero->num->type;
     zero->next = t->next->next;
     t->next = zero;
   }
 
-  long long value = eval(expr(&directive->next));
+  Number *value = eval(expr(&directive->next));
   Token *before_hash = find_elif_or_else_or_endif(prev);
 
-  if (value) {
+  if (number2bool(value)) {
     Token *last = before_hash;
     while (!match_directive(before_hash->next, "endif"))
       before_hash = find_elif_or_else_or_endif(before_hash->next);
@@ -712,8 +712,8 @@ Token *define_macro(Token *prev) {
 Token *dummy_token_one() {
   // used for macros defined in command-line arguments
   Token *one = calloc(1, sizeof(Token));
-  one->type = base_type(TYPE_INT);
-  one->val = 1;
+  one->num = new_number_int(1);
+  one->type = one->num->type;
   one->kind = TK_NUM;
   char *c = calloc(2, sizeof(char));
   c[0] = '1';

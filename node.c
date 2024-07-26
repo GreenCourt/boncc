@@ -361,10 +361,10 @@ Node *new_node_logand(Token *tok, Node *lhs, Node *rhs, int label_index) {
       (!right_is_ptr && !is_scalar(rhs->type)))
     error(tok ? &tok->pos : NULL, "invalid operands to binary && operator");
 
-  Type *type = implicit_type_conversion(lhs->type, rhs->type);
+  Type *type = base_type(TYPE_BOOL);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
-  Node *node = new_node(ND_LOGAND, lhs, rhs, base_type(TYPE_INT));
+  Node *node = new_node(ND_LOGAND, lhs, rhs, type);
   node->token = tok;
   node->label_index = label_index;
   return node;
@@ -379,10 +379,10 @@ Node *new_node_logor(Token *tok, Node *lhs, Node *rhs, int label_index) {
       (!right_is_ptr && !is_scalar(rhs->type)))
     error(tok ? &tok->pos : NULL, "invalid operands to binary && operator");
 
-  Type *type = implicit_type_conversion(lhs->type, rhs->type);
+  Type *type = base_type(TYPE_BOOL);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
-  Node *node = new_node(ND_LOGOR, lhs, rhs, base_type(TYPE_INT));
+  Node *node = new_node(ND_LOGOR, lhs, rhs, type);
   node->token = tok;
   node->label_index = label_index;
   return node;

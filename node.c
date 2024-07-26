@@ -346,7 +346,8 @@ Node *new_node_lognot(Token *tok, Node *operand) {
       operand->type->kind == TYPE_PTR || operand->type->kind == TYPE_ARRAY;
   if (!is_scalar(operand->type) && !is_ptr)
     error(tok ? &tok->pos : NULL, "invalid operand to unary ! operator");
-  Node *node = new_node(ND_LOGNOT, operand, NULL, base_type(TYPE_INT));
+  operand = new_node_cast(NULL, base_type(TYPE_BOOL), operand);
+  Node *node = new_node(ND_LOGNOT, operand, NULL, base_type(TYPE_BOOL));
   node->token = tok;
   return node;
 }

@@ -549,8 +549,11 @@ Node *new_node_array_access(Token *tok, Node *array, int idx) {
   assert(array->type->kind == TYPE_ARRAY);
   assert(idx >= 0);
   idx *= array->type->base->size;
-  return new_node_deref(tok, new_node(ND_ADD, array, new_node_num_int(tok, idx),
-                                      pointer_type(array->type->base)));
+  Type *type = pointer_type(array->type->base);
+  Node *ofs = new_node_num_int(tok, idx);
+  array = new_node_cast(NULL, type, array);
+  ofs = new_node_cast(NULL, type, ofs);
+  return new_node_deref(tok, new_node(ND_ADD, array, ofs, type));
 }
 
 Node *new_node_array_access_as_1D(Token *tok, Node *array, int idx) {
@@ -563,8 +566,11 @@ Node *new_node_array_access_as_1D(Token *tok, Node *array, int idx) {
     base = base->base;
   idx *= base->size;
 
-  return new_node_deref(tok, new_node(ND_ADD, array, new_node_num_int(tok, idx),
-                                      pointer_type(array->type->base)));
+  Type *type = pointer_type(array->type->base);
+  Node *ofs = new_node_num_int(tok, idx);
+  array = new_node_cast(NULL, type, array);
+  ofs = new_node_cast(NULL, type, ofs);
+  return new_node_deref(tok, new_node(ND_ADD, array, ofs, type));
 }
 
 Variable *is_const_var_addr(Node *node) {

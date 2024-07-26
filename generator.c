@@ -969,6 +969,8 @@ void gen(Node *node) {
     return;
   case ND_ADD:
     comment(node->token, "ND_ADD");
+    assert(same_type(node->type, node->lhs->type));
+    assert(same_type(node->type, node->rhs->type));
     gen(node->lhs);
     writeline("  push rax");
     gen(node->rhs);
@@ -977,6 +979,8 @@ void gen(Node *node) {
     return;
   case ND_SUB:
     comment(node->token, "ND_SUB");
+    assert(same_type(node->type, node->lhs->type));
+    assert(same_type(node->type, node->rhs->type));
     gen(node->lhs);
     writeline("  push rax");
     gen(node->rhs);
@@ -986,6 +990,8 @@ void gen(Node *node) {
     return;
   case ND_MUL:
     comment(node->token, "ND_MUL");
+    assert(same_type(node->type, node->lhs->type));
+    assert(same_type(node->type, node->rhs->type));
     gen(node->lhs);
     writeline("  push rax");
     gen(node->rhs);
@@ -995,6 +1001,8 @@ void gen(Node *node) {
   case ND_DIV:
   case ND_MOD:
     comment(node->token, node->kind == ND_DIV ? "ND_DIV" : "ND_MOD");
+    assert(same_type(node->type, node->lhs->type));
+    assert(same_type(node->type, node->rhs->type));
     gen(node->lhs);
     writeline("  push rax");
     gen(node->rhs);
@@ -1012,6 +1020,7 @@ void gen(Node *node) {
     return;
   case ND_LOGNOT:
     comment(node->token, "ND_LOGNOT");
+    assert(node->lhs->type->kind == TYPE_BOOL);
     gen(node->lhs);
     writeline("  cmp rax, 0");
     writeline("  sete al");
@@ -1019,6 +1028,8 @@ void gen(Node *node) {
     return;
   case ND_LOGOR:
     comment(node->token, "ND_LOGOR %d", node->label_index);
+    assert(node->lhs->type->kind == TYPE_BOOL);
+    assert(node->rhs->type->kind == TYPE_BOOL);
     gen(node->lhs);
     writeline("  cmp rax, 0");
     writeline("  jne .Ltrue%d", node->label_index);
@@ -1033,6 +1044,8 @@ void gen(Node *node) {
     return;
   case ND_LOGAND:
     comment(node->token, "ND_LOGAND %d", node->label_index);
+    assert(node->lhs->type->kind == TYPE_BOOL);
+    assert(node->rhs->type->kind == TYPE_BOOL);
     gen(node->lhs);
     writeline("  cmp rax, 0");
     writeline("  je .Lfalse%d", node->label_index);
@@ -1065,6 +1078,8 @@ void gen(Node *node) {
     return;
   case ND_BITXOR:
     comment(node->token, "ND_BITXOR");
+    assert(same_type(node->type, node->lhs->type));
+    assert(same_type(node->type, node->rhs->type));
     gen(node->lhs);
     writeline("  push rax");
     gen(node->rhs);
@@ -1074,6 +1089,8 @@ void gen(Node *node) {
     return;
   case ND_BITOR:
     comment(node->token, "ND_BITOR");
+    assert(same_type(node->type, node->lhs->type));
+    assert(same_type(node->type, node->rhs->type));
     gen(node->lhs);
     writeline("  push rax");
     gen(node->rhs);
@@ -1083,6 +1100,8 @@ void gen(Node *node) {
     return;
   case ND_BITAND:
     comment(node->token, "ND_BITAND");
+    assert(same_type(node->type, node->lhs->type));
+    assert(same_type(node->type, node->rhs->type));
     gen(node->lhs);
     writeline("  push rax");
     gen(node->rhs);
@@ -1097,6 +1116,7 @@ void gen(Node *node) {
     return;
   case ND_EQ:
     comment(node->token, "ND_EQ");
+    assert(same_type(node->lhs->type, node->rhs->type));
     gen(node->lhs);
     writeline("  push rax");
     gen(node->rhs);
@@ -1107,6 +1127,7 @@ void gen(Node *node) {
     return;
   case ND_NE:
     comment(node->token, "ND_NE");
+    assert(same_type(node->lhs->type, node->rhs->type));
     gen(node->lhs);
     writeline("  push rax");
     gen(node->rhs);
@@ -1117,6 +1138,7 @@ void gen(Node *node) {
     return;
   case ND_LT:
     comment(node->token, "ND_LT");
+    assert(same_type(node->lhs->type, node->rhs->type));
     gen(node->lhs);
     writeline("  push rax");
     gen(node->rhs);
@@ -1128,6 +1150,7 @@ void gen(Node *node) {
     return;
   case ND_LE:
     comment(node->token, "ND_LE");
+    assert(same_type(node->lhs->type, node->rhs->type));
     gen(node->lhs);
     writeline("  push rax");
     gen(node->rhs);

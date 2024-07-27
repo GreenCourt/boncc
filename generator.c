@@ -822,6 +822,207 @@ void gen_cast(Node *node) {
   assert(false);
 }
 
+void gen_number(Node *node) {
+  assert(node->kind == ND_NUM);
+  assert(node->num);
+
+  switch (node->type->kind) {
+  case TYPE_LONG:
+    writeline("  mov rax, %lld", number2long(node->num));
+    break;
+  case TYPE_ULONG:
+  case TYPE_PTR:
+    writeline("  mov rax, %llu", number2ulong(node->num));
+    break;
+  case TYPE_INT:
+    writeline("  mov rax, %d", number2int(node->num));
+    break;
+  case TYPE_UINT:
+    writeline("  mov rax, %u", number2uint(node->num));
+    break;
+  case TYPE_SHORT:
+    writeline("  mov rax, %d", number2short(node->num));
+    break;
+  case TYPE_USHORT:
+    writeline("  mov rax, %u", number2ushort(node->num));
+    break;
+  case TYPE_CHAR:
+    writeline("  mov rax, %d", number2char(node->num));
+    break;
+  case TYPE_UCHAR:
+    writeline("  mov rax, %u", number2uchar(node->num));
+    break;
+  case TYPE_BOOL:
+    writeline("  mov rax, %d", number2bool(node->num));
+    break;
+  default:
+    assert(false);
+  }
+}
+
+void gen_numerical_operator(Node *node) {
+  assert(same_type(node->type, node->lhs->type));
+  assert(same_type(node->type, node->rhs->type));
+
+  if (node->kind == ND_ADD || node->kind == ND_MUL) {
+    gen(node->lhs);
+    writeline("  push rax");
+    gen(node->rhs);
+    writeline("  pop rdi");
+    writeline("  %s rax, rdi", node->kind == ND_ADD ? "add" : "imul");
+    return;
+  }
+
+  if (node->kind == ND_SUB) {
+    gen(node->lhs);
+    writeline("  push rax");
+    gen(node->rhs);
+    writeline("  mov rdi, rax");
+    writeline("  pop rax");
+    writeline("  sub rax, rdi");
+    return;
+  }
+
+  if (node->kind == ND_DIV || node->kind == ND_MOD) {
+    gen(node->lhs);
+    writeline("  push rax");
+    gen(node->rhs);
+    writeline("  mov rdi, rax");
+    writeline("  pop rax");
+
+    if (is_unsigned(node->type)) {
+      writeline("  mov rdx, 0");
+      writeline("  div rdi");
+    } else {
+      writeline("  cqo");
+      writeline("  idiv rdi");
+    }
+
+    if (node->kind == ND_MOD) {
+      assert(is_integer(node->type));
+      writeline("  mov rax, rdx");
+    }
+    return;
+  }
+  assert(false);
+}
+
+void gen_logical_operator(Node *node) {
+  if (node->kind == ND_LOGNOT) {
+    assert(node->lhs->type->kind == TYPE_BOOL);
+    gen(node->lhs);
+    writeline("  cmp rax, 0");
+    writeline("  sete al");
+    writeline("  movzx rax, al");
+    return;
+  }
+
+  assert(node->lhs->type->kind == TYPE_BOOL);
+  assert(node->rhs->type->kind == TYPE_BOOL);
+
+  if (node->kind == ND_LOGOR) {
+    gen(node->lhs);
+    writeline("  cmp rax, 0");
+    writeline("  jne .Ltrue%d", node->label_index);
+    gen(node->rhs);
+    writeline("  cmp rax, 0");
+    writeline("  jne .Ltrue%d", node->label_index);
+    writeline("  mov rax, 0");
+    writeline("  jmp .Lend%d", node->label_index);
+    writeline(".Ltrue%d:", node->label_index);
+    writeline("  mov rax, 1");
+    writeline(".Lend%d:", node->label_index);
+    return;
+  }
+
+  if (node->kind == ND_LOGAND) {
+    gen(node->lhs);
+    writeline("  cmp rax, 0");
+    writeline("  je .Lfalse%d", node->label_index);
+    gen(node->rhs);
+    writeline("  cmp rax, 0");
+    writeline("  je .Lfalse%d", node->label_index);
+    writeline("  mov rax, 1");
+    writeline("  jmp .Lend%d", node->label_index);
+    writeline(".Lfalse%d:", node->label_index);
+    writeline("  mov rax, 0");
+    writeline(".Lend%d:", node->label_index);
+    return;
+  }
+
+  assert(false);
+}
+
+void gen_bit_operator(Node *node) {
+  if (node->kind == ND_BITNOT) {
+    gen(node->lhs);
+    writeline("  not rax");
+    return;
+  }
+
+  if (node->kind == ND_LSHIFT || node->kind == ND_RSHIFT) {
+    gen(node->lhs);
+    writeline("  push rax");
+    gen(node->rhs);
+    writeline("  mov rcx, rax");
+    writeline("  pop rax");
+    if (node->kind == ND_LSHIFT)
+      writeline("  shl rax, cl");
+    else
+      writeline("  s%cr rax, cl", is_unsigned(node->lhs->type) ? 'h' : 'a');
+    return;
+  }
+
+  assert(same_type(node->type, node->lhs->type));
+  assert(same_type(node->type, node->rhs->type));
+
+  gen(node->lhs);
+  writeline("  push rax");
+  gen(node->rhs);
+  writeline("  mov rdi, rax");
+  writeline("  pop rax");
+
+  if (node->kind == ND_BITXOR)
+    writeline("  xor rax, rdi");
+  else if (node->kind == ND_BITOR)
+    writeline("  or rax, rdi");
+  else if (node->kind == ND_BITAND)
+    writeline("  and rax, rdi");
+  else
+    assert(false);
+}
+
+void gen_comparison_operator(Node *node) {
+  assert(same_type(node->lhs->type, node->rhs->type));
+
+  if (node->kind == ND_EQ || node->kind == ND_NE) {
+    gen(node->lhs);
+    writeline("  push rax");
+    gen(node->rhs);
+    writeline("  pop rdi");
+    writeline("  cmp rax, rdi");
+    writeline("  %s al", node->kind == ND_EQ ? "sete" : "setne");
+    writeline("  movzb rax, al");
+    return;
+  }
+
+  if (node->kind == ND_LT || node->kind == ND_LE) {
+    gen(node->lhs);
+    writeline("  push rax");
+    gen(node->rhs);
+    writeline("  mov rdi, rax");
+    writeline("  pop rax");
+    writeline("  cmp rax, rdi");
+    if (node->kind == ND_LT)
+      writeline("  set%c al", is_unsigned(node->lhs->type) ? 'b' : 'l');
+    else
+      writeline("  set%ce al", is_unsigned(node->lhs->type) ? 'b' : 'l');
+    writeline("  movzb rax, al");
+    return;
+  }
+  assert(false);
+}
+
 void gen(Node *node) {
   switch (node->kind) {
   case ND_CALL:
@@ -896,38 +1097,7 @@ void gen(Node *node) {
     return;
   case ND_NUM:
     comment(node->token, "ND_NUM");
-    switch (node->type->kind) {
-    case TYPE_LONG:
-      writeline("  mov rax, %lld", number2long(node->num));
-      break;
-    case TYPE_ULONG:
-    case TYPE_PTR:
-      writeline("  mov rax, %llu", number2ulong(node->num));
-      break;
-    case TYPE_INT:
-      writeline("  mov rax, %d", number2int(node->num));
-      break;
-    case TYPE_UINT:
-      writeline("  mov rax, %u", number2uint(node->num));
-      break;
-    case TYPE_SHORT:
-      writeline("  mov rax, %d", number2short(node->num));
-      break;
-    case TYPE_USHORT:
-      writeline("  mov rax, %u", number2ushort(node->num));
-      break;
-    case TYPE_CHAR:
-      writeline("  mov rax, %d", number2char(node->num));
-      break;
-    case TYPE_UCHAR:
-      writeline("  mov rax, %u", number2uchar(node->num));
-      break;
-    case TYPE_BOOL:
-      writeline("  mov rax, %d", number2bool(node->num));
-      break;
-    default:
-      assert(false);
-    }
+    gen_number(node);
     return;
   case ND_VAR:
     comment(node->token, "ND_VAR");
@@ -969,196 +1139,75 @@ void gen(Node *node) {
     return;
   case ND_ADD:
     comment(node->token, "ND_ADD");
-    assert(same_type(node->type, node->lhs->type));
-    assert(same_type(node->type, node->rhs->type));
-    gen(node->lhs);
-    writeline("  push rax");
-    gen(node->rhs);
-    writeline("  pop rdi");
-    writeline("  add rax, rdi");
+    gen_numerical_operator(node);
     return;
   case ND_SUB:
     comment(node->token, "ND_SUB");
-    assert(same_type(node->type, node->lhs->type));
-    assert(same_type(node->type, node->rhs->type));
-    gen(node->lhs);
-    writeline("  push rax");
-    gen(node->rhs);
-    writeline("  mov rdi, rax");
-    writeline("  pop rax");
-    writeline("  sub rax, rdi");
+    gen_numerical_operator(node);
     return;
   case ND_MUL:
     comment(node->token, "ND_MUL");
-    assert(same_type(node->type, node->lhs->type));
-    assert(same_type(node->type, node->rhs->type));
-    gen(node->lhs);
-    writeline("  push rax");
-    gen(node->rhs);
-    writeline("  pop rdi");
-    writeline("  imul rax, rdi");
+    gen_numerical_operator(node);
     return;
   case ND_DIV:
+    comment(node->token, "ND_DIV");
+    gen_numerical_operator(node);
+    return;
   case ND_MOD:
-    comment(node->token, node->kind == ND_DIV ? "ND_DIV" : "ND_MOD");
-    assert(same_type(node->type, node->lhs->type));
-    assert(same_type(node->type, node->rhs->type));
-    gen(node->lhs);
-    writeline("  push rax");
-    gen(node->rhs);
-    writeline("  mov rdi, rax");
-    writeline("  pop rax");
-    if (is_unsigned(node->type)) {
-      writeline("  mov rdx, 0");
-      writeline("  div rdi");
-    } else {
-      writeline("  cqo");
-      writeline("  idiv rdi");
-    }
-    if (node->kind == ND_MOD)
-      writeline("  mov rax, rdx");
+    comment(node->token, "ND_MOD");
+    gen_numerical_operator(node);
     return;
   case ND_LOGNOT:
     comment(node->token, "ND_LOGNOT");
-    assert(node->lhs->type->kind == TYPE_BOOL);
-    gen(node->lhs);
-    writeline("  cmp rax, 0");
-    writeline("  sete al");
-    writeline("  movzx rax, al");
+    gen_logical_operator(node);
     return;
   case ND_LOGOR:
     comment(node->token, "ND_LOGOR %d", node->label_index);
-    assert(node->lhs->type->kind == TYPE_BOOL);
-    assert(node->rhs->type->kind == TYPE_BOOL);
-    gen(node->lhs);
-    writeline("  cmp rax, 0");
-    writeline("  jne .Ltrue%d", node->label_index);
-    gen(node->rhs);
-    writeline("  cmp rax, 0");
-    writeline("  jne .Ltrue%d", node->label_index);
-    writeline("  mov rax, 0");
-    writeline("  jmp .Lend%d", node->label_index);
-    writeline(".Ltrue%d:", node->label_index);
-    writeline("  mov rax, 1");
-    writeline(".Lend%d:", node->label_index);
+    gen_logical_operator(node);
     return;
   case ND_LOGAND:
     comment(node->token, "ND_LOGAND %d", node->label_index);
-    assert(node->lhs->type->kind == TYPE_BOOL);
-    assert(node->rhs->type->kind == TYPE_BOOL);
-    gen(node->lhs);
-    writeline("  cmp rax, 0");
-    writeline("  je .Lfalse%d", node->label_index);
-    gen(node->rhs);
-    writeline("  cmp rax, 0");
-    writeline("  je .Lfalse%d", node->label_index);
-    writeline("  mov rax, 1");
-    writeline("  jmp .Lend%d", node->label_index);
-    writeline(".Lfalse%d:", node->label_index);
-    writeline("  mov rax, 0");
-    writeline(".Lend%d:", node->label_index);
+    gen_logical_operator(node);
     return;
   case ND_LSHIFT:
     comment(node->token, "ND_LSHIFT");
-    gen(node->lhs);
-    writeline("  push rax");
-    gen(node->rhs);
-    writeline("  mov rcx, rax");
-    writeline("  pop rax");
-    writeline("  shl rax, cl");
+    gen_bit_operator(node);
     return;
   case ND_RSHIFT:
     comment(node->token, "ND_RSHIFT");
-    gen(node->lhs);
-    writeline("  push rax");
-    gen(node->rhs);
-    writeline("  mov rcx, rax");
-    writeline("  pop rax");
-    writeline("  s%cr rax, cl", is_unsigned(node->lhs->type) ? 'h' : 'a');
+    gen_bit_operator(node);
     return;
   case ND_BITXOR:
     comment(node->token, "ND_BITXOR");
-    assert(same_type(node->type, node->lhs->type));
-    assert(same_type(node->type, node->rhs->type));
-    gen(node->lhs);
-    writeline("  push rax");
-    gen(node->rhs);
-    writeline("  mov rdi, rax");
-    writeline("  pop rax");
-    writeline("  xor rax, rdi");
+    gen_bit_operator(node);
     return;
   case ND_BITOR:
     comment(node->token, "ND_BITOR");
-    assert(same_type(node->type, node->lhs->type));
-    assert(same_type(node->type, node->rhs->type));
-    gen(node->lhs);
-    writeline("  push rax");
-    gen(node->rhs);
-    writeline("  mov rdi, rax");
-    writeline("  pop rax");
-    writeline("  or rax, rdi");
+    gen_bit_operator(node);
     return;
   case ND_BITAND:
     comment(node->token, "ND_BITAND");
-    assert(same_type(node->type, node->lhs->type));
-    assert(same_type(node->type, node->rhs->type));
-    gen(node->lhs);
-    writeline("  push rax");
-    gen(node->rhs);
-    writeline("  mov rdi, rax");
-    writeline("  pop rax");
-    writeline("  and rax, rdi");
+    gen_bit_operator(node);
     return;
   case ND_BITNOT:
     comment(node->token, "ND_BITNOT");
-    gen(node->lhs);
-    writeline("  not rax");
+    gen_bit_operator(node);
     return;
   case ND_EQ:
     comment(node->token, "ND_EQ");
-    assert(same_type(node->lhs->type, node->rhs->type));
-    gen(node->lhs);
-    writeline("  push rax");
-    gen(node->rhs);
-    writeline("  pop rdi");
-    writeline("  cmp rax, rdi");
-    writeline("  sete al");
-    writeline("  movzb rax, al");
+    gen_comparison_operator(node);
     return;
   case ND_NE:
     comment(node->token, "ND_NE");
-    assert(same_type(node->lhs->type, node->rhs->type));
-    gen(node->lhs);
-    writeline("  push rax");
-    gen(node->rhs);
-    writeline("  pop rdi");
-    writeline("  cmp rax, rdi");
-    writeline("  setne al");
-    writeline("  movzb rax, al");
+    gen_comparison_operator(node);
     return;
   case ND_LT:
     comment(node->token, "ND_LT");
-    assert(same_type(node->lhs->type, node->rhs->type));
-    gen(node->lhs);
-    writeline("  push rax");
-    gen(node->rhs);
-    writeline("  mov rdi, rax");
-    writeline("  pop rax");
-    writeline("  cmp rax, rdi");
-    writeline("  set%c al", is_unsigned(node->lhs->type) ? 'b' : 'l');
-    writeline("  movzb rax, al");
+    gen_comparison_operator(node);
     return;
   case ND_LE:
     comment(node->token, "ND_LE");
-    assert(same_type(node->lhs->type, node->rhs->type));
-    gen(node->lhs);
-    writeline("  push rax");
-    gen(node->rhs);
-    writeline("  mov rdi, rax");
-    writeline("  pop rax");
-    writeline("  cmp rax, rdi");
-    writeline("  set%ce al", is_unsigned(node->lhs->type) ? 'b' : 'l');
-    writeline("  movzb rax, al");
+    gen_comparison_operator(node);
     return;
   case ND_CAST:
     comment(node->token, "ND_CAST %s --> %s", type_text(node->lhs->type->kind),

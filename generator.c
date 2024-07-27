@@ -625,8 +625,9 @@ void gen_cast(Node *node) {
     case TYPE_UINT:
     case TYPE_ULONG:
     case TYPE_PTR:
+      return;
     default:
-      break;
+      assert(false);
     }
   }
 
@@ -646,7 +647,7 @@ void gen_cast(Node *node) {
     case TYPE_PTR:
       return;
     default:
-      break;
+      assert(false);
     }
   }
 
@@ -671,7 +672,7 @@ void gen_cast(Node *node) {
     case TYPE_LONG:
       return;
     default:
-      break;
+      assert(false);
     }
   }
 
@@ -695,9 +696,8 @@ void gen_cast(Node *node) {
     case TYPE_ENUM:
     case TYPE_LONG:
       return;
-      return;
     default:
-      break;
+      assert(false);
     }
   }
 
@@ -726,7 +726,7 @@ void gen_cast(Node *node) {
     case TYPE_LONG:
       return;
     default:
-      break;
+      assert(false);
     }
   }
 
@@ -754,7 +754,7 @@ void gen_cast(Node *node) {
     case TYPE_LONG:
       return;
     default:
-      break;
+      assert(false);
     }
   }
 
@@ -785,7 +785,7 @@ void gen_cast(Node *node) {
     case TYPE_LONG:
       return;
     default:
-      break;
+      assert(false);
     }
   }
 
@@ -816,7 +816,7 @@ void gen_cast(Node *node) {
     case TYPE_LONG:
       return;
     default:
-      break;
+      assert(false);
     }
   }
   assert(false);

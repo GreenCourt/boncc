@@ -240,36 +240,44 @@ void gen_call(Node *node) {
   }
 
   // align RSP to 16bytes (ABI requirements)
-  comment(NULL, "RSP alignment for call");
+  comment(NULL, "check RSP alignment for call");
   static int l = -1;
   l++;
   writeline("  mov rax, rsp");
-  writeline("  and rax, 15"); // rax % 16 == rax & 0xF
-  writeline("  jnz .Lcall%d", l);
+  writeline("  and rax, 15");     // rax % 16 == rax & 0xF
+  writeline("  jnz .Lcall%d", l); // jump if RSP is not aligned
+
+  // alined case
+  comment(NULL, "the case when RSP was already aligned");
   if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC) {
     writeline("  mov al, 0");
     writeline("  call %.*s", node->lhs->variable->ident->len,
               node->lhs->variable->ident->str);
   } else {
-    gen(node->lhs);
+    gen(node->lhs); // calculate function address
     writeline("  mov r10, rax");
     writeline("  mov al, 0");
     writeline("  call r10");
   }
   writeline("  jmp .Lend_call%d", l);
+
+  // not-aligned case
+  comment(NULL, "the case when RSP was not aligned");
   writeline(".Lcall%d:", l);
-  writeline("  sub rsp, 8");
+  writeline("  sub rsp, 8"); // RSP is always aligned to 8 by this compiler
   if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC) {
     writeline("  mov al, 0");
     writeline("  call %.*s", node->lhs->variable->ident->len,
               node->lhs->variable->ident->str);
   } else {
-    gen(node->lhs);
+    gen(node->lhs); // calculate function address
     writeline("  mov r10, rax");
     writeline("  mov al, 0");
     writeline("  call r10");
   }
-  writeline("  add rsp, 8");
+  writeline("  add rsp, 8"); // recover RSP
+
+  // end label for aligned case
   writeline(".Lend_call%d:", l);
 }
 

@@ -244,7 +244,7 @@ Node *new_node_eq(Token *tok, Node *lhs, Node *rhs) {
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
-  Node *node = new_node(ND_EQ, lhs, rhs, base_type(TYPE_INT));
+  Node *node = new_node(ND_EQ, lhs, rhs, base_type(TYPE_BOOL));
   node->token = tok;
   return node;
 }
@@ -270,7 +270,7 @@ Node *new_node_ne(Token *tok, Node *lhs, Node *rhs) {
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
-  Node *node = new_node(ND_NE, lhs, rhs, base_type(TYPE_INT));
+  Node *node = new_node(ND_NE, lhs, rhs, base_type(TYPE_BOOL));
   node->token = tok;
   return node;
 }
@@ -292,7 +292,7 @@ Node *new_node_lt(Token *tok, Node *lhs, Node *rhs) {
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
-  Node *node = new_node(ND_LT, lhs, rhs, base_type(TYPE_INT));
+  Node *node = new_node(ND_LT, lhs, rhs, base_type(TYPE_BOOL));
   node->token = tok;
   return node;
 }
@@ -314,7 +314,7 @@ Node *new_node_le(Token *tok, Node *lhs, Node *rhs) {
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
-  Node *node = new_node(ND_LE, lhs, rhs, base_type(TYPE_INT));
+  Node *node = new_node(ND_LE, lhs, rhs, base_type(TYPE_BOOL));
   node->token = tok;
   return node;
 }

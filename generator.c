@@ -863,6 +863,7 @@ void gen_number(Node *node) {
 void gen_numerical_operator(Node *node) {
   assert(same_type(node->type, node->lhs->type));
   assert(same_type(node->type, node->rhs->type));
+  Type *operand_type = node->type;
 
   if (node->kind == ND_ADD || node->kind == ND_MUL) {
     gen(node->lhs);
@@ -890,7 +891,7 @@ void gen_numerical_operator(Node *node) {
     writeline("  mov rdi, rax");
     writeline("  pop rax");
 
-    if (is_unsigned(node->type)) {
+    if (is_unsigned(operand_type)) {
       writeline("  mov rdx, 0");
       writeline("  div rdi");
     } else {
@@ -899,7 +900,7 @@ void gen_numerical_operator(Node *node) {
     }
 
     if (node->kind == ND_MOD) {
-      assert(is_integer(node->type));
+      assert(is_integer(operand_type));
       writeline("  mov rax, rdx");
     }
     return;
@@ -908,8 +909,10 @@ void gen_numerical_operator(Node *node) {
 }
 
 void gen_logical_operator(Node *node) {
+  assert(node->type->kind == TYPE_BOOL);
+  assert(node->lhs->type->kind == TYPE_BOOL);
+
   if (node->kind == ND_LOGNOT) {
-    assert(node->lhs->type->kind == TYPE_BOOL);
     gen(node->lhs);
     writeline("  cmp rax, 0");
     writeline("  sete al");
@@ -917,7 +920,6 @@ void gen_logical_operator(Node *node) {
     return;
   }
 
-  assert(node->lhs->type->kind == TYPE_BOOL);
   assert(node->rhs->type->kind == TYPE_BOOL);
 
   if (node->kind == ND_LOGOR) {
@@ -954,11 +956,16 @@ void gen_logical_operator(Node *node) {
 }
 
 void gen_bit_operator(Node *node) {
+  assert(is_integer(node->type));
+  assert(is_integer(node->lhs->type));
+
   if (node->kind == ND_BITNOT) {
     gen(node->lhs);
     writeline("  not rax");
     return;
   }
+
+  assert(is_integer(node->rhs->type));
 
   if (node->kind == ND_LSHIFT || node->kind == ND_RSHIFT) {
     gen(node->lhs);
@@ -993,7 +1000,9 @@ void gen_bit_operator(Node *node) {
 }
 
 void gen_comparison_operator(Node *node) {
+  assert(node->type->kind == TYPE_BOOL);
   assert(same_type(node->lhs->type, node->rhs->type));
+  Type *operand_type = node->lhs->type;
 
   if (node->kind == ND_EQ || node->kind == ND_NE) {
     gen(node->lhs);
@@ -1014,9 +1023,9 @@ void gen_comparison_operator(Node *node) {
     writeline("  pop rax");
     writeline("  cmp rax, rdi");
     if (node->kind == ND_LT)
-      writeline("  set%c al", is_unsigned(node->lhs->type) ? 'b' : 'l');
+      writeline("  set%c al", is_unsigned(operand_type) ? 'b' : 'l');
     else
-      writeline("  set%ce al", is_unsigned(node->lhs->type) ? 'b' : 'l');
+      writeline("  set%ce al", is_unsigned(operand_type) ? 'b' : 'l');
     writeline("  movzb rax, al");
     return;
   }

@@ -56,6 +56,13 @@ int static_enum() {
   return d;
 }
 
+int array_sum(int a[10]) {
+  int s = 0;
+  for (int i = 0; i < 10; ++i)
+    s += a[i];
+  return s;
+}
+
 _Bool retbool(int a) { return a; }
 
 void empty() {}
@@ -136,5 +143,10 @@ int main() {
     verify('3', buf[5], __FILE__, __LINE__);
     verify('\0', buf[6], __FILE__, __LINE__);
   }
+  {
+    int arr[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    verify(55, array_sum(arr), __FILE__, __LINE__);
+  }
+
   return 0;
 }

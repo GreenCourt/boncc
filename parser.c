@@ -2113,6 +2113,9 @@ Node *tail(Node *x, Token **nx) {
         // argument type conversion
         Type *t = *(Type **)vector_get(f->params, node->args->size);
         e = new_node_cast(op, t, e);
+      } else if (e->type->kind == TYPE_ARRAY) {
+        // pass an array as a pointer
+        e = new_node_cast(op, pointer_type(e->type->base), e);
       }
 
       vector_push(node->args, &e);

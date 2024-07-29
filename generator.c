@@ -11,6 +11,14 @@ static const char *reg_args2[] = {"di", "si", "dx", "cx", "r8w", "r9w"};
 static const char *reg_args4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 static const char *reg_args8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
+typedef struct FloatLiteral FloatLiteral;
+struct FloatLiteral {
+  int index;
+  Number *num;
+};
+static int float_literal_index = 0;
+static Vector *float_literals = NULL; // FloatValue*
+
 // node.c -->
 bool is_constant_number(Node *node);
 Variable *is_const_var_addr(Node *node);
@@ -35,6 +43,42 @@ __attribute__((format(printf, 2, 3))) void comment(Token *tok, char *fmt, ...) {
     fprintf(ostream, "    %s:%d:%d", tok->pos.file_name, tok->pos.line_number,
             tok->pos.column_number);
   fprintf(ostream, "\n");
+}
+
+static void push_xmm(int n, TypeKind kind) {
+  switch (kind) {
+  case TYPE_FLOAT: // align to 8 even if size is 4
+    writeline("  sub rsp, 8        # push %s", type_text(kind));
+    writeline("  movss [rsp], xmm%d # push %s", n, type_text(kind));
+    break;
+  case TYPE_DOUBLE:
+    writeline("  sub rsp, 8        # push %s", type_text(kind));
+    writeline("  movsd [rsp], xmm%d # push %s", n, type_text(kind));
+    break;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    break;
+  default:
+    assert(false);
+  }
+}
+
+static void pop_xmm(int n, TypeKind kind) {
+  switch (kind) {
+  case TYPE_FLOAT: // align to 8 even if size is 4
+    writeline("  movss xmm%d, [rsp] # pop %s", n, type_text(kind));
+    writeline("  add rsp, 8        # pop %s", type_text(kind));
+    break;
+  case TYPE_DOUBLE:
+    writeline("  movsd xmm%d, [rsp] # pop %s", n, type_text(kind));
+    writeline("  add rsp, 8        # pop %s", type_text(kind));
+    break;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    break;
+  default:
+    assert(false);
+  }
 }
 
 void gen_address(Node *node) {
@@ -92,11 +136,24 @@ void gen_address(Node *node) {
 
 void load(Type *type) {
   // src  : the address where rax is pointing to
-  // dest : rax
+  // dest : rax or xmm0
   comment(NULL, "load %s (size:%d)", type_text(type->kind), type->size);
 
   if (type->kind == TYPE_ARRAY || is_struct_union(type))
     return; // nothing todo
+
+  if (is_float(type)) {
+    if (type->kind == TYPE_FLOAT)
+      writeline("  movss xmm0, [rax]");
+    else if (type->kind == TYPE_DOUBLE)
+      writeline("  movsd xmm0, [rax]");
+    else if (type->kind == TYPE_LDOUBLE)
+      error(NULL, "long double is currently not supported");
+    else
+      assert(false);
+    return;
+  }
+
   if (type->size == 1)
     writeline("  mov%cx rax, byte ptr [rax]", is_unsigned(type) ? 'z' : 's');
   else if (type->size == 2)
@@ -110,7 +167,7 @@ void load(Type *type) {
 }
 
 void store(Type *type) {
-  // src  : rax
+  // src  : rax or xmm0
   // dest : the address popped from stack
   comment(NULL, "store %s", type_text(type->kind));
 
@@ -124,6 +181,18 @@ void store(Type *type) {
       writeline("  mov r10b, [rax+%d]", i);
       writeline("  mov [rdi+%d], r10b", i);
     }
+    return;
+  }
+
+  if (is_float(type)) {
+    if (type->kind == TYPE_FLOAT)
+      writeline("  movss [rdi], xmm0");
+    else if (type->kind == TYPE_DOUBLE)
+      writeline("  movsd [rdi], xmm0");
+    else if (type->kind == TYPE_LDOUBLE)
+      error(NULL, "long double is currently not supported");
+    else
+      assert(false);
     return;
   }
 
@@ -228,15 +297,44 @@ void gen_block(Node *node) {
 
 void gen_call(Node *node) {
   assert(is_funcptr(node->lhs->type));
-  int sz = node->args->size;
+  assert(node->args->size <= 6);
 
-  for (int i = 0; i < sz; ++i) {
-    Node *d = *(Node **)vector_get(node->args, i);
-    gen(d);
-    writeline("  push rax");
-  }
-  for (int i = sz - 1; i >= 0; --i) {
-    writeline("  pop %s", reg_args8[i]);
+  int n_vector_registers = 0;
+
+  // put arguments into registers
+  {
+    int sz = node->args->size;
+    int count_integer = 0;
+    int count_float = 0;
+
+    // push args to stack
+    for (int i = 0; i < sz; ++i) {
+      Node *d = *(Node **)vector_get(node->args, i);
+      gen(d);
+      if (is_float(d->type)) {
+        push_xmm(0, d->type->kind);
+        count_float++;
+      } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
+        writeline("  push rax");
+        count_integer++;
+      } else {
+        assert(false);
+      }
+    }
+    assert(sz == count_integer + count_float);
+    n_vector_registers = count_float;
+
+    // pop args to registers
+    for (int i = sz - 1; i >= 0; --i) {
+      Node *d = *(Node **)vector_get(node->args, i);
+      if (is_float(d->type)) {
+        pop_xmm(--count_float, d->type->kind);
+      } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
+        writeline("  pop %s", reg_args8[--count_integer]);
+      } else {
+        assert(false);
+      }
+    }
   }
 
   // align RSP to 16bytes (ABI requirements)
@@ -250,13 +348,13 @@ void gen_call(Node *node) {
   // alined case
   comment(NULL, "the case when RSP was already aligned");
   if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC) {
-    writeline("  mov al, 0");
+    writeline("  mov al, %d", n_vector_registers);
     writeline("  call %.*s", node->lhs->variable->ident->len,
               node->lhs->variable->ident->str);
   } else {
     gen(node->lhs); // calculate function address
     writeline("  mov r10, rax");
-    writeline("  mov al, 0");
+    writeline("  mov al, %d", n_vector_registers);
     writeline("  call r10");
   }
   writeline("  jmp .Lend_call%d", l);
@@ -266,13 +364,13 @@ void gen_call(Node *node) {
   writeline(".Lcall%d:", l);
   writeline("  sub rsp, 8"); // RSP is always aligned to 8 by this compiler
   if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC) {
-    writeline("  mov al, 0");
+    writeline("  mov al, %d", n_vector_registers);
     writeline("  call %.*s", node->lhs->variable->ident->len,
               node->lhs->variable->ident->str);
   } else {
     gen(node->lhs); // calculate function address
     writeline("  mov r10, rax");
-    writeline("  mov al, 0");
+    writeline("  mov al, %d", n_vector_registers);
     writeline("  call r10");
   }
   writeline("  add rsp, 8"); // recover RSP
@@ -287,6 +385,7 @@ void gen_global_struct_init(VariableInit *init, Type *type);
 void gen_global_union_init(VariableInit *init, Type *type);
 void gen_global_pointer_init(VariableInit *init, Type *type);
 void gen_global_integer_init(VariableInit *init, Type *type);
+void gen_global_float_init(VariableInit *init, Type *type);
 
 void gen_global_array_init(VariableInit *init, Type *type) {
   assert(type->kind == TYPE_ARRAY);
@@ -479,6 +578,42 @@ void gen_global_integer_init(VariableInit *init, Type *type) {
   }
 }
 
+static void write_float(Number *num, Type *type) {
+  if (type->kind == TYPE_FLOAT) {
+    union {
+      float x;
+      int y;
+    } u;
+    u.y = 0;
+    u.x = number2float(num);
+    writeline("  .long %d", u.y);
+  } else if (type->kind == TYPE_DOUBLE) {
+    union {
+      double x;
+      int y[2];
+    } u;
+    u.y[0] = u.y[1] = 0;
+    u.x = number2double(num);
+    writeline("  .long %d", u.y[0]);
+    writeline("  .long %d", u.y[1]);
+  } else if (type->kind == TYPE_LDOUBLE) {
+    error(NULL, "long double is currently not supported");
+  } else {
+    assert(false);
+  }
+}
+
+void gen_global_float_init(VariableInit *init, Type *type) {
+  assert(is_float(type));
+  while (init->vec) { // for non-array primitive types,
+                      // only the first element in the brace will be used
+    assert(init->vec->size > 0);
+    init = *(VariableInit **)vector_get(init->vec, 0);
+  }
+  assert(init->expr);
+  write_float(eval(init->expr), type);
+}
+
 void gen_global_init(VariableInit *init, Type *type) {
   if (init == NULL) {
     writeline("  .zero %d", type->size);
@@ -510,6 +645,11 @@ void gen_global_init(VariableInit *init, Type *type) {
     return;
   }
 
+  if (is_float(type)) {
+    gen_global_float_init(init, type);
+    return;
+  }
+
   assert(false);
 }
 
@@ -528,17 +668,36 @@ void gen_func(Function *func) {
   writeline("  mov rbp, rsp");
 
   // move args to stack
-  comment(NULL, "function arguments to stack");
-  for (int i = 0; i < func->params->size; ++i) {
-    Variable *v = *(Variable **)vector_get(func->params, i);
-    if (v->type->size == 1)
-      writeline("  mov [rbp-%d], %s", v->offset, reg_args1[i]);
-    else if (v->type->size == 2)
-      writeline("  mov [rbp-%d], %s", v->offset, reg_args2[i]);
-    else if (v->type->size == 4)
-      writeline("  mov [rbp-%d], %s", v->offset, reg_args4[i]);
-    else
-      writeline("  mov [rbp-%d], %s", v->offset, reg_args8[i]);
+  {
+    int count_int = 0;
+    int count_float = 0;
+    comment(NULL, "move function arguments to stack");
+    for (int i = 0; i < func->params->size; ++i) {
+      Variable *v = *(Variable **)vector_get(func->params, i);
+      if (is_float(v->type)) {
+        if (v->type->kind == TYPE_FLOAT)
+          writeline("  movss [rbp-%d], xmm%d", v->offset, count_float++);
+        else if (v->type->kind == TYPE_DOUBLE)
+          writeline("  movsd [rbp-%d], xmm%d", v->offset, count_float++);
+        else if (v->type->kind == TYPE_LDOUBLE)
+          assert(false);
+        else
+          assert(false);
+      } else if (is_integer(v->type) || v->type->kind == TYPE_PTR) {
+        if (v->type->size == 1)
+          writeline("  mov [rbp-%d], %s", v->offset, reg_args1[count_int++]);
+        else if (v->type->size == 2)
+          writeline("  mov [rbp-%d], %s", v->offset, reg_args2[count_int++]);
+        else if (v->type->size == 4)
+          writeline("  mov [rbp-%d], %s", v->offset, reg_args4[count_int++]);
+        else if (v->type->size == 8)
+          writeline("  mov [rbp-%d], %s", v->offset, reg_args8[count_int++]);
+        else
+          assert(false);
+      } else {
+        assert(false);
+      }
+    }
   }
 
   if (func->offset) {
@@ -595,6 +754,9 @@ void gen_cast(Node *node) {
                    : node->lhs->type;
   Type *to = node->type;
 
+  assert(is_scalar(from));
+  assert(is_scalar(to) || to->kind == TYPE_VOID);
+
   gen(node->lhs);
   if (from->kind == to->kind)
     return;
@@ -605,18 +767,69 @@ void gen_cast(Node *node) {
   if (from->kind == TYPE_ENUM && to->kind == TYPE_INT)
     return;
 
-  if (from->kind == TYPE_BOOL)
+  if (to->kind == TYPE_VOID)
     return;
 
-  if (to->kind == TYPE_BOOL) {
+  if (is_integer(from) && is_float(to)) {
+    // all integers are treated as signed long long
+    switch (to->kind) {
+    case TYPE_FLOAT:
+      writeline("  cvtsi2ss xmm0, rax");
+      return;
+    case TYPE_DOUBLE:
+      writeline("  cvtsi2sd xmm0, rax");
+      return;
+    case TYPE_LDOUBLE:
+      error(NULL, "long double is currently not supported");
+      return;
+    default:
+      assert(false);
+    }
+  }
+
+  if (from->kind == TYPE_FLOAT) {
+    if (is_integer(to)) {
+      writeline("  cvttss2si rax, xmm0"); // first, convert to singed long long
+      from = base_type(TYPE_LONG);        // then convert from singed long long
+      // no return
+    } else if (to->kind == TYPE_DOUBLE) {
+      writeline("  cvtss2sd xmm0, xmm0");
+      return;
+    } else if (to->kind == TYPE_LDOUBLE) {
+      error(NULL, "long double is currently not supported");
+    } else {
+      assert(false);
+    }
+  }
+
+  if (from->kind == TYPE_DOUBLE) {
+    if (is_integer(to)) {
+      writeline("  cvttsd2si rax, xmm0"); // first, convert to singed long long
+      from = base_type(TYPE_LONG);        // then convert from singed long long
+      // no return
+    } else if (to->kind == TYPE_FLOAT) {
+      writeline("  cvtsd2ss xmm0, xmm0");
+      return;
+    } else if (to->kind == TYPE_LDOUBLE) {
+      error(NULL, "long double is currently not supported");
+    } else {
+      assert(false);
+    }
+  }
+
+  if (from->kind == TYPE_LDOUBLE) {
+    error(NULL, "long double is currently not supported");
+  }
+
+  if (from->kind == TYPE_BOOL && is_integer(to))
+    return;
+
+  if ((is_integer(from) || from->kind == TYPE_PTR) && to->kind == TYPE_BOOL) {
     writeline("  cmp rax, 0");
     writeline("  setne al");
     writeline("  movzb rax, al");
     return;
   }
-
-  if (to->kind == TYPE_VOID)
-    return;
 
   if (from->kind == TYPE_CHAR) {
     switch (to->kind) {
@@ -834,6 +1047,23 @@ void gen_number(Node *node) {
   assert(node->kind == ND_NUM);
   assert(node->num);
 
+  if (is_float(node->type)) {
+    FloatLiteral *f = calloc(1, sizeof(FloatLiteral));
+    f->num = node->num;
+    f->index = float_literal_index++;
+    vector_push(float_literals, &f);
+
+    if (node->type->kind == TYPE_FLOAT)
+      writeline("  movss xmm0, .float%d[rip]", f->index);
+    else if (node->type->kind == TYPE_DOUBLE)
+      writeline("  movsd xmm0, .float%d[rip]", f->index);
+    else if (node->type->kind == TYPE_LDOUBLE)
+      error(NULL, "long double is currently not supported");
+    else
+      assert(false);
+    return;
+  }
+
   switch (node->type->kind) {
   case TYPE_LONG:
     writeline("  mov rax, %lld", number2long(node->num));
@@ -872,6 +1102,92 @@ void gen_numerical_operator(Node *node) {
   assert(same_type(node->type, node->lhs->type));
   assert(same_type(node->type, node->rhs->type));
   Type *operand_type = node->type;
+
+  if (is_float(operand_type)) {
+    if (node->kind == ND_ADD) {
+      gen(node->lhs);
+      push_xmm(0, operand_type->kind);
+      gen(node->rhs);
+      pop_xmm(1, operand_type->kind);
+
+      if (operand_type->kind == TYPE_FLOAT)
+        writeline("  addss xmm0, xmm1");
+      else if (operand_type->kind == TYPE_DOUBLE)
+        writeline("  addsd xmm0, xmm1");
+      else if (operand_type->kind == TYPE_LDOUBLE)
+        error(NULL, "long double is currently not supported");
+      else
+        assert(false);
+      return;
+    }
+
+    if (node->kind == ND_MUL) {
+      gen(node->lhs);
+      push_xmm(0, operand_type->kind);
+      gen(node->rhs);
+      pop_xmm(1, operand_type->kind);
+
+      if (operand_type->kind == TYPE_FLOAT)
+        writeline("  mulss xmm0, xmm1");
+      else if (operand_type->kind == TYPE_DOUBLE)
+        writeline("  mulsd xmm0, xmm1");
+      else if (operand_type->kind == TYPE_LDOUBLE)
+        error(NULL, "long double is currently not supported");
+      else
+        assert(false);
+      return;
+    }
+
+    if (node->kind == ND_SUB) {
+      gen(node->lhs);
+      push_xmm(0, operand_type->kind);
+      gen(node->rhs);
+      if (operand_type->kind == TYPE_FLOAT)
+        writeline("  movss xmm1, xmm0");
+      else if (operand_type->kind == TYPE_DOUBLE)
+        writeline("  movsd xmm1, xmm0");
+      else if (operand_type->kind == TYPE_LDOUBLE)
+        error(NULL, "long double is currently not supported");
+      else
+        assert(false);
+      pop_xmm(0, operand_type->kind);
+      if (operand_type->kind == TYPE_FLOAT)
+        writeline("  subss xmm0, xmm1");
+      else if (operand_type->kind == TYPE_DOUBLE)
+        writeline("  subsd xmm0, xmm1");
+      else if (operand_type->kind == TYPE_LDOUBLE)
+        error(NULL, "long double is currently not supported");
+      else {
+        assert(false);
+      }
+      return;
+    }
+
+    if (node->kind == ND_DIV) {
+      gen(node->lhs);
+      push_xmm(0, operand_type->kind);
+      gen(node->rhs);
+      if (operand_type->kind == TYPE_FLOAT)
+        writeline("  movss xmm1, xmm0");
+      else if (operand_type->kind == TYPE_DOUBLE)
+        writeline("  movsd xmm1, xmm0");
+      else if (operand_type->kind == TYPE_LDOUBLE)
+        error(NULL, "long double is currently not supported");
+      else
+        assert(false);
+      pop_xmm(0, operand_type->kind);
+      if (operand_type->kind == TYPE_FLOAT)
+        writeline("  divss xmm0, xmm1");
+      else if (operand_type->kind == TYPE_DOUBLE)
+        writeline("  divsd xmm0, xmm1");
+      else if (operand_type->kind == TYPE_LDOUBLE)
+        error(NULL, "long double is currently not supported");
+      else
+        assert(false);
+      return;
+    }
+    assert(false);
+  }
 
   if (node->kind == ND_ADD || node->kind == ND_MUL) {
     gen(node->lhs);
@@ -1012,6 +1328,87 @@ void gen_comparison_operator(Node *node) {
   assert(same_type(node->lhs->type, node->rhs->type));
   Type *operand_type = node->lhs->type;
 
+  if (is_float(operand_type)) {
+    if (node->kind == ND_EQ || node->kind == ND_NE) {
+      gen(node->lhs);
+      push_xmm(0, operand_type->kind);
+      gen(node->rhs);
+      pop_xmm(1, operand_type->kind);
+      if (operand_type->kind == TYPE_FLOAT)
+        writeline("  ucomiss xmm0, xmm1");
+      else if (operand_type->kind == TYPE_DOUBLE)
+        writeline("  ucomisd xmm0, xmm1");
+      else if (operand_type->kind == TYPE_LDOUBLE)
+        error(NULL, "long double is currently not supported");
+      else
+        assert(false);
+
+      // nan check by PF
+      if (node->kind == ND_EQ)
+        writeline("  setnp al"); // al = !isnan(lhs) and !isnan(rhs)
+      else
+        writeline("  setp al"); // al = isnan(lhs) or isnan(rhs)
+
+      // compare lhs and rhs again because setnp/setp clears eflags
+      if (operand_type->kind == TYPE_FLOAT)
+        writeline("  ucomiss xmm0, xmm1");
+      else if (operand_type->kind == TYPE_DOUBLE)
+        writeline("  ucomisd xmm0, xmm1");
+      else if (operand_type->kind == TYPE_LDOUBLE)
+        error(NULL, "long double is currently not supported");
+      else
+        assert(false);
+
+      if (node->kind == ND_EQ) {
+        // cmovne can not be used with immediate values
+        writeline("  mov rdi, 0");
+        writeline("  cmovne rax, rdi"); // if(ZF==1) rax = 0
+      } else {
+        // cmovne can not be used with immediate values
+        writeline("  mov rdi, 1");
+        writeline("  cmovne rax, rdi"); // if(ZF==1) rax = 1
+      }
+
+      writeline("  movzb rax, al");
+      return;
+    }
+
+    if (node->kind == ND_LT || node->kind == ND_LE) {
+      gen(node->lhs);
+      push_xmm(0, operand_type->kind);
+      gen(node->rhs);
+      if (operand_type->kind == TYPE_FLOAT)
+        writeline("  movss xmm1, xmm0");
+      else if (operand_type->kind == TYPE_DOUBLE)
+        writeline("  movsd xmm1, xmm0");
+      else if (operand_type->kind == TYPE_LDOUBLE)
+        error(NULL, "long double is currently not supported");
+      else
+        assert(false);
+      pop_xmm(0, operand_type->kind);
+
+      // nan check is done by comisd and comiss
+      if (operand_type->kind == TYPE_FLOAT)
+        writeline("  comiss xmm0, xmm1");
+      else if (operand_type->kind == TYPE_DOUBLE)
+        writeline("  comisd xmm0, xmm1");
+      else if (operand_type->kind == TYPE_LDOUBLE)
+        error(NULL, "long double is currently not supported");
+      else
+        assert(false);
+
+      if (node->kind == ND_LT)
+        writeline("  setb al");
+      else
+        writeline("  setbe al");
+
+      writeline("  movzb rax, al");
+      return;
+    }
+
+    assert(false);
+  }
+
   if (node->kind == ND_EQ || node->kind == ND_NE) {
     gen(node->lhs);
     writeline("  push rax");
@@ -1113,7 +1510,7 @@ void gen(Node *node) {
       gen(node->body);
     return;
   case ND_NUM:
-    comment(node->token, "ND_NUM");
+    comment(node->token, "ND_NUM %s", type_text(node->type->kind));
     gen_number(node);
     return;
   case ND_VAR:
@@ -1244,6 +1641,7 @@ void gen(Node *node) {
 void generate_code(FILE *output_stream) {
   assert(output_stream);
   ostream = output_stream;
+  float_literals = new_vector(0, sizeof(FloatLiteral *));
   writeline(".intel_syntax noprefix");
 
   // string literals
@@ -1291,5 +1689,18 @@ void generate_code(FILE *output_stream) {
       continue;
     gen_func(f);
   }
+
+  // float literals
+  if (float_literals->size) {
+    for (int i = 0; i < float_literals->size; i++) {
+      FloatLiteral *f = *(FloatLiteral **)vector_get(float_literals, i);
+      writeline(".data");
+      writeline(".local .float%d", f->index);
+      writeline(".float%d:", f->index);
+      write_float(f->num, f->num->type);
+    }
+  }
+
   ostream = NULL;
+  float_literals = NULL;
 }

@@ -37,6 +37,13 @@ int number2int(Number *num) {
   case TYPE_ULONG:
   case TYPE_PTR:
     return (int)num->value.ulong_value;
+  case TYPE_FLOAT:
+    return (int)num->value.float_value;
+  case TYPE_DOUBLE:
+    return (int)num->value.double_value;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    return 0;
   default:
     assert(false);
     return 0;
@@ -57,6 +64,13 @@ unsigned int number2uint(Number *num) {
   case TYPE_ULONG:
   case TYPE_PTR:
     return (unsigned int)num->value.ulong_value;
+  case TYPE_FLOAT:
+    return (unsigned int)num->value.float_value;
+  case TYPE_DOUBLE:
+    return (unsigned int)num->value.double_value;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    return 0;
   default:
     assert(false);
     return 0;
@@ -77,6 +91,13 @@ long long number2long(Number *num) {
   case TYPE_ULONG:
   case TYPE_PTR:
     return (long long)num->value.ulong_value;
+  case TYPE_FLOAT:
+    return (long long)num->value.float_value;
+  case TYPE_DOUBLE:
+    return (long long)num->value.double_value;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    return 0;
   default:
     assert(false);
     return 0;
@@ -97,6 +118,13 @@ unsigned long long number2ulong(Number *num) {
   case TYPE_ULONG:
   case TYPE_PTR:
     return (unsigned long long)num->value.ulong_value;
+  case TYPE_FLOAT:
+    return (unsigned long long)num->value.float_value;
+  case TYPE_DOUBLE:
+    return (unsigned long long)num->value.double_value;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    return 0;
   default:
     assert(false);
     return 0;
@@ -117,6 +145,13 @@ short number2short(Number *num) {
   case TYPE_ULONG:
   case TYPE_PTR:
     return (short)num->value.ulong_value;
+  case TYPE_FLOAT:
+    return (short)num->value.float_value;
+  case TYPE_DOUBLE:
+    return (short)num->value.double_value;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    return 0;
   default:
     assert(false);
     return 0;
@@ -137,6 +172,13 @@ unsigned short number2ushort(Number *num) {
   case TYPE_ULONG:
   case TYPE_PTR:
     return (unsigned short)num->value.ulong_value;
+  case TYPE_FLOAT:
+    return (unsigned short)num->value.float_value;
+  case TYPE_DOUBLE:
+    return (unsigned short)num->value.double_value;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    return 0;
   default:
     assert(false);
     return 0;
@@ -157,6 +199,13 @@ char number2char(Number *num) {
   case TYPE_ULONG:
   case TYPE_PTR:
     return (char)num->value.ulong_value;
+  case TYPE_FLOAT:
+    return (char)num->value.float_value;
+  case TYPE_DOUBLE:
+    return (char)num->value.double_value;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    return 0;
   default:
     assert(false);
     return 0;
@@ -177,6 +226,13 @@ unsigned char number2uchar(Number *num) {
   case TYPE_ULONG:
   case TYPE_PTR:
     return (unsigned char)num->value.ulong_value;
+  case TYPE_FLOAT:
+    return (unsigned char)num->value.float_value;
+  case TYPE_DOUBLE:
+    return (unsigned char)num->value.double_value;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    return 0;
   default:
     assert(false);
     return 0;
@@ -197,6 +253,67 @@ bool number2bool(Number *num) {
   case TYPE_ULONG:
   case TYPE_PTR:
     return (bool)num->value.ulong_value;
+  case TYPE_FLOAT:
+    return (bool)num->value.float_value;
+  case TYPE_DOUBLE:
+    return (bool)num->value.double_value;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    return 0;
+  default:
+    assert(false);
+    return 0;
+  }
+}
+
+float number2float(Number *num) {
+  switch (num->type->kind) {
+  case TYPE_BOOL:
+  case TYPE_CHAR:
+  case TYPE_SHORT:
+  case TYPE_INT:
+  case TYPE_LONG:
+    return (float)num->value.long_value;
+  case TYPE_UCHAR:
+  case TYPE_USHORT:
+  case TYPE_UINT:
+  case TYPE_ULONG:
+  case TYPE_PTR:
+    return (float)num->value.ulong_value;
+  case TYPE_FLOAT:
+    return (float)num->value.float_value;
+  case TYPE_DOUBLE:
+    return (float)num->value.double_value;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    return 0;
+  default:
+    assert(false);
+    return 0;
+  }
+}
+
+double number2double(Number *num) {
+  switch (num->type->kind) {
+  case TYPE_BOOL:
+  case TYPE_CHAR:
+  case TYPE_SHORT:
+  case TYPE_INT:
+  case TYPE_LONG:
+    return (double)num->value.long_value;
+  case TYPE_UCHAR:
+  case TYPE_USHORT:
+  case TYPE_UINT:
+  case TYPE_ULONG:
+  case TYPE_PTR:
+    return (double)num->value.ulong_value;
+  case TYPE_FLOAT:
+    return (double)num->value.float_value;
+  case TYPE_DOUBLE:
+    return (double)num->value.double_value;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    return 0;
   default:
     assert(false);
     return 0;
@@ -233,6 +350,15 @@ Number *number_add(Number *l, Number *r) {
   case TYPE_ULONG:
   case TYPE_PTR: // base type size is dealt with by node.c
     ret->value.ulong_value = number2ulong(l) + number2ulong(r);
+    break;
+  case TYPE_FLOAT:
+    ret->value.float_value = number2float(l) + number2float(r);
+    break;
+  case TYPE_DOUBLE:
+    ret->value.double_value = number2double(l) + number2double(r);
+    break;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
     break;
   default:
     assert(false);
@@ -274,6 +400,15 @@ Number *number_sub(Number *l, Number *r) {
   case TYPE_PTR: // base type size is dealt with by node.c
     ret->value.ulong_value = number2ulong(l) - number2ulong(r);
     break;
+  case TYPE_FLOAT:
+    ret->value.float_value = number2float(l) - number2float(r);
+    break;
+  case TYPE_DOUBLE:
+    ret->value.double_value = number2double(l) - number2double(r);
+    break;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    break;
   default:
     assert(false);
     break;
@@ -311,6 +446,15 @@ Number *number_mul(Number *l, Number *r) {
   case TYPE_ULONG:
   case TYPE_PTR: // type error check is done by node.c
     ret->value.ulong_value = number2ulong(l) * number2ulong(r);
+    break;
+  case TYPE_FLOAT:
+    ret->value.float_value = number2float(l) * number2float(r);
+    break;
+  case TYPE_DOUBLE:
+    ret->value.double_value = number2double(l) * number2double(r);
+    break;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
     break;
   default:
     assert(false);
@@ -351,6 +495,15 @@ Number *number_div(Number *l, Number *r) {
   case TYPE_ULONG:
   case TYPE_PTR: // type error check is done by node.c
     ret->value.ulong_value = number2ulong(l) / number2ulong(r);
+    break;
+  case TYPE_FLOAT:
+    ret->value.float_value = number2float(l) / number2float(r);
+    break;
+  case TYPE_DOUBLE:
+    ret->value.double_value = number2double(l) / number2double(r);
+    break;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
     break;
   default:
     assert(false);
@@ -661,6 +814,15 @@ Number *number_eq(Number *l, Number *r) {
   case TYPE_PTR:
     ret->value.long_value = number2ulong(l) == number2ulong(r);
     break;
+  case TYPE_FLOAT:
+    ret->value.long_value = number2float(l) == number2float(r);
+    break;
+  case TYPE_DOUBLE:
+    ret->value.long_value = number2double(l) == number2double(r);
+    break;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    break;
   default:
     assert(false);
     break;
@@ -701,6 +863,15 @@ Number *number_ne(Number *l, Number *r) {
   case TYPE_ULONG:
   case TYPE_PTR:
     ret->value.long_value = number2ulong(l) != number2ulong(r);
+    break;
+  case TYPE_FLOAT:
+    ret->value.long_value = number2float(l) != number2float(r);
+    break;
+  case TYPE_DOUBLE:
+    ret->value.long_value = number2double(l) != number2double(r);
+    break;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
     break;
   default:
     assert(false);
@@ -743,6 +914,15 @@ Number *number_lt(Number *l, Number *r) {
   case TYPE_PTR:
     ret->value.long_value = number2ulong(l) < number2ulong(r);
     break;
+  case TYPE_FLOAT:
+    ret->value.long_value = number2float(l) < number2float(r);
+    break;
+  case TYPE_DOUBLE:
+    ret->value.long_value = number2double(l) < number2double(r);
+    break;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    break;
   default:
     assert(false);
     break;
@@ -783,6 +963,15 @@ Number *number_le(Number *l, Number *r) {
   case TYPE_ULONG:
   case TYPE_PTR:
     ret->value.long_value = number2ulong(l) <= number2ulong(r);
+    break;
+  case TYPE_FLOAT:
+    ret->value.long_value = number2float(l) <= number2float(r);
+    break;
+  case TYPE_DOUBLE:
+    ret->value.long_value = number2double(l) <= number2double(r);
+    break;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
     break;
   default:
     assert(false);
@@ -849,9 +1038,17 @@ Number *number_cast(Number *l, Type *type) {
   case TYPE_PTR:
     ret->value.ulong_value = number2ulong(l);
     break;
+  case TYPE_FLOAT:
+    ret->value.float_value = number2float(l);
+    break;
+  case TYPE_DOUBLE:
+    ret->value.double_value = number2double(l);
+    break;
+  case TYPE_LDOUBLE:
+    error(NULL, "long double is currently not supported");
+    break;
   default:
     assert(false);
-    break;
   }
   return ret;
 }

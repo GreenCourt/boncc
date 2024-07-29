@@ -102,6 +102,11 @@ Token *tokenize(char *src, char *input_path) {
       continue;
     }
 
+    if (isdigit(*p.pos) || (*p.pos == '.' && isdigit(*(p.pos + 1)))) {
+      tokenize_number(&p, &tail);
+      continue;
+    }
+
     {
       static const TokenKind kinds[] = {
           // ordering is important, e.g) "==" must be checked before "=".
@@ -162,11 +167,6 @@ Token *tokenize(char *src, char *input_path) {
 
     if (*p.pos == '"') {
       tokenize_string_literal(&p, &tail);
-      continue;
-    }
-
-    if (isdigit(*p.pos)) {
-      tokenize_number(&p, &tail);
       continue;
     }
 
@@ -331,12 +331,35 @@ void tokenize_include_filename(Position *p, Token **tail) {
 }
 
 void tokenize_number(Position *p, Token **tail) {
-  assert(isdigit(*p->pos));
+  assert(isdigit(*p->pos) || (*p->pos == '.' && isdigit(*(p->pos + 1))));
   char *q = p->pos;
   bool is_hex = *q == '0' && (*(q + 1) == 'X' || *(q + 1) == 'x');
+  bool is_float_literal = *q == '.';
 
-  if (is_hex && !is_hexdigit(*(q + 2)))
-    error(p, "invalid number literal");
+  if (is_hex) {
+    if (*(q + 2) == '.')
+      is_float_literal = true;
+    else if (!is_hexdigit(*(q + 2)))
+      error(p, "invalid number literal");
+  }
+
+  if (!is_float_literal) {
+    if (is_hex) {
+      q += 2;
+      assert(is_hexdigit(*q));
+      while (is_hexdigit(*q))
+        ++q; // search for non-digit char
+      if (*q == '.' || *q == 'p' || *q == 'P')
+        is_float_literal = true;
+    } else {
+      assert(isdigit(*q));
+      while (isdigit(*q))
+        ++q; // search for non-digit char
+      if (*q == '.' || *q == 'e' || *q == 'E')
+        is_float_literal = true;
+    }
+    q = p->pos;
+  }
 
   int integer_base = 10;
   if (is_hex)
@@ -344,13 +367,19 @@ void tokenize_number(Position *p, Token **tail) {
   else if (*q == '0')
     integer_base = 8;
 
-  strtoll(q, &q, integer_base);
+  if (is_float_literal)
+    strtold(q, &q); // hex is also accepted by strtold
+  else
+    strtoll(q, &q, integer_base);
 
   bool is_long = false;
   bool is_unsigned = false;
+  bool is_single_float = false;
   int suffix_length = 0;
 
   if (*q == 'U' || *q == 'u') {
+    if (is_float_literal)
+      error(p, "invalid suffix for float-literal");
     is_unsigned = true;
     suffix_length++;
     q++; // increment q to check the suffix "ull"
@@ -359,20 +388,38 @@ void tokenize_number(Position *p, Token **tail) {
   if (*q == 'L' || *q == 'l') {
     is_long = true;
     if (*(q + 1) == *q) { // if LL or ll
+      if (is_float_literal)
+        error(p, "invalid suffix for float-literal");
       suffix_length++;
     }
     suffix_length++;
   }
 
+  if (*q == 'F' || *q == 'f') {
+    if (!is_float_literal)
+      error(p, "invalid suffix for integer-literal");
+    is_single_float = true;
+    suffix_length++;
+  }
+
   TypeKind kind;
-  if (is_long && is_unsigned)
-    kind = TYPE_ULONG;
-  else if (is_long)
-    kind = TYPE_LONG;
-  else if (is_unsigned)
-    kind = TYPE_UINT;
-  else
-    kind = TYPE_INT;
+  if (is_float_literal) {
+    if (is_long)
+      kind = TYPE_LDOUBLE;
+    else if (is_single_float)
+      kind = TYPE_FLOAT;
+    else
+      kind = TYPE_DOUBLE;
+  } else {
+    if (is_long && is_unsigned)
+      kind = TYPE_ULONG;
+    else if (is_long)
+      kind = TYPE_LONG;
+    else if (is_unsigned)
+      kind = TYPE_UINT;
+    else
+      kind = TYPE_INT;
+  }
 
   errno = 0;
 
@@ -395,11 +442,20 @@ void tokenize_number(Position *p, Token **tail) {
     if (num->value.long_value > INT_MAX || num->value.long_value < INT_MIN)
       kind = TYPE_LONG;
     break;
+  case TYPE_FLOAT:
+    num->value.float_value = strtof(q, &q);
+    break;
+  case TYPE_DOUBLE:
+    num->value.double_value = strtod(q, &q);
+    break;
+  case TYPE_LDOUBLE:
+    strtold(q, &q); // currently, just skip
+    break;
   default:
     assert(false);
     break;
   }
-  if (errno == ERANGE)
+  if (errno == ERANGE && !is_float_literal)
     error(p, "out-of-range");
 
   q += suffix_length;

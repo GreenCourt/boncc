@@ -207,6 +207,11 @@ bool is_scalar(Type *type) {
   return is_integer(type) || is_float(type) || type->kind == TYPE_PTR;
 }
 
+bool is_numerical(Type *type) {
+  assert(type);
+  return is_integer(type) || is_float(type);
+}
+
 bool is_signed(Type *type) {
   assert(type);
   switch (type->kind) {
@@ -244,8 +249,8 @@ bool is_struct_union(Type *type) {
 }
 
 Type *implicit_type_conversion(Type *l, Type *r) {
-  if (is_float(l) || is_float(r))
-    error(NULL, "currently floating point is not supported");
+  assert(!(is_float(l) && (r->kind == TYPE_ARRAY || r->kind == TYPE_PTR)));
+  assert(!(is_float(r) && (l->kind == TYPE_ARRAY || l->kind == TYPE_PTR)));
 
   if (l->kind == TYPE_ARRAY)
     return pointer_type(l->base);
@@ -256,6 +261,15 @@ Type *implicit_type_conversion(Type *l, Type *r) {
     return l;
 
   if (r->kind == TYPE_PTR)
+    return r;
+
+  if (is_float(l) && is_float(r))
+    return l->size > r->size ? l : r;
+
+  if (is_float(l))
+    return l;
+
+  if (is_float(r))
     return r;
 
   if (l->size > r->size)

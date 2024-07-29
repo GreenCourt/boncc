@@ -104,6 +104,8 @@ struct Number {
   union {
     unsigned long long ulong_value;
     long long long_value;
+    float float_value;
+    double double_value;
   } value;
 };
 
@@ -357,6 +359,7 @@ bool same_type(Type *a, Type *b);
 bool is_float(Type *type);
 bool is_integer(Type *type);
 bool is_scalar(Type *type);
+bool is_numerical(Type *type);
 bool is_unsigned(Type *type);
 bool is_signed(Type *type);
 bool is_funcptr(Type *type);
@@ -374,6 +377,8 @@ unsigned short number2ushort(Number *num);
 char number2char(Number *num);
 unsigned char number2uchar(Number *num);
 bool number2bool(Number *num);
+float number2float(Number *num);
+double number2double(Number *num);
 Number *number_add(Number *l, Number *r);
 Number *number_sub(Number *l, Number *r);
 Number *number_mul(Number *l, Number *r);

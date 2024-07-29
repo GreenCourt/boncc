@@ -65,6 +65,8 @@ int array_sum(int a[10]) {
 
 _Bool retbool(int a) { return a; }
 
+int add_double(int x, double y) { return x + y; }
+
 void empty() {}
 
 int vsprintf(char *, char *, va_list);
@@ -147,6 +149,7 @@ int main() {
     int arr[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     verify(55, array_sum(arr), __FILE__, __LINE__);
   }
+  { verify(4, add_double(1, 3.0), __FILE__, __LINE__); }
 
   return 0;
 }

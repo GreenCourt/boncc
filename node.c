@@ -84,9 +84,6 @@ Node *new_node_cast(Token *tok, Type *type, Node *operand) {
   assert(type->kind != TYPE_NONE);
   assert(operand->type->kind != TYPE_NONE);
 
-  if (is_float(type) || is_float(operand->type))
-    error(tok ? &tok->pos : NULL, "currently floating point is not supported");
-
   if (!is_scalar(type) && type->kind != TYPE_VOID)
     error(tok ? &tok->pos : NULL, "invalid type casting");
 
@@ -117,7 +114,7 @@ static Node *new_node(NodeKind kind, Node *lhs, Node *rhs, Type *type) {
 }
 
 Node *new_node_mul(Token *tok, Node *lhs, Node *rhs) {
-  if (!is_integer(lhs->type) || !is_integer(rhs->type))
+  if (!is_numerical(lhs->type) || !is_numerical(rhs->type))
     error(tok ? &tok->pos : NULL, "invalid operands to binary * operator");
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
@@ -128,7 +125,7 @@ Node *new_node_mul(Token *tok, Node *lhs, Node *rhs) {
 }
 
 Node *new_node_div(Token *tok, Node *lhs, Node *rhs) {
-  if (!is_integer(lhs->type) || !is_integer(rhs->type))
+  if (!is_numerical(lhs->type) || !is_numerical(rhs->type))
     error(tok ? &tok->pos : NULL, "invalid operands to binary / operator");
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
@@ -157,6 +154,8 @@ Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
   if ((left_is_ptr && right_is_ptr) ||
       (!left_is_ptr && !is_scalar(lhs->type)) ||
       (!right_is_ptr && !is_scalar(rhs->type)) ||
+      (left_is_ptr && is_float(rhs->type)) ||
+      (right_is_ptr && is_float(lhs->type)) ||
       (left_is_ptr && lhs->type->base->size < 0) ||
       (right_is_ptr && rhs->type->base->size < 0) || is_funcptr(lhs->type) ||
       is_funcptr(rhs->type))
@@ -193,6 +192,8 @@ Node *new_node_sub(Token *tok, Node *lhs, Node *rhs) {
   if ((!left_is_ptr && right_is_ptr) ||
       (!left_is_ptr && !is_scalar(lhs->type)) ||
       (!right_is_ptr && !is_scalar(rhs->type)) ||
+      (left_is_ptr && is_float(rhs->type)) ||
+      (right_is_ptr && is_float(lhs->type)) ||
       (left_is_ptr && lhs->type->base->size < 0) ||
       (right_is_ptr && rhs->type->base->size < 0) || is_funcptr(lhs->type) ||
       (left_is_ptr && right_is_ptr &&
@@ -235,6 +236,8 @@ Node *new_node_eq(Token *tok, Node *lhs, Node *rhs) {
 
   if ((!is_scalar(lhs->type) && !left_is_ptr) ||
       (!is_scalar(rhs->type) && !right_is_ptr) ||
+      (left_is_ptr && is_float(rhs->type)) ||
+      (right_is_ptr && is_float(lhs->type)) ||
       (left_is_ptr && (!right_is_ptr && !right_is_zero)) ||
       (right_is_ptr && (!left_is_ptr && !left_is_zero)) ||
       (left_is_ptr && right_is_ptr && !left_is_voidptr && !right_is_voidptr &&
@@ -261,6 +264,8 @@ Node *new_node_ne(Token *tok, Node *lhs, Node *rhs) {
 
   if ((!is_scalar(lhs->type) && !left_is_ptr) ||
       (!is_scalar(rhs->type) && !right_is_ptr) ||
+      (left_is_ptr && is_float(rhs->type)) ||
+      (right_is_ptr && is_float(lhs->type)) ||
       (left_is_ptr && (!right_is_ptr && !right_is_zero)) ||
       (right_is_ptr && (!left_is_ptr && !left_is_zero)) ||
       (left_is_ptr && right_is_ptr && !left_is_voidptr && !right_is_voidptr &&

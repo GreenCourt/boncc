@@ -201,6 +201,26 @@ void tokenize_char_literal(Position *p, Token **tail) {
   if (*p->pos == '\'')
     error(p, "invalid character literal");
 
+  if (*p->pos == '\\' && *(p->pos + 1) == 'x') {
+    char *q = p->pos + 2;
+    errno = 0;
+    long val = strtoll(q, &q, 16);
+
+    if (errno == ERANGE || val > 255)
+      error(p, "out-of-range");
+    if (*q != '\'')
+      error(p, "invalid char literal");
+
+    int len = q - p->pos;
+    new_token(TK_NUM, tail, p, len, false);
+    (*tail)->num = calloc(1, sizeof(Number));
+    (*tail)->num->value.long_value = (char)val;
+    (*tail)->type = (*tail)->num->type = base_type(TYPE_CHAR);
+
+    advance(p, 1);
+    return;
+  }
+
   if (*p->pos == '\\') {
     char val = -1;
     switch (*(p->pos + 1)) {

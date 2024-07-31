@@ -277,5 +277,11 @@ int main() {
     (void)a;
     (void)(void)a;
   }
+  {
+    verify(0x0, '\x0', __FILE__, __LINE__);
+    verify(0xb, '\xb', __FILE__, __LINE__);
+    verify(0x7a, '\x7a', __FILE__, __LINE__);
+    verify(-1, '\xff', __FILE__, __LINE__);
+  }
   return 0;
 }

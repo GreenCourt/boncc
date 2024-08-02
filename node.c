@@ -137,7 +137,7 @@ Node *new_node_div(Token *tok, Node *lhs, Node *rhs) {
 
 Node *new_node_mod(Token *tok, Node *lhs, Node *rhs) {
   if (!is_integer(lhs->type) || !is_integer(rhs->type))
-    error(tok ? &tok->pos : NULL, "invalid operands to binary % operator");
+    error(tok ? &tok->pos : NULL, "invalid operands to binary %% operator");
   Type *type = implicit_type_conversion(lhs->type, rhs->type);
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);

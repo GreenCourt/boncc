@@ -30,8 +30,7 @@ const char *token_text[] = {
     "unsigned", "str",   "identifier", "number", "eof",
 };
 
-__attribute__((format(printf, 2, 3))) void error(Position *pos, char *fmt,
-                                                 ...) {
+void error(Position *pos, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
@@ -41,17 +40,19 @@ __attribute__((format(printf, 2, 3))) void error(Position *pos, char *fmt,
     while (*line_end != '\n')
       line_end++;
 
-    int indent = fprintf(stderr, "%s:%d:%d: ", pos->file_name, pos->line_number,
-                         pos->column_number);
+    fprintf(stderr, "%s:%d:%d: ", pos->file_name, pos->line_number,
+            pos->column_number);
+    vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
     fprintf(stderr, "%.*s\n", (int)(line_end - line_start), line_start);
 
-    int sp = pos->pos - line_start + indent;
+    int sp = pos->pos - line_start;
     fprintf(stderr, "%*s", sp, ""); // print spaces
-    fprintf(stderr, "^ ");
+    fprintf(stderr, "^\n");
+  } else {
+    vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
   }
-
-  vfprintf(stderr, fmt, ap);
-  fprintf(stderr, "\n");
   exit(1);
 }
 

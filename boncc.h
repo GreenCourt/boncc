@@ -332,7 +332,7 @@ extern Vector *include_path;           // char*
 bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);
 bool is_hexdigit(char c);
-void error(Position *pos, char *fmt, ...);
+__attribute__((format(printf, 2, 3))) void error(Position *pos, char *fmt, ...);
 char *read_file(char *path);
 char *path_join(char *dir, char *file);
 

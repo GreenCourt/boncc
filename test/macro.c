@@ -29,6 +29,7 @@ int sprintf(char *s, char *fmt, ...);
 #define SUM(X, Y) ((X) + (Y))
 #define NOPARAM() 8
 #define JOIN(A, B) A##B
+#define JOIN3(A, B, C) A##B##C
 #define VAR12 var##1##2
 #define VAR_HASH(...) var##__VA_ARGS__
 #define THIRTEEN 1######3
@@ -38,6 +39,9 @@ int sprintf(char *s, char *fmt, ...);
 #define VARIADIC_ARGS_ONLY(...) __VA_ARGS__
 #define TO_STRING_LITERAL(x) #x
 #define MACRO_VALUE_TO_STRING_LITERAL(x) TO_STRING_LITERAL(x)
+#define SAME(x) x
+#define THIRD(a, b, c) c
+#define THIRD4(a, b, c, d) c
 
 int main() {
   verify(1, line1, __FILE__, __LINE__);
@@ -266,6 +270,36 @@ int main() {
     x = 7;
 #endif
     verify(9, x, __FILE__, __LINE__);
+  }
+  {
+    // empty argument for function-like macro
+    verify(12, SAME(12), __FILE__, __LINE__);
+    verify(12, SAME(/*empty argument*/) 12, __FILE__, __LINE__);
+    verify(13, SAME(EMPTY) 13, __FILE__, __LINE__);
+    verify(14, SAME(EMPTY5(6)) 14, __FILE__, __LINE__);
+    verify(15, SAME(EMPTY6) 15, __FILE__, __LINE__);
+    verify(7, THIRD4(1, , 7, 5), __FILE__, __LINE__);
+    verify(9, THIRD4(, , 9, ), __FILE__, __LINE__);
+    verify(4, 4 THIRD4(, , , ), __FILE__, __LINE__);
+    verify(8, 8 THIRD4(, , EMPTY, ), __FILE__, __LINE__);
+    verify(62, JOIN(, 62), __FILE__, __LINE__);
+    verify(63, JOIN(63, ), __FILE__, __LINE__);
+    verify(565, JOIN(, ) 565, __FILE__, __LINE__);
+
+    verify(123, JOIN3(1, 2, 3), __FILE__, __LINE__);
+    verify(12, JOIN3(1, 2, ), __FILE__, __LINE__);
+    verify(13, JOIN3(1, , 3), __FILE__, __LINE__);
+    verify(23, JOIN3(, 2, 3), __FILE__, __LINE__);
+    verify(1, JOIN3(1, , ), __FILE__, __LINE__);
+    verify(2, JOIN3(, 2, ), __FILE__, __LINE__);
+    verify(3, JOIN3(, , 3), __FILE__, __LINE__);
+    verify(5, JOIN3(, , ) 5, __FILE__, __LINE__);
+    verify(7, JOIN(, ) 7, __FILE__, __LINE__);
+
+    char buf[10];
+    int x = sprintf(buf, TO_STRING_LITERAL());
+    verify(0, x, __FILE__, __LINE__);
+    verify('\0', buf[0], __FILE__, __LINE__);
   }
   return 0;
 }

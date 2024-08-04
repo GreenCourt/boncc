@@ -181,6 +181,7 @@ static Token *expand_object_like(Token *prev, Macro *macro, Token **stop) {
 static Token *clone_macro_argument(Token *head, Token *arg, Position *pos) {
   // clone a macro argument, link it to head->next
   // and return the tail of the cloned argument
+  assert(arg != NULL);
   Token *tail = head;
   while (arg) {
     tail->next = calloc(1, sizeof(Token));
@@ -201,7 +202,11 @@ static Token *clone_va_args(Token *head, Macro *macro, Vector *args,
   Token *tail = head;
   assert(macro->is_variadic);
 
-  if (macro->nparams == args->size) {
+  int nargs = (macro->nparams == 0 && args->size == 1 &&
+               (*(Token **)vector_get(args, 0))->kind == TK_EMPTY)
+                  ? 0
+                  : args->size;
+  if (macro->nparams == nargs) {
     // arguments of variadic part are not given.
     return head;
   }
@@ -234,68 +239,83 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
 
   Token *rparen = NULL;
   Vector *args = new_vector(0, sizeof(Token *));
-  if (lparen->next->kind == TK_RPAREN) {
-    rparen = lparen->next;
-  } else if (lparen->next->kind == TK_COMMA) {
-    error(&lparen->next->pos, "invalid macro expansion");
-  } else {
+  {
     // read args
-    Token *p = lparen;
-    vector_push(args, &p->next);
+    Token *prev_sep = lparen;
+    Token *arg_tail = lparen;
     Vector *stack = new_vector(0, sizeof(int));
     while (true) {
-      if (stop && p->next == *stop)
+      if (stop && arg_tail->next == *stop)
         need_to_extend_stop = true;
 
-      if (p->kind == TK_EOF)
-        error(&p->pos, "invalid macro expansion");
+      if (arg_tail->kind == TK_EOF)
+        error(&arg_tail->pos, "invalid macro expansion");
 
-      if (stack->size == 0 && p->next->kind == TK_COMMA) {
-        Token *q = p->next;
-        vector_push(args, &p->next->next);
-        p->next = NULL;
-        p = q;
+      if (stack->size == 0 && arg_tail->next->kind == TK_COMMA) {
+        Token *commna = arg_tail->next;
+        if (prev_sep == arg_tail) { // empty argument
+          Token *empty = calloc(1, sizeof(Token));
+          empty->kind = TK_EMPTY;
+          vector_push(args, &empty);
+        } else {
+          vector_push(args, &prev_sep->next);
+          arg_tail->next = NULL;
+        }
+        prev_sep = commna;
+        arg_tail = commna;
         continue;
       }
 
-      if (stack->size == 0 && p->next->kind == TK_RPAREN) {
-        rparen = p->next;
-        p->next = NULL;
+      if (stack->size == 0 && arg_tail->next->kind == TK_RPAREN) {
+        rparen = arg_tail->next;
+        if (prev_sep == arg_tail) { // emtpty argument
+          Token *empty = calloc(1, sizeof(Token));
+          empty->kind = TK_EMPTY;
+          vector_push(args, &empty);
+        } else {
+          vector_push(args, &prev_sep->next);
+          arg_tail->next = NULL;
+        }
         break;
       }
 
       { // paren, brace, bracket
-        if (p->next->kind == TK_LBRACKET || p->next->kind == TK_LBRACE ||
-            p->next->kind == TK_LPAREN) {
-          vector_pushi(stack, p->next->kind);
-          p = p->next;
+        if (arg_tail->next->kind == TK_LBRACKET ||
+            arg_tail->next->kind == TK_LBRACE ||
+            arg_tail->next->kind == TK_LPAREN) {
+          vector_pushi(stack, arg_tail->next->kind);
+          arg_tail = arg_tail->next;
           continue;
         }
         TokenKind left[] = {TK_LBRACE, TK_LBRACKET, TK_LPAREN};
         TokenKind right[] = {TK_RBRACE, TK_RBRACKET, TK_RPAREN};
         bool cont = false;
         for (int i = 0; i < 3; ++i) {
-          if (p->next->kind == right[i]) {
+          if (arg_tail->next->kind == right[i]) {
             if (stack->size == 0 || (TokenKind)vector_lasti(stack) != left[i])
-              error(&p->next->pos, "invalid macro expansion");
+              error(&arg_tail->next->pos, "invalid macro expansion");
             vector_pop(stack);
             cont = true;
             break;
           }
         }
         if (cont) {
-          p = p->next;
+          arg_tail = arg_tail->next;
           continue;
         }
       }
-      p = p->next;
+      arg_tail = arg_tail->next;
     }
   }
 
   assert(rparen);
   assert(rparen->kind == TK_RPAREN);
-  if ((!macro->is_variadic && args->size != macro->nparams) ||
-      (macro->is_variadic && args->size < macro->nparams))
+  int nargs = (macro->nparams == 0 && args->size == 1 &&
+               (*(Token **)vector_get(args, 0))->kind == TK_EMPTY)
+                  ? 0
+                  : args->size;
+  if ((!macro->is_variadic && nargs != macro->nparams) ||
+      (macro->is_variadic && nargs < macro->nparams))
     error(&rparen->pos, "invalid number of arguments for macro expansion");
 
   // argument prescan
@@ -307,6 +327,10 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
       Token *a = &head;
       while (a->next)
         a = expand(a, NULL);
+      if (head.next == NULL) { // if expansion result == empty
+        head.next = calloc(1, sizeof(Token));
+        head.next->kind = TK_EMPTY;
+      }
       *orig = head.next;
     }
   }
@@ -329,9 +353,9 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
     Token *b = macro->body;
     while (b) {
       if (b->idx) {
-        tail = clone_macro_argument(
-            tail, *(Token **)vector_get(args, b->idx - 1 /* 1-indexed */),
-            &expanded->pos);
+        Token *arg = *(Token **)vector_get(args, b->idx - 1 /* 1-indexed */);
+        assert(arg != NULL);
+        tail = clone_macro_argument(tail, arg, &expanded->pos);
       } else if (b->is_identifier && same_string_nt(b->str, "__VA_ARGS__")) {
         tail = clone_va_args(tail, macro, args, &expanded->pos);
       } else {
@@ -362,8 +386,12 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
       Token *tk = calloc(1, sizeof(Token));
       *tk = *operand;
 
-      tk->string_literal = calloc(operand->str->len + 1, sizeof(char));
-      strncpy(tk->string_literal, operand->str->str, operand->str->len);
+      if (operand->kind == TK_EMPTY) {
+        tk->string_literal = "";
+      } else {
+        tk->string_literal = calloc(operand->str->len + 1, sizeof(char));
+        strncpy(tk->string_literal, operand->str->str, operand->str->len);
+      }
       tk->kind = TK_STR;
       tk->is_identifier = false;
       tk->pos = expanded->pos;
@@ -380,10 +408,35 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
         tail = tail->next;
         continue;
       }
-      if (tail == &head || tail->next->next == NULL)
+      Token *lhs = tail;
+      Token *rhs = tail->next->next;
+
+      if (lhs == &head || rhs == NULL)
         error(&expanded->pos, "## operator is not allowed here");
 
+      if (rhs->kind == TK_EMPTY) {
+        lhs->next = rhs->next;
+        continue;
+      }
+
+      if (lhs->kind == TK_EMPTY) {
+        lhs->next = rhs;
+        continue;
+      }
+
       *tail = *operator_double_hash(tail, tail->next->next);
+    }
+    assert(tail->next == NULL);
+  }
+
+  { // remove TK_EMPTY
+    tail = &head;
+    while (tail->next) {
+      if (tail->next->kind == TK_EMPTY) {
+        tail->next = tail->next->next;
+        continue;
+      }
+      tail = tail->next;
     }
     assert(tail->next == NULL);
   }

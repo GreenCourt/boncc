@@ -85,6 +85,7 @@ typedef enum {
   TK_IDENT,
   TK_NUM,
   TK_EOF,
+  TK_EMPTY, // used by preprocessor
 } TokenKind;
 
 extern const char *token_text[];

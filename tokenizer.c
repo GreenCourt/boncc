@@ -351,6 +351,7 @@ void tokenize_include_filename(Position *p, Token **tail) {
 }
 
 void tokenize_number(Position *p, Token **tail) {
+  assert(*p->pos != '-'); // For integer, this function uses strtoull only.
   assert(isdigit(*p->pos) || (*p->pos == '.' && isdigit(*(p->pos + 1))));
   char *q = p->pos;
   bool is_hex = *q == '0' && (*(q + 1) == 'X' || *(q + 1) == 'x');
@@ -390,7 +391,7 @@ void tokenize_number(Position *p, Token **tail) {
   if (is_float_literal)
     strtold(q, &q); // hex is also accepted by strtold
   else
-    strtoll(q, &q, integer_base);
+    strtoull(q, &q, integer_base); // always read as unsigned
 
   bool is_long = false;
   bool is_unsigned = false;
@@ -455,11 +456,13 @@ void tokenize_number(Position *p, Token **tail) {
       kind = TYPE_ULONG;
     break;
   case TYPE_LONG:
-    num->value.long_value = strtoll(q, &q, integer_base);
+    // strtoull and assignment to ulong_value is intentional
+    num->value.ulong_value = strtoull(q, &q, integer_base);
     break;
   case TYPE_INT:
-    num->value.long_value = strtoll(q, &q, integer_base);
-    if (num->value.long_value > INT_MAX || num->value.long_value < INT_MIN)
+    // strtoull and assignment to ulong_value is intentional
+    num->value.ulong_value = strtoull(q, &q, integer_base);
+    if (num->value.ulong_value > INT_MAX)
       kind = TYPE_LONG;
     break;
   case TYPE_FLOAT:

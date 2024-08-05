@@ -91,6 +91,10 @@ int main() {
   verify(4, sizeof(012U), __FILE__, __LINE__);
   verify(8, sizeof(012ull), __FILE__, __LINE__);
 
+  verify(8, sizeof(18446744073709551615U), __FILE__, __LINE__);
+  verify(8, sizeof(0xFFFFFFFFFFFFFFFF), __FILE__, __LINE__);
+  verify(1, 18446744073709551615U == 0xFFFFFFFFFFFFFFFF, __FILE__, __LINE__);
+
   verify(4, sizeof(typedef_global_enum), __FILE__, __LINE__);
   verify(4, sizeof(enum global_enum), __FILE__, __LINE__);
   verify(4, sizeof(g), __FILE__, __LINE__);

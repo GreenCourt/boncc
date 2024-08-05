@@ -23,10 +23,14 @@ bool is_close_f(float expected, float actual, float tolerance) {
 
 double global_double = 1.2;
 float global_float = 1.2;
+double global_double_constexpr = 3.6 / 2 + 1.2 * 2 - 1;
+double global_float_constexpr = 3.6f / 2 + 1.2f * 2 - 1;
 
 int main() {
   verify(0, global_double == global_float, __FILE__, __LINE__);
   verify(1, global_double != global_float, __FILE__, __LINE__);
+  verify(1, is_close(global_double_constexpr, 3.2, 1e-9), __FILE__, __LINE__);
+  verify(1, is_close_f(global_float_constexpr, 3.2, 1e-6), __FILE__, __LINE__);
 
   {
     double x = 5.2;

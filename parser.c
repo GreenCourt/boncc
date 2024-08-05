@@ -19,7 +19,7 @@ struct      = (("struct" | "union") ident ("{" member* "}")?) | (("struct" | "un
 member      = "const"* type declarator ("," declarator )* ";"
 enum        = ("enum" ident ("{" enumval ("," enumval)* ","? "}")?) | ("enum" ident? "{" enumval ("," enumval)* ","? "}")
 enumval     = indent ("=" assign)?
-typedef     = "typedef" type declarator ("," declarator)* ";"
+typedef     = "typedef" qualifier? type declarator ("," declarator)* ";"
 qualifier   = ("const" | "static" | "extern")*
 vardec      = qualifier? type declarator ("=" varinit)?  ("," declarator ("=" varinit)?)* ";"
 varinit     = assign
@@ -655,7 +655,13 @@ Type *expect_type(Token **nx) {
 }
 
 void expect_typedef(Token **nx) {
+  Token *tok_qualifier = *nx;
+  int qualifier = consume_qualifier(nx);
+  if (qualifier & (IS_STATIC | IS_EXTERN))
+    error(&tok_qualifier->pos, "invalid storage class for typedef");
+
   Type *base = expect_type(nx);
+  base->is_const = (qualifier & IS_CONST) != 0;
   do {
     Type *type = declarator(base, nx);
     Type *pre = map_get(current_scope->typedefs, type->objdec->str);

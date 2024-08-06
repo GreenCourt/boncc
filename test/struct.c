@@ -327,6 +327,9 @@ int main() {
     verify(4, x.a, __FILE__, __LINE__);
     verify(5, x.b, __FILE__, __LINE__);
     verify(6, x.c, __FILE__, __LINE__);
+    verify(4, y.a, __FILE__, __LINE__);
+    verify(5, y.b, __FILE__, __LINE__);
+    verify(6, y.c, __FILE__, __LINE__);
   }
   {
     union U {

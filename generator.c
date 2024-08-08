@@ -171,24 +171,24 @@ void store(Type *type) {
   // dest : the address popped from stack
   comment(NULL, "store %s", type_text(type->kind));
 
-  writeline("  pop rdi");
+  writeline("  pop r10");
 
   if (is_struct_union(type)) {
     // src  : the struct/union that rax is pointing to
     // dest : the struct/union that the address popped from stack is pointing to
     for (int i = 0; i < type->size; i++) {
       // copy each bytes like memcpy
-      writeline("  mov r10b, [rax+%d]", i);
-      writeline("  mov [rdi+%d], r10b", i);
+      writeline("  mov r11b, [rax+%d]", i);
+      writeline("  mov [r10+%d], r11b", i);
     }
     return;
   }
 
   if (is_float(type)) {
     if (type->kind == TYPE_FLOAT)
-      writeline("  movss [rdi], xmm0");
+      writeline("  movss [r10], xmm0");
     else if (type->kind == TYPE_DOUBLE)
-      writeline("  movsd [rdi], xmm0");
+      writeline("  movsd [r10], xmm0");
     else if (type->kind == TYPE_LDOUBLE)
       error(NULL, "long double is currently not supported");
     else
@@ -197,13 +197,13 @@ void store(Type *type) {
   }
 
   if (type->size == 1)
-    writeline("  mov [rdi], al");
+    writeline("  mov [r10], al");
   else if (type->size == 2)
-    writeline("  mov [rdi], ax");
+    writeline("  mov [r10], ax");
   else if (type->size == 4)
-    writeline("  mov [rdi], eax");
+    writeline("  mov [r10], eax");
   else if (type->size == 8)
-    writeline("  mov [rdi], rax");
+    writeline("  mov [r10], rax");
   else
     assert(false);
 }

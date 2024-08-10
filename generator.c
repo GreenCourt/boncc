@@ -447,7 +447,10 @@ void gen_call(Node *node) {
     int count_float = 0;
 
     if (pass_on_memory(node->type)) {
-      error(NULL, "currently, passing large struct/union is not supported");
+      // hidden argument to pass return_buffer address
+      writeline("  mov rdi, rbp");
+      writeline("  sub rdi, %d", node->caller->return_buffer_offset);
+      count_integer++;
     }
 
     // push args to stack
@@ -464,7 +467,7 @@ void gen_call(Node *node) {
         assert(false);
       }
     }
-    assert(sz == count_integer + count_float);
+    assert(sz + pass_on_memory(node->type) == count_integer + count_float);
     n_vector_registers = count_float;
 
     // pop args to registers
@@ -815,9 +818,10 @@ void gen_func(Function *func) {
     int count_int = 0;
     int count_float = 0;
 
-    if (pass_on_memory(func->type->return_type)) {
-      error(NULL, "currently, passing large struct/union is not supported");
-    }
+    if (pass_on_memory(func->type->return_type))
+      // save the address to the return buffer given by caller
+      writeline("  mov [rbp-%d], %s", func->return_buffer_address->offset,
+                reg_args8[count_int++]);
 
     comment(NULL, "move function arguments to stack");
     for (int i = 0; i < func->params->size; ++i) {
@@ -1634,7 +1638,11 @@ void gen(Node *node) {
     if (node->lhs) {
       gen(node->lhs);
       if (pass_on_memory(node->lhs->type)) {
-        error(NULL, "currently, passing large struct/union is not supported");
+        assert(node->return_buffer_address);
+        writeline("  mov r10, [rbp-%d]", node->return_buffer_address->offset);
+        writeline("  push r10");
+        store(node->lhs->type);
+        writeline("  mov rax, [rbp-%d]", node->return_buffer_address->offset);
       }
     }
     writeline("  mov rsp, rbp");

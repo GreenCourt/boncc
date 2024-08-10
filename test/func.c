@@ -194,6 +194,11 @@ S20 return_struct20(int x0, int x1, int x2, int x3) {
   return s;
 }
 
+S21 return_struct21(double x0, double x1, short y, long long z) {
+  S21 s = {{x0, x1}, y, z};
+  return s;
+}
+
 U1 return_union1x(int x0, int x1, int x2) {
   U1 u;
   u.x[0] = x0;
@@ -295,5 +300,26 @@ U6 return_union6x(int x) {
 U6 return_union6y(double y) {
   U6 u;
   u.y = y;
+  return u;
+}
+
+U7 return_union7x(float x) {
+  U7 u;
+  u.x = x;
+  return u;
+}
+
+U7 return_union7y(short y) {
+  U7 u;
+  u.y = y;
+  return u;
+}
+
+U7 return_union7z(long long z0, long long z1, long long z2, long long z3) {
+  U7 u;
+  u.z[0] = z0;
+  u.z[1] = z1;
+  u.z[2] = z2;
+  u.z[3] = z3;
   return u;
 }

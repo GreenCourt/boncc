@@ -192,6 +192,13 @@ int main() {
     verify(3, s.x[3], __FILE__, __LINE__);
   }
   {
+    S21 s = return_struct21(7.7, 6.6, 3, 5);
+    verify(1, s.x[0] == 7.7, __FILE__, __LINE__);
+    verify(1, s.x[1] == 6.6, __FILE__, __LINE__);
+    verify(3, s.y, __FILE__, __LINE__);
+    verify(5, s.z, __FILE__, __LINE__);
+  }
+  {
     U1 u;
     u = return_union1x(3, 2, 4);
     verify(3, u.x[0], __FILE__, __LINE__);
@@ -248,6 +255,18 @@ int main() {
     verify(8, u.x, __FILE__, __LINE__);
     u = return_union6y(9.9);
     verify(1, u.y == 9.9, __FILE__, __LINE__);
+  }
+  {
+    U7 u;
+    u = return_union7x(8.8f);
+    verify(1, u.x == 8.8f, __FILE__, __LINE__);
+    u = return_union7y(3);
+    verify(3, u.y, __FILE__, __LINE__);
+    u = return_union7z(5, 6, 7, 8);
+    verify(5, u.z[0], __FILE__, __LINE__);
+    verify(6, u.z[1], __FILE__, __LINE__);
+    verify(7, u.z[2], __FILE__, __LINE__);
+    verify(8, u.z[3], __FILE__, __LINE__);
   }
 
   return 0;

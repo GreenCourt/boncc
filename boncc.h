@@ -222,6 +222,8 @@ struct Object { // variable or function
   Node *body;
   Vector *params; // vector of Variable*
   Variable *hidden_va_area;
+  Variable *return_buffer_address; // only for callee function
+  int return_buffer_offset;        // only for caller function
 };
 
 typedef enum {
@@ -302,7 +304,10 @@ struct Node {
 
   Vector *blk_stmts; // statements in ND_BLOCK
 
-  Vector *args; // ND_CALL
+  Vector *args;     // ND_CALL
+  Function *caller; // ND_CALL
+
+  Variable *return_buffer_address; // ND_RETURN
 
   Member *member; // ND_MEMBER
 };

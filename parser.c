@@ -961,6 +961,19 @@ void func(Type *type, int qualifier, Token **nx) {
     f->hidden_va_area = var;
   }
 
+  if (pass_on_memory(type->return_type)) {
+    // push hidden local variable to keep return_buffer address
+    Type *t = base_type(TYPE_ULONG);
+    Token *dummy_tok = calloc(1, sizeof(Token));
+    *dummy_tok = *type->objdec;
+    dummy_tok->str = new_string("", 0);
+
+    t->objdec = dummy_tok;
+    Variable *var = new_local_variable(t, 0);
+    set_offset(var);
+    f->return_buffer_address = var;
+  }
+
   f->body = stmt_block(nx);
 
   // give label_index to labels in the function
@@ -986,6 +999,8 @@ void func(Type *type, int qualifier, Token **nx) {
   }
 
   restore_scope();
+  current_function->offset += current_function->return_buffer_offset;
+  current_function->return_buffer_offset = current_function->offset;
   current_function = NULL;
   goto_in_current_function = NULL;
   label_in_current_function = NULL;
@@ -1547,6 +1562,7 @@ Node *stmt(Token **nx) {
     Node *node = calloc(1, sizeof(Node));
     node->token = tok;
     node->kind = ND_RETURN;
+    node->return_buffer_address = current_function->return_buffer_address;
     if (!consume(TK_SEMICOLON, nx)) {
       node->lhs = expr(nx);
       node->lhs =
@@ -2102,6 +2118,11 @@ Node *tail(Node *x, Token **nx) {
     node->lhs = x;
     node->type = f->return_type;
     node->args = new_vector(0, sizeof(Node *));
+    node->caller = current_function;
+
+    if (pass_on_memory(f->return_type) &&
+        current_function->return_buffer_offset < f->return_type->size)
+      current_function->return_buffer_offset = f->return_type->size;
 
     if (consume(TK_RPAREN, nx))
       return node;

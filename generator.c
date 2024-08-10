@@ -438,19 +438,19 @@ void gen_call(Node *node) {
   assert(is_funcptr(node->lhs->type));
   assert(node->args->size <= 6);
 
-  int n_vector_registers = 0;
+  int n_fp = 0;
 
   // put arguments into registers
   {
     int sz = node->args->size;
-    int count_integer = 0;
-    int count_float = 0;
+    int count_gp = 0;
+    int count_fp = 0;
 
     if (pass_on_memory(node->type)) {
       // hidden argument to pass return_buffer address
       writeline("  mov rdi, rbp");
       writeline("  sub rdi, %d", node->caller->return_buffer_offset);
-      count_integer++;
+      count_gp++;
     }
 
     // push args to stack
@@ -459,24 +459,24 @@ void gen_call(Node *node) {
       gen(d);
       if (is_float(d->type)) {
         push_xmm(0, d->type->kind);
-        count_float++;
+        count_fp++;
       } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
         writeline("  push rax");
-        count_integer++;
+        count_gp++;
       } else {
         assert(false);
       }
     }
-    assert(sz + pass_on_memory(node->type) == count_integer + count_float);
-    n_vector_registers = count_float;
+    assert(sz + pass_on_memory(node->type) == count_gp + count_fp);
+    n_fp = count_fp;
 
     // pop args to registers
     for (int i = sz - 1; i >= 0; --i) {
       Node *d = *(Node **)vector_get(node->args, i);
       if (is_float(d->type)) {
-        pop_xmm(--count_float, d->type->kind);
+        pop_xmm(--count_fp, d->type->kind);
       } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
-        writeline("  pop %s", reg_args8[--count_integer]);
+        writeline("  pop %s", reg_args8[--count_gp]);
       } else {
         assert(false);
       }
@@ -494,13 +494,13 @@ void gen_call(Node *node) {
   // alined case
   comment(NULL, "the case when RSP was already aligned");
   if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC) {
-    writeline("  mov al, %d", n_vector_registers);
+    writeline("  mov al, %d", n_fp);
     writeline("  call %.*s", node->lhs->variable->ident->len,
               node->lhs->variable->ident->str);
   } else {
     gen(node->lhs); // calculate function address
     writeline("  mov r10, rax");
-    writeline("  mov al, %d", n_vector_registers);
+    writeline("  mov al, %d", n_fp);
     writeline("  call r10");
   }
   writeline("  jmp .Lend_call%d", l);
@@ -510,13 +510,13 @@ void gen_call(Node *node) {
   writeline(".Lcall%d:", l);
   writeline("  sub rsp, 8"); // RSP is always aligned to 8 by this compiler
   if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC) {
-    writeline("  mov al, %d", n_vector_registers);
+    writeline("  mov al, %d", n_fp);
     writeline("  call %.*s", node->lhs->variable->ident->len,
               node->lhs->variable->ident->str);
   } else {
     gen(node->lhs); // calculate function address
     writeline("  mov r10, rax");
-    writeline("  mov al, %d", n_vector_registers);
+    writeline("  mov al, %d", n_fp);
     writeline("  call r10");
   }
   writeline("  add rsp, 8"); // recover RSP
@@ -815,35 +815,35 @@ void gen_func(Function *func) {
 
   // move args to stack
   {
-    int count_int = 0;
-    int count_float = 0;
+    int count_gp = 0;
+    int count_fp = 0;
 
     if (pass_on_memory(func->type->return_type))
       // save the address to the return buffer given by caller
       writeline("  mov [rbp-%d], %s", func->return_buffer_address->offset,
-                reg_args8[count_int++]);
+                reg_args8[count_gp++]);
 
     comment(NULL, "move function arguments to stack");
     for (int i = 0; i < func->params->size; ++i) {
       Variable *v = *(Variable **)vector_get(func->params, i);
       if (is_float(v->type)) {
         if (v->type->kind == TYPE_FLOAT)
-          writeline("  movss [rbp-%d], xmm%d", v->offset, count_float++);
+          writeline("  movss [rbp-%d], xmm%d", v->offset, count_fp++);
         else if (v->type->kind == TYPE_DOUBLE)
-          writeline("  movsd [rbp-%d], xmm%d", v->offset, count_float++);
+          writeline("  movsd [rbp-%d], xmm%d", v->offset, count_fp++);
         else if (v->type->kind == TYPE_LDOUBLE)
           assert(false);
         else
           assert(false);
       } else if (is_integer(v->type) || v->type->kind == TYPE_PTR) {
         if (v->type->size == 1)
-          writeline("  mov [rbp-%d], %s", v->offset, reg_args1[count_int++]);
+          writeline("  mov [rbp-%d], %s", v->offset, reg_args1[count_gp++]);
         else if (v->type->size == 2)
-          writeline("  mov [rbp-%d], %s", v->offset, reg_args2[count_int++]);
+          writeline("  mov [rbp-%d], %s", v->offset, reg_args2[count_gp++]);
         else if (v->type->size == 4)
-          writeline("  mov [rbp-%d], %s", v->offset, reg_args4[count_int++]);
+          writeline("  mov [rbp-%d], %s", v->offset, reg_args4[count_gp++]);
         else if (v->type->size == 8)
-          writeline("  mov [rbp-%d], %s", v->offset, reg_args8[count_int++]);
+          writeline("  mov [rbp-%d], %s", v->offset, reg_args8[count_gp++]);
         else
           assert(false);
       } else {

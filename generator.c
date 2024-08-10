@@ -134,13 +134,99 @@ void gen_address(Node *node) {
   }
 }
 
+bool use_xmm(Type *type, int begin, int end) {
+  if (is_scalar(type))
+    return is_float(type);
+
+  if (type->kind == TYPE_ARRAY) {
+    int cur = 0;
+    for (int i = 0; i < type->array_size && cur < end;
+         ++i, cur += type->base->size) {
+      if (cur < begin)
+        continue;
+      if (!use_xmm(type->base, 0, end - cur))
+        return false;
+    }
+    return true;
+  }
+
+  if (type->kind == TYPE_STRUCT || type->kind == TYPE_UNION) {
+    for (Member *m = type->member; m && m->offset < end; m = m->next) {
+      if (m->offset >= begin) {
+        if (!use_xmm(m->type, 0, end - m->offset))
+          return false;
+      } else if (m->offset + m->type->size >= begin) {
+        if (!use_xmm(m->type, begin - m->offset, end - m->offset))
+          return false;
+      }
+    }
+    return true;
+  }
+
+  assert(false);
+  return true;
+}
+
 void load(Type *type) {
   // src  : the address where rax is pointing to
   // dest : rax or xmm0
   comment(NULL, "load %s (size:%d)", type_text(type->kind), type->size);
 
-  if (type->kind == TYPE_ARRAY || is_struct_union(type))
-    return; // nothing todo
+  if (type->kind == TYPE_ARRAY || pass_on_memory(type))
+    return; // nothing to do
+
+  if (is_struct_union(type)) {
+    writeline("  mov r10, rax");
+
+    bool xmm_used = 0;
+    bool rax_used = 0;
+
+    // put first 8byte onto register
+    if (use_xmm(type, 0, 8)) {
+      if (type->size == 4)
+        writeline("  movss xmm0, [r10]");
+      else
+        writeline("  movsd xmm0, [r10]");
+      xmm_used = true;
+    } else {
+      writeline("  mov rax, 0");
+      if (type->size == 1)
+        writeline("  mov al, byte ptr [r10]");
+      else if (type->size == 2)
+        writeline("  mov ax, word ptr [r10]");
+      else if (type->size == 4)
+        writeline("  mov eax, dword ptr [r10]");
+      else
+        writeline("  mov rax, [r10]");
+      rax_used = true;
+    }
+
+    if (type->size <= 8)
+      return;
+
+    // put second 8byte onto register
+    if (use_xmm(type, 8, 16)) {
+      if (type->size == 8 + 4)
+        writeline("  movss xmm%d, [r10+8]", xmm_used ? 1 : 0);
+      else if (type->size == 8 + 8)
+        writeline("  movsd xmm%d, [r10+8]", xmm_used ? 1 : 0);
+      else
+        assert(false);
+    } else {
+      writeline("  mov %s, 0", rax_used ? "rdx" : "rax");
+      if (type->size == 8 + 1)
+        writeline("  mov %s, byte ptr [r10+8]", rax_used ? "dl" : "al");
+      else if (type->size == 8 + 2)
+        writeline("  mov %s, word ptr [r10+8]", rax_used ? "dx" : "ax");
+      else if (type->size == 8 + 4)
+        writeline("  mov %s, dword ptr [r10+8]", rax_used ? "edx" : "eax");
+      else if (type->size == 8 + 8)
+        writeline("  mov %s, [r10+8]", rax_used ? "rdx" : "rax");
+      else
+        assert(false);
+    }
+    return;
+  }
 
   if (is_float(type)) {
     if (type->kind == TYPE_FLOAT)
@@ -174,12 +260,65 @@ void store(Type *type) {
   writeline("  pop r10");
 
   if (is_struct_union(type)) {
-    // src  : the struct/union that rax is pointing to
-    // dest : the struct/union that the address popped from stack is pointing to
-    for (int i = 0; i < type->size; i++) {
-      // copy each bytes like memcpy
-      writeline("  mov r11b, [rax+%d]", i);
-      writeline("  mov [r10+%d], r11b", i);
+    if (pass_on_memory(type)) {
+      // src  : the struct/union that rax is pointing to
+      // dest : the struct/union that the address popped from stack is pointing
+      // to
+      for (int i = 0; i < type->size; i++) {
+        // copy each bytes like memcpy
+        writeline("  mov r11b, [rax+%d]", i);
+        writeline("  mov [r10+%d], r11b", i);
+      }
+    } else {
+      // src  : the struct/union on registers
+      // dest : the struct/union that the address popped from stack is pointing
+      // to
+      bool xmm_used = 0;
+      bool rax_used = 0;
+
+      // copy first 8byte from register
+      if (use_xmm(type, 0, 8)) {
+        if (type->size == 4)
+          writeline("  movss [r10], xmm0");
+        else
+          writeline("  movsd [r10], xmm0");
+        xmm_used = true;
+      } else {
+        if (type->size == 1)
+          writeline("  mov byte ptr [r10], al");
+        else if (type->size == 2)
+          writeline("  mov word ptr [r10], ax");
+        else if (type->size == 4)
+          writeline("  mov dword ptr [r10], eax");
+        else
+          writeline("  mov [r10], rax");
+        rax_used = true;
+      }
+
+      if (type->size <= 8)
+        return;
+
+      // copy second 8byte from register
+      if (use_xmm(type, 8, 16)) {
+        if (type->size == 8 + 4)
+          writeline("  movss [r10+8], xmm%d", xmm_used ? 1 : 0);
+        else if (type->size == 8 + 8)
+          writeline("  movsd [r10+8], xmm%d", xmm_used ? 1 : 0);
+        else
+          assert(false);
+      } else {
+        if (type->size == 8 + 1)
+          writeline("  mov byte ptr [r10+8], %s", rax_used ? "dl" : "al");
+        else if (type->size == 8 + 2)
+          writeline("  mov word ptr [r10+8], %s", rax_used ? "dx" : "ax");
+        else if (type->size == 8 + 4)
+          writeline("  mov dword ptr [r10+8], %s", rax_used ? "edx" : "eax");
+        else if (type->size == 8 + 8)
+          writeline("  mov [r10+8], %s", rax_used ? "rdx" : "rax");
+        else
+          assert(false);
+      }
+      return;
     }
     return;
   }
@@ -306,6 +445,10 @@ void gen_call(Node *node) {
     int sz = node->args->size;
     int count_integer = 0;
     int count_float = 0;
+
+    if (pass_on_memory(node->type)) {
+      error(NULL, "currently, passing large struct/union is not supported");
+    }
 
     // push args to stack
     for (int i = 0; i < sz; ++i) {
@@ -671,6 +814,11 @@ void gen_func(Function *func) {
   {
     int count_int = 0;
     int count_float = 0;
+
+    if (pass_on_memory(func->type->return_type)) {
+      error(NULL, "currently, passing large struct/union is not supported");
+    }
+
     comment(NULL, "move function arguments to stack");
     for (int i = 0; i < func->params->size; ++i) {
       Variable *v = *(Variable **)vector_get(func->params, i);
@@ -1483,8 +1631,12 @@ void gen(Node *node) {
     return;
   case ND_RETURN:
     comment(node->token, "ND_RETURN");
-    if (node->lhs)
+    if (node->lhs) {
       gen(node->lhs);
+      if (pass_on_memory(node->lhs->type)) {
+        error(NULL, "currently, passing large struct/union is not supported");
+      }
+    }
     writeline("  mov rsp, rbp");
     writeline("  pop rbp");
     writeline("  ret");

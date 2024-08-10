@@ -248,6 +248,10 @@ bool is_struct_union(Type *type) {
   return type->kind == TYPE_STRUCT || type->kind == TYPE_UNION;
 }
 
+bool pass_on_memory(Type *type) {
+  return is_struct_union(type) && type->size > 16;
+}
+
 Type *implicit_type_conversion(Type *l, Type *r) {
   assert(!(is_float(l) && (r->kind == TYPE_ARRAY || r->kind == TYPE_PTR)));
   assert(!(is_float(r) && (l->kind == TYPE_ARRAY || l->kind == TYPE_PTR)));

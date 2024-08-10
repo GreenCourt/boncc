@@ -20,7 +20,7 @@ clean:
 	rm -rf boncc boncc2 boncc3 $(OBJ_DIR) $(TEST_OBJ_DIR) $(TEST_EXE_DIR)
 
 fmt:
-	clang-format -i *.c *.h test/*.c
+	clang-format -i *.c *.h test/*.c test/*.h
 
 $(OBJ_DIR)/%.o:%.c
 	@mkdir -p $(OBJ_DIR)

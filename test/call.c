@@ -262,7 +262,7 @@ int main() {
     verify(1, u.x == 8.8f, __FILE__, __LINE__);
     u = return_union7y(3);
     verify(3, u.y, __FILE__, __LINE__);
-    u = return_union7z(5, 6, 7, 8);
+    u = return_union7z(5, 13 - 7, 7, 4 + 4);
     verify(5, u.z[0], __FILE__, __LINE__);
     verify(6, u.z[1], __FILE__, __LINE__);
     verify(7, u.z[2], __FILE__, __LINE__);

@@ -443,15 +443,8 @@ void gen_call(Node *node) {
   // put arguments into registers
   {
     int sz = node->args->size;
-    int count_gp = 0;
+    int count_gp = pass_on_memory(node->type);
     int count_fp = 0;
-
-    if (pass_on_memory(node->type)) {
-      // hidden argument to pass return_buffer address
-      writeline("  mov rdi, rbp");
-      writeline("  sub rdi, %d", node->caller->return_buffer_offset);
-      count_gp++;
-    }
 
     // push args to stack
     for (int i = 0; i < sz; ++i) {
@@ -480,6 +473,12 @@ void gen_call(Node *node) {
       } else {
         assert(false);
       }
+    }
+
+    if (pass_on_memory(node->type)) {
+      // hidden argument to pass return_buffer address
+      writeline("  mov rdi, rbp");
+      writeline("  sub rdi, %d", node->caller->return_buffer_offset);
     }
   }
 

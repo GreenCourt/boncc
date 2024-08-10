@@ -84,13 +84,10 @@ Node *new_node_cast(Token *tok, Type *type, Node *operand) {
   assert(type->kind != TYPE_NONE);
   assert(operand->type->kind != TYPE_NONE);
 
-  if (!is_scalar(type) && type->kind != TYPE_VOID)
-    error(tok ? &tok->pos : NULL, "invalid type casting");
-
   if (same_type(type, operand->type))
     return operand;
 
-  if (is_struct_union(operand->type))
+  if (!is_scalar(type) && type->kind != TYPE_VOID)
     error(tok ? &tok->pos : NULL, "invalid type casting");
 
   if (operand->type->kind == TYPE_VOID && type->kind != TYPE_VOID)

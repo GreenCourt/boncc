@@ -1,3 +1,4 @@
+#include "func.h"
 #include <stdarg.h>
 
 int foo() { return 12; }

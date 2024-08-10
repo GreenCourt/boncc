@@ -8,7 +8,7 @@ TEST_OBJ_DIR=test/obj
 TEST_EXE_DIR=test/exe
 
 DEP=main common tokenizer parser generator preprocessor vector type node map number
-TESTS=$(basename $(filter-out common.c funcdef.c,$(notdir $(wildcard test/*.c))))
+TESTS=$(basename $(filter-out common.c func.c,$(notdir $(wildcard test/*.c))))
 
 boncc: $(addprefix $(OBJ_DIR)/,$(addsuffix .o,$(DEP)))
 	$(CC) -o $@ $^ $(LDFLAGS)
@@ -60,11 +60,15 @@ $(TEST_OBJ_DIR)/macro2.o: EXTRA_TEST_FLAGS=$(TEST_MACRO)
 gtest: $(addprefix $(TEST_EXE_DIR)/,$(addprefix gcc_,$(TESTS)))
 	for i in $^; do echo $$i; $$i || exit $$?; done
 
+
 $(TEST_OBJ_DIR)/gcc_%.o: test/%.c
 	@mkdir -p $(TEST_OBJ_DIR)
-	gcc -c -w $(EXTRA_TEST_FLAGS) -o $@ $^
+	gcc -c -w $(EXTRA_TEST_FLAGS) -o $@ $<
 
-$(TEST_EXE_DIR)/gcc_funccall: $(TEST_OBJ_DIR)/gcc_funcdef.o
+$(TEST_OBJ_DIR)/gcc_call.o: test/func.h
+$(TEST_OBJ_DIR)/gcc_func.o: test/func.h
+
+$(TEST_EXE_DIR)/gcc_call: $(TEST_OBJ_DIR)/gcc_func.o
 $(TEST_EXE_DIR)/gcc_vector: $(OBJ_DIR)/vector.o
 $(TEST_EXE_DIR)/gcc_%: $(TEST_OBJ_DIR)/gcc_%.o $(TEST_OBJ_DIR)/gcc_common.o
 	@mkdir -p $(TEST_EXE_DIR)
@@ -79,11 +83,11 @@ $(TEST_EXE_DIR)/gcc_%: $(TEST_OBJ_DIR)/gcc_%.o $(TEST_OBJ_DIR)/gcc_common.o
 abitest: $(TEST_EXE_DIR)/call_gcc_obj $(TEST_EXE_DIR)/called_by_gcc
 	for i in $^; do echo $$i; $$i || exit $$?; done
 
-$(TEST_EXE_DIR)/call_gcc_obj: $(TEST_OBJ_DIR)/gcc_funccall.o $(TEST_OBJ_DIR)/funcdef.o $(TEST_OBJ_DIR)/common.o
+$(TEST_EXE_DIR)/call_gcc_obj: $(TEST_OBJ_DIR)/gcc_call.o $(TEST_OBJ_DIR)/func.o $(TEST_OBJ_DIR)/common.o
 	@mkdir -p $(TEST_EXE_DIR)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-$(TEST_EXE_DIR)/called_by_gcc: $(TEST_OBJ_DIR)/funccall.o $(TEST_OBJ_DIR)/gcc_funcdef.o $(TEST_OBJ_DIR)/gcc_common.o
+$(TEST_EXE_DIR)/called_by_gcc: $(TEST_OBJ_DIR)/call.o $(TEST_OBJ_DIR)/gcc_func.o $(TEST_OBJ_DIR)/gcc_common.o
 	@mkdir -p $(TEST_EXE_DIR)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
@@ -96,7 +100,7 @@ $(TEST_EXE_DIR)/called_by_gcc: $(TEST_OBJ_DIR)/funccall.o $(TEST_OBJ_DIR)/gcc_fu
 stage1test: $(addprefix $(TEST_EXE_DIR)/,$(TESTS))
 	for i in $^; do echo $$i; $$i || exit $$?; done
 
-$(TEST_EXE_DIR)/funccall: $(TEST_OBJ_DIR)/funcdef.o
+$(TEST_EXE_DIR)/call: $(TEST_OBJ_DIR)/func.o
 $(TEST_EXE_DIR)/vector: $(OBJ_DIR)/vector.o
 $(TEST_EXE_DIR)/%: $(addprefix $(TEST_OBJ_DIR)/,%.o common.o)
 	@mkdir -p $(TEST_EXE_DIR)
@@ -106,6 +110,9 @@ $(TEST_OBJ_DIR)/%.o: test/%.c boncc
 	@mkdir -p $(TEST_OBJ_DIR)
 	./boncc $(EXTRA_TEST_FLAGS) $< -o $(basename $@).s
 	as -g -o $@ $(basename $@).s
+
+$(TEST_OBJ_DIR)/call.o: test/func.h
+$(TEST_OBJ_DIR)/func.o: test/func.h
 
 #########################################
 #
@@ -123,7 +130,7 @@ $(OBJ_DIR)/%2.o: %.c boncc
 stage2test: $(addprefix $(TEST_EXE_DIR)/,$(addsuffix 2,$(TESTS)))
 	for i in $^; do echo $$i; $$i || exit $$?; done
 
-$(TEST_EXE_DIR)/funccall2: $(TEST_OBJ_DIR)/funcdef2.o
+$(TEST_EXE_DIR)/call2: $(TEST_OBJ_DIR)/func2.o
 $(TEST_EXE_DIR)/vector2: $(OBJ_DIR)/vector2.o
 $(TEST_EXE_DIR)/%2: $(addprefix $(TEST_OBJ_DIR)/,%2.o common2.o)
 	@mkdir -p $(TEST_EXE_DIR)
@@ -133,6 +140,9 @@ $(TEST_OBJ_DIR)/%2.o: test/%.c boncc2
 	@mkdir -p $(TEST_OBJ_DIR)
 	./boncc2 $(EXTRA_TEST_FLAGS) $< -o $(basename $@).s
 	as -g -o $@ $(basename $@).s
+
+$(TEST_OBJ_DIR)/call2.o: test/func.h
+$(TEST_OBJ_DIR)/func2.o: test/func.h
 
 #########################################
 #

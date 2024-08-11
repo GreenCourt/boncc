@@ -11,6 +11,22 @@ static const char *reg_args2[] = {"di", "si", "dx", "cx", "r8w", "r9w"};
 static const char *reg_args4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 static const char *reg_args8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
+// Check the rsp alignment by the variable rsp_shift.
+// In the AST traversal, rsp_shift follows the push and pop operations.
+// In any single expression and any statement,
+// "push" and "pop" instructions are always balanced and rsp remains aligned.
+// We need to care about the rsp alignment when multiple expressions are
+// combined, e.g "f() + g()".
+// Before evaluating "f()", rsp is aligned to 16byte.
+// After "f()", rsp remains aligned.
+// Then the result of "f()" is pushed to the stack (rsp is shifted 8byte).
+// Before "g()" is called, rsp is not aligned to 16byte.
+// Therefore rsp is adjusted by 8byte, "g()" is evaluated, and then rsp
+// adjustment is reverted by 8byte. Next, the result of "f()" is popped to a
+// register (rsp is shifted 8byte) and "add" instruction is processed.
+// After that, rsp is aligned to 16byte.
+static int rsp_shift = 0;
+
 typedef struct FloatLiteral FloatLiteral;
 struct FloatLiteral {
   int index;
@@ -45,18 +61,34 @@ __attribute__((format(printf, 2, 3))) void comment(Token *tok, char *fmt, ...) {
   fprintf(ostream, "\n");
 }
 
+static void push(const char *reg) {
+  assert(rsp_shift >= 0);
+  writeline("  push %s", reg);
+  rsp_shift += 8; // push only 8 byte register
+}
+
+static void pop(const char *reg) {
+  writeline("  pop %s", reg);
+  rsp_shift -= 8; // pop only 8 byte register
+  assert(rsp_shift >= 0);
+}
+
 static void push_xmm(int n, TypeKind kind) {
+  assert(rsp_shift >= 0);
   switch (kind) {
   case TYPE_FLOAT: // align to 8 even if size is 4
     writeline("  sub rsp, 8        # push %s", type_text(kind));
     writeline("  movss [rsp], xmm%d # push %s", n, type_text(kind));
+    rsp_shift += 8;
     break;
   case TYPE_DOUBLE:
     writeline("  sub rsp, 8        # push %s", type_text(kind));
     writeline("  movsd [rsp], xmm%d # push %s", n, type_text(kind));
+    rsp_shift += 8;
     break;
   case TYPE_LDOUBLE:
     error(NULL, "long double is currently not supported");
+    rsp_shift += 16;
     break;
   default:
     assert(false);
@@ -68,17 +100,21 @@ static void pop_xmm(int n, TypeKind kind) {
   case TYPE_FLOAT: // align to 8 even if size is 4
     writeline("  movss xmm%d, [rsp] # pop %s", n, type_text(kind));
     writeline("  add rsp, 8        # pop %s", type_text(kind));
+    rsp_shift -= 8;
     break;
   case TYPE_DOUBLE:
     writeline("  movsd xmm%d, [rsp] # pop %s", n, type_text(kind));
     writeline("  add rsp, 8        # pop %s", type_text(kind));
+    rsp_shift -= 8;
     break;
   case TYPE_LDOUBLE:
     error(NULL, "long double is currently not supported");
+    rsp_shift -= 16;
     break;
   default:
     assert(false);
   }
+  assert(rsp_shift >= 0);
 }
 
 void gen_address(Node *node) {
@@ -257,7 +293,7 @@ void store(Type *type) {
   // dest : the address popped from stack
   comment(NULL, "store %s", type_text(type->kind));
 
-  writeline("  pop r10");
+  pop("r10");
 
   if (is_struct_union(type)) {
     if (pass_on_memory(type)) {
@@ -454,7 +490,7 @@ void gen_call(Node *node) {
         push_xmm(0, d->type->kind);
         count_fp++;
       } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
-        writeline("  push rax");
+        push("rax");
         count_gp++;
       } else {
         assert(false);
@@ -469,7 +505,7 @@ void gen_call(Node *node) {
       if (is_float(d->type)) {
         pop_xmm(--count_fp, d->type->kind);
       } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
-        writeline("  pop %s", reg_args8[--count_gp]);
+        pop(reg_args8[--count_gp]);
       } else {
         assert(false);
       }
@@ -482,16 +518,13 @@ void gen_call(Node *node) {
     }
   }
 
-  // align RSP to 16bytes (ABI requirements)
-  comment(NULL, "check RSP alignment for call");
-  static int l = -1;
-  l++;
-  writeline("  mov rax, rsp");
-  writeline("  and rax, 15");     // rax % 16 == rax & 0xF
-  writeline("  jnz .Lcall%d", l); // jump if RSP is not aligned
+  bool require_alignment = (rsp_shift % 16) != 0;
+  if (require_alignment) {
+    assert(rsp_shift % 16 == 8);
+    writeline("  sub rsp, 8"); // RSP is always aligned to 8 by this compiler
+    rsp_shift += 8;
+  }
 
-  // alined case
-  comment(NULL, "the case when RSP was already aligned");
   if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC) {
     writeline("  mov al, %d", n_fp);
     writeline("  call %.*s", node->lhs->variable->ident->len,
@@ -502,26 +535,10 @@ void gen_call(Node *node) {
     writeline("  mov al, %d", n_fp);
     writeline("  call r10");
   }
-  writeline("  jmp .Lend_call%d", l);
-
-  // not-aligned case
-  comment(NULL, "the case when RSP was not aligned");
-  writeline(".Lcall%d:", l);
-  writeline("  sub rsp, 8"); // RSP is always aligned to 8 by this compiler
-  if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC) {
-    writeline("  mov al, %d", n_fp);
-    writeline("  call %.*s", node->lhs->variable->ident->len,
-              node->lhs->variable->ident->str);
-  } else {
-    gen(node->lhs); // calculate function address
-    writeline("  mov r10, rax");
-    writeline("  mov al, %d", n_fp);
-    writeline("  call r10");
+  if (require_alignment) {
+    writeline("  add rsp, 8"); // recover RSP
+    rsp_shift -= 8;
   }
-  writeline("  add rsp, 8"); // recover RSP
-
-  // end label for aligned case
-  writeline(".Lend_call%d:", l);
 }
 
 void gen_global_init(VariableInit *init, Type *type);
@@ -798,6 +815,21 @@ void gen_global_init(VariableInit *init, Type *type) {
   assert(false);
 }
 
+// In the functions prologue() and epilogue(),
+// no need to adjust the rsp_shift.
+// Because they are always paired and do not break the rsp alignment.
+void prologue() {
+  writeline("  push rbp");
+  writeline("  mov rbp, rsp");
+}
+
+void epilogue() {
+  writeline("  mov rsp, rbp");
+  writeline("  pop rbp");
+  writeline("  ret"); // The "ret" instruction pops the return address that was
+                      // pushed by "call" instruction and jump to it.
+}
+
 void gen_func(Function *func) {
   if (!func->body)
     return; // declared but not defined
@@ -808,9 +840,13 @@ void gen_func(Function *func) {
     writeline("  .globl %.*s", func->ident->len, func->ident->str);
   writeline("%.*s:", func->ident->len, func->ident->str);
 
-  // prologue
-  writeline("  push rbp");
-  writeline("  mov rbp, rsp");
+  prologue();
+
+  // After prologue(), rsp is aligned to 16byte as following:
+  // 1. rsp is aligned to 16bytes before the "call" instruction.
+  // 2. The "call" instruction pushes the return address (8byte).
+  // 3. rbp (8byte) is pushed in the prologue.
+  rsp_shift = 0;
 
   // move args to stack
   {
@@ -851,11 +887,13 @@ void gen_func(Function *func) {
     }
   }
 
+  int local_var_offset = 0;
   if (func->offset) {
-    int ofs = func->offset;
-    if (ofs % 8)
-      ofs += 8 - ofs % 8; // align by 8
-    writeline("  sub rsp, %d", ofs);
+    local_var_offset = func->offset;
+    if (local_var_offset % 8)
+      local_var_offset += 8 - local_var_offset % 8; // align by 8
+    writeline("  sub rsp, %d", local_var_offset);
+    rsp_shift += local_var_offset;
   }
 
   if (func->hidden_va_area) {
@@ -892,11 +930,8 @@ void gen_func(Function *func) {
   }
 
   gen(func->body);
-
-  // epilogue
-  writeline("  mov rsp, rbp");
-  writeline("  pop rbp");
-  writeline("  ret");
+  assert(rsp_shift == local_var_offset);
+  epilogue(); // By epilogue, rsp is restored to the value before the "call".
 }
 
 void gen_cast(Node *node) {
@@ -1342,29 +1377,29 @@ void gen_numerical_operator(Node *node) {
 
   if (node->kind == ND_ADD || node->kind == ND_MUL) {
     gen(node->lhs);
-    writeline("  push rax");
+    push("rax");
     gen(node->rhs);
-    writeline("  pop rdi");
+    pop("rdi");
     writeline("  %s rax, rdi", node->kind == ND_ADD ? "add" : "imul");
     return;
   }
 
   if (node->kind == ND_SUB) {
     gen(node->lhs);
-    writeline("  push rax");
+    push("rax");
     gen(node->rhs);
     writeline("  mov rdi, rax");
-    writeline("  pop rax");
+    pop("rax");
     writeline("  sub rax, rdi");
     return;
   }
 
   if (node->kind == ND_DIV || node->kind == ND_MOD) {
     gen(node->lhs);
-    writeline("  push rax");
+    push("rax");
     gen(node->rhs);
     writeline("  mov rdi, rax");
-    writeline("  pop rax");
+    pop("rax");
 
     if (is_unsigned(operand_type)) {
       writeline("  mov rdx, 0");
@@ -1444,10 +1479,10 @@ void gen_bit_operator(Node *node) {
 
   if (node->kind == ND_LSHIFT || node->kind == ND_RSHIFT) {
     gen(node->lhs);
-    writeline("  push rax");
+    push("rax");
     gen(node->rhs);
     writeline("  mov rcx, rax");
-    writeline("  pop rax");
+    pop("rax");
     if (node->kind == ND_LSHIFT)
       writeline("  shl rax, cl");
     else
@@ -1459,10 +1494,10 @@ void gen_bit_operator(Node *node) {
   assert(same_type(node->type, node->rhs->type));
 
   gen(node->lhs);
-  writeline("  push rax");
+  push("rax");
   gen(node->rhs);
   writeline("  mov rdi, rax");
-  writeline("  pop rax");
+  pop("rax");
 
   if (node->kind == ND_BITXOR)
     writeline("  xor rax, rdi");
@@ -1562,9 +1597,9 @@ void gen_comparison_operator(Node *node) {
 
   if (node->kind == ND_EQ || node->kind == ND_NE) {
     gen(node->lhs);
-    writeline("  push rax");
+    push("rax");
     gen(node->rhs);
-    writeline("  pop rdi");
+    pop("rdi");
     writeline("  cmp rax, rdi");
     writeline("  %s al", node->kind == ND_EQ ? "sete" : "setne");
     writeline("  movzb rax, al");
@@ -1573,10 +1608,10 @@ void gen_comparison_operator(Node *node) {
 
   if (node->kind == ND_LT || node->kind == ND_LE) {
     gen(node->lhs);
-    writeline("  push rax");
+    push("rax");
     gen(node->rhs);
     writeline("  mov rdi, rax");
-    writeline("  pop rax");
+    pop("rax");
     writeline("  cmp rax, rdi");
     if (node->kind == ND_LT)
       writeline("  set%c al", is_unsigned(operand_type) ? 'b' : 'l');
@@ -1589,6 +1624,7 @@ void gen_comparison_operator(Node *node) {
 }
 
 void gen(Node *node) {
+  int shift_before = rsp_shift;
   switch (node->kind) {
   case ND_CALL:
     if (node->lhs->kind == ND_VAR)
@@ -1597,40 +1633,49 @@ void gen(Node *node) {
     else
       comment(node->token, "ND_CALL");
     gen_call(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_BLOCK:
     comment(node->token, "ND_BLOCK");
     gen_block(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_IF:
     comment(node->token, "ND_IF %d", node->label_index);
     gen_if(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_DO:
     comment(node->token, "ND_DO %d", node->label_index);
     gen_do(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_WHILE:
     comment(node->token, "ND_WHILE %d", node->label_index);
     gen_while(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_FOR:
     comment(node->token, "ND_FOR %d", node->label_index);
     gen_for(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_SWITCH:
     comment(node->token, "ND_SWITCH %d", node->label_index);
     gen_switch(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_CASE:
     comment(node->token, "ND_CASE %d", node->label_index);
     writeline(".Lcase%d:", node->label_index);
     gen(node->body);
+    assert(shift_before == rsp_shift);
     return;
   case ND_DEFAULT:
     writeline(".Ldefault%d:", node->label_index);
     comment(node->token, "ND_DEFAULT %d", node->label_index);
     gen(node->body);
+    assert(shift_before == rsp_shift);
     return;
   case ND_RETURN:
     comment(node->token, "ND_RETURN");
@@ -1639,27 +1684,29 @@ void gen(Node *node) {
       if (pass_on_memory(node->lhs->type)) {
         assert(node->return_buffer_address);
         writeline("  mov r10, [rbp-%d]", node->return_buffer_address->offset);
-        writeline("  push r10");
+        push("r10");
         store(node->lhs->type);
         writeline("  mov rax, [rbp-%d]", node->return_buffer_address->offset);
       }
     }
-    writeline("  mov rsp, rbp");
-    writeline("  pop rbp");
-    writeline("  ret");
+    assert(shift_before == rsp_shift);
+    epilogue();
     return;
   case ND_CONTINUE:
     comment(node->token, "ND_CONTINUE");
     writeline("  jmp .Lcontinue%d", node->label_index);
+    assert(shift_before == rsp_shift);
     return;
   case ND_BREAK:
     comment(node->token, "ND_BREAK");
     writeline("  jmp .Lend%d", node->label_index);
+    assert(shift_before == rsp_shift);
     return;
   case ND_GOTO:
     comment(node->token, "ND_GOTO %.*s", node->token->str->len,
             node->token->str->str);
     writeline("  jmp .Lgoto%d", node->label_index);
+    assert(shift_before == rsp_shift);
     return;
   case ND_LABEL:
     comment(node->token, "ND_LABEL %.*s", node->token->str->len,
@@ -1667,23 +1714,27 @@ void gen(Node *node) {
     writeline(".Lgoto%d:", node->label_index);
     if (node->body)
       gen(node->body);
+    assert(shift_before == rsp_shift);
     return;
   case ND_NUM:
     comment(node->token, "ND_NUM %s", type_text(node->type->kind));
     gen_number(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_VAR:
     comment(node->token, "ND_VAR");
     gen_address(node);
     if (node->variable->kind != OBJ_FUNC)
       load(node->type);
+    assert(shift_before == rsp_shift);
     return;
   case ND_ASSIGN:
     comment(node->token, "ND_ASSIGN");
     gen_address(node->lhs);
-    writeline("  push rax");
+    push("rax");
     gen(node->rhs);
     store(node->type);
+    assert(shift_before == rsp_shift);
     return;
   case ND_COND:
     comment(node->token, "ND_COND %d", node->label_index);
@@ -1695,102 +1746,126 @@ void gen(Node *node) {
     writeline(".Lcond_rhs%d:", node->label_index);
     gen(node->rhs);
     writeline(".Lend%d:", node->label_index);
+    assert(shift_before == rsp_shift);
     return;
   case ND_ADDR:
     comment(node->token, "ND_ADDR");
     gen_address(node->lhs);
+    assert(shift_before == rsp_shift);
     return;
   case ND_DEREF:
     comment(node->token, "ND_DEREF");
     gen(node->lhs);
     load(node->type);
+    assert(shift_before == rsp_shift);
     return;
   case ND_MEMBER:
     comment(node->token, "ND_MEMBER");
     gen_address(node);
     load(node->type);
+    assert(shift_before == rsp_shift);
     return;
   case ND_ADD:
     comment(node->token, "ND_ADD");
     gen_numerical_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_SUB:
     comment(node->token, "ND_SUB");
     gen_numerical_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_MUL:
     comment(node->token, "ND_MUL");
     gen_numerical_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_DIV:
     comment(node->token, "ND_DIV");
     gen_numerical_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_MOD:
     comment(node->token, "ND_MOD");
     gen_numerical_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_LOGNOT:
     comment(node->token, "ND_LOGNOT");
     gen_logical_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_LOGOR:
     comment(node->token, "ND_LOGOR %d", node->label_index);
     gen_logical_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_LOGAND:
     comment(node->token, "ND_LOGAND %d", node->label_index);
     gen_logical_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_LSHIFT:
     comment(node->token, "ND_LSHIFT");
     gen_bit_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_RSHIFT:
     comment(node->token, "ND_RSHIFT");
     gen_bit_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_BITXOR:
     comment(node->token, "ND_BITXOR");
     gen_bit_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_BITOR:
     comment(node->token, "ND_BITOR");
     gen_bit_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_BITAND:
     comment(node->token, "ND_BITAND");
     gen_bit_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_BITNOT:
     comment(node->token, "ND_BITNOT");
     gen_bit_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_EQ:
     comment(node->token, "ND_EQ");
     gen_comparison_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_NE:
     comment(node->token, "ND_NE");
     gen_comparison_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_LT:
     comment(node->token, "ND_LT");
     gen_comparison_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_LE:
     comment(node->token, "ND_LE");
     gen_comparison_operator(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_CAST:
     comment(node->token, "ND_CAST %s --> %s", type_text(node->lhs->type->kind),
             type_text(node->type->kind));
     gen_cast(node);
+    assert(shift_before == rsp_shift);
     return;
   case ND_COMMA:
     comment(node->token, "ND_COMMA");
     gen(node->lhs);
     gen(node->rhs);
+    assert(shift_before == rsp_shift);
     return;
   default:
     assert(false);

@@ -335,6 +335,7 @@ extern Map *strings;                   // Variable*
 extern Vector *static_local_variables; // Variable*
 extern Vector *include_path;           // char*
 
+int iceil(int x, int y);
 bool is_alphabet(char c);
 bool is_alphanumeric_or_underscore(char c);
 bool is_hexdigit(char c);

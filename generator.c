@@ -889,9 +889,7 @@ void gen_func(Function *func) {
 
   int local_var_offset = 0;
   if (func->offset) {
-    local_var_offset = func->offset;
-    if (local_var_offset % 8)
-      local_var_offset += 8 - local_var_offset % 8; // align by 8
+    local_var_offset = iceil(func->offset, 8); // align rsp to 8byte
     writeline("  sub rsp, %d", local_var_offset);
     rsp_shift += local_var_offset;
   }

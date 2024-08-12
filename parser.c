@@ -337,8 +337,7 @@ Type *consume_struct(TypeKind kind, Token **nx) {
 
         while (m) {
           Type *type = m->type;
-          tail->padding =
-              (offset % type->align) ? type->align - (offset % type->align) : 0;
+          tail->padding = iceil(offset, type->align) - offset;
           offset += tail->padding;
           m->offset = offset;
           offset += type->size;
@@ -354,8 +353,7 @@ Type *consume_struct(TypeKind kind, Token **nx) {
       }
 
       if (base->kind == TYPE_UNION) {
-        tail->padding =
-            (offset % base->align) ? base->align - (offset % base->align) : 0;
+        tail->padding = iceil(offset, base->align) - offset;
         offset += tail->padding;
 
         Member *m = base->member;
@@ -397,8 +395,7 @@ Type *consume_struct(TypeKind kind, Token **nx) {
         if (align < type->align)
           align = type->align;
       } else {
-        tail->padding =
-            (offset % type->align) ? type->align - (offset % type->align) : 0;
+        tail->padding = iceil(offset, type->align) - offset;
         offset += tail->padding;
         m->offset = offset;
         offset += type->size;
@@ -413,7 +410,7 @@ Type *consume_struct(TypeKind kind, Token **nx) {
   }
 
   if (align && offset % align) {
-    tail->padding = align - offset % align;
+    tail->padding = iceil(offset, align) - offset;
     offset += tail->padding;
   }
 

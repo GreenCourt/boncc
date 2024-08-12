@@ -2,6 +2,7 @@
 #include <stdio.h>
 #undef _POSIX_C_SOURCE
 #include "boncc.h"
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <stdarg.h>
@@ -54,6 +55,13 @@ void error(Position *pos, char *fmt, ...) {
     fprintf(stderr, "\n");
   }
   exit(1);
+}
+
+int iceil(int x, int y) {
+  // round up x to the nearest multiple of y
+  assert(x >= 0);
+  assert(y > 0);
+  return x % y ? x + y - x % y : x;
 }
 
 bool is_alphabet(char c) {

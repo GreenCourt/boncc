@@ -505,6 +505,28 @@ void gen_call(Node *node) {
     writeline("  add rsp, 8"); // recover RSP
     rsp_shift -= 8;
   }
+
+  if (!pass_on_memory(node->type) && is_integer(node->type) &&
+      node->type->size < 8) {
+    // Extend the returned integer to 64bit.
+    // This compiler treats all integers on registers as 64bit integers.
+    // This extension is required when the callee function is compiled by
+    // another compiler.
+    if (node->type->kind == TYPE_INT || node->type->kind == TYPE_ENUM)
+      writeline("  movsxd rax, eax # extend the returned integer to 64bit");
+    else if (node->type->kind == TYPE_UINT)
+      writeline("  mov eax, eax # extend the returned integer to 64bit");
+    else if (node->type->kind == TYPE_BOOL)
+      writeline("  movzx rax, al # extend the returned integer to 64bit");
+    else if (is_unsigned(node->type))
+      writeline("  movzx rax, %s # extend the returned integer to 64bit",
+                reg_ax[node->type->size]);
+    else if (is_signed(node->type))
+      writeline("  movsx rax, %s # extend the returned integer to 64bit",
+                reg_ax[node->type->size]);
+    else
+      assert(false);
+  }
 }
 
 void gen_global_init(VariableInit *init, Type *type);

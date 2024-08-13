@@ -6,11 +6,15 @@
 #include <string.h>
 
 static FILE *ostream;
-static const char *reg_args1[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
-static const char *reg_args2[] = {"di", "si", "dx", "cx", "r8w", "r9w"};
-static const char *reg_args4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
-static const char *reg_args8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
-
+static const char *reg_args[][6] = {{NULL},
+                                    {"dil", "sil", "dl", "cl", "r8b", "r9b"},
+                                    {"di", "si", "dx", "cx", "r8w", "r9w"},
+                                    {NULL},
+                                    {"edi", "esi", "edx", "ecx", "r8d", "r9d"},
+                                    {NULL},
+                                    {NULL},
+                                    {NULL},
+                                    {"rdi", "rsi", "rdx", "rcx", "r8", "r9"}};
 static const char *reg_ax[] = {NULL, "al", "ax", NULL, "eax",
                                NULL, NULL, NULL, "rax"};
 static const char *reg_dx[] = {NULL, "dl", "dx", NULL, "edx",
@@ -471,7 +475,7 @@ void gen_call(Node *node) {
       if (is_float(d->type)) {
         pop_xmm(--count_fp, d->type->kind);
       } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
-        pop(reg_args8[--count_gp]);
+        pop(reg_args[8][--count_gp]);
       } else {
         assert(false);
       }
@@ -845,7 +849,7 @@ void gen_func(Function *func) {
     // save the address to the return buffer given by caller
     if (pass_on_memory(func->type->return_type))
       writeline("  mov [rbp-%d], %s", func->return_buffer_address->offset,
-                reg_args8[count_gp++]);
+                reg_args[8][count_gp++]);
 
     // move args to stack
     if (func->params->size > 0)
@@ -862,16 +866,8 @@ void gen_func(Function *func) {
         else
           assert(false);
       } else if (is_integer(v->type) || v->type->kind == TYPE_PTR) {
-        if (v->type->size == 1)
-          writeline("  mov [rbp-%d], %s", v->offset, reg_args1[count_gp++]);
-        else if (v->type->size == 2)
-          writeline("  mov [rbp-%d], %s", v->offset, reg_args2[count_gp++]);
-        else if (v->type->size == 4)
-          writeline("  mov [rbp-%d], %s", v->offset, reg_args4[count_gp++]);
-        else if (v->type->size == 8)
-          writeline("  mov [rbp-%d], %s", v->offset, reg_args8[count_gp++]);
-        else
-          assert(false);
+        writeline("  mov [rbp-%d], %s", v->offset,
+                  reg_args[v->type->size][count_gp++]);
       } else {
         assert(false);
       }

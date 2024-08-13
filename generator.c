@@ -819,11 +819,13 @@ void gen_global_init(VariableInit *init, Type *type) {
 // no need to adjust the rsp_shift.
 // Because they are always paired and do not break the rsp alignment.
 void prologue() {
+  comment(NULL, "prologue");
   writeline("  push rbp");
   writeline("  mov rbp, rsp");
 }
 
 void epilogue() {
+  comment(NULL, "epilogue");
   writeline("  mov rsp, rbp");
   writeline("  pop rbp");
   writeline("  ret"); // The "ret" instruction pops the return address that was
@@ -848,17 +850,18 @@ void gen_func(Function *func) {
   // 3. rbp (8byte) is pushed in the prologue.
   rsp_shift = 0;
 
-  // move args to stack
   {
     int count_gp = 0;
     int count_fp = 0;
 
+    // save the address to the return buffer given by caller
     if (pass_on_memory(func->type->return_type))
-      // save the address to the return buffer given by caller
       writeline("  mov [rbp-%d], %s", func->return_buffer_address->offset,
                 reg_args8[count_gp++]);
 
-    comment(NULL, "move function arguments to stack");
+    // move args to stack
+    if (func->params->size > 0)
+      comment(NULL, "move function arguments to stack");
     for (int i = 0; i < func->params->size; ++i) {
       Variable *v = *(Variable **)vector_get(func->params, i);
       if (is_float(v->type)) {

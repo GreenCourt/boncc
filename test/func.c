@@ -67,6 +67,8 @@ _Bool retbool(int a) { return a; }
 
 int add_double(int x, double y) { return x + y; }
 
+int minus1() { return -1; }
+
 void empty() {}
 
 int vsprintf(char *, char *, va_list);

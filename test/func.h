@@ -14,6 +14,7 @@ int static_enum();
 int array_sum(int a[10]);
 _Bool retbool(int a);
 int add_double(int x, double y);
+int minus1();
 void empty();
 int vsprintf(char *, char *, va_list);
 int sprintf_(char *s, char *fmt, ...);

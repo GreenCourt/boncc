@@ -1,1 +1,2 @@
-void verify(int expected, int actual, char *file_name, int line_number);
+void verify(long long expected, long long actual, char *file_name,
+            int line_number);

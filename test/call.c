@@ -10,6 +10,7 @@ int main() {
   verify(13, fib(7), __FILE__, __LINE__);
   voidfunc(4);
   empty();
+  verify(-1, minus1(), __FILE__, __LINE__);
 
   verify(1, static_test1(), __FILE__, __LINE__);
   verify(2, static_test1(), __FILE__, __LINE__);

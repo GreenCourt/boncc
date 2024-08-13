@@ -295,7 +295,9 @@ int main() {
     verify(16, sizeof(struct S), __FILE__, __LINE__);
     struct S s;
     s.a = 4;
-    verify(4, s.b, __FILE__, __LINE__);
+    verify(4, s.a, __FILE__, __LINE__);
+    s.b = 7;
+    verify(7, s.b, __FILE__, __LINE__);
   }
   {
     struct S {

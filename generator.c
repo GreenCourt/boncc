@@ -1189,7 +1189,6 @@ void gen_cast(Node *node) {
   if (from->kind == TYPE_INT || from->kind == TYPE_ENUM) {
     switch (to->kind) {
     case TYPE_UCHAR:
-      writeline("  mov eax, eax");
       writeline("  movzx rax, al");
       return;
     case TYPE_USHORT:

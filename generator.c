@@ -1479,11 +1479,13 @@ void gen_numerical_operator(Node *node) {
     writeline("  mov rdi, rax");
     pop("rax");
 
+    // "div" and "idiv" concatenates rdi and rax,
+    // then divide the concatenated 128bit value by the argument.
     if (is_unsigned(operand_type)) {
-      writeline("  mov rdx, 0");
+      writeline("  mov rdx, 0 # clear rdx before div");
       writeline("  div rdi");
     } else {
-      writeline("  cqo");
+      writeline("  cqo # sign-extend rax to rdx before idiv");
       writeline("  idiv rdi");
     }
 

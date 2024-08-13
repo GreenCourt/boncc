@@ -356,8 +356,9 @@ void store(Type *type) {
 }
 
 void gen_if(Node *node) {
+  assert(node->condition->type->kind == TYPE_BOOL);
   gen(node->condition);
-  writeline("  cmp rax, 0");
+  writeline("  cmp al, 0");
   if (node->else_) {
     writeline("  je .Lelse%d", node->label_index);
     gen(node->body);
@@ -373,19 +374,21 @@ void gen_if(Node *node) {
 }
 
 void gen_do(Node *node) {
+  assert(node->condition->type->kind == TYPE_BOOL);
   writeline(".Ldo%d:", node->label_index);
   gen(node->body);
   writeline(".Lcontinue%d:", node->label_index);
   gen(node->condition);
-  writeline("  cmp rax, 0");
+  writeline("  cmp al, 0");
   writeline("  jne .Ldo%d", node->label_index);
   writeline(".Lend%d:", node->label_index);
 }
 
 void gen_while(Node *node) {
+  assert(node->condition->type->kind == TYPE_BOOL);
   writeline(".Lcontinue%d:", node->label_index);
   gen(node->condition);
-  writeline("  cmp rax, 0");
+  writeline("  cmp al, 0");
   writeline("  je .Lend%d", node->label_index);
 
   gen(node->body);
@@ -394,13 +397,14 @@ void gen_while(Node *node) {
 }
 
 void gen_for(Node *node) {
+  assert(node->condition->type->kind == TYPE_BOOL);
   if (node->init)
     gen(node->init);
 
   writeline(".Lfor%d:", node->label_index);
   if (node->condition) {
     gen(node->condition);
-    writeline("  cmp rax, 0");
+    writeline("  cmp al, 0");
     writeline("  je .Lend%d", node->label_index);
   }
   gen(node->body);
@@ -412,6 +416,7 @@ void gen_for(Node *node) {
 }
 
 void gen_switch(Node *node) {
+  assert(is_integer(node->condition->type));
   gen(node->condition);
 
   Node *c = node->next_case;
@@ -1492,7 +1497,7 @@ void gen_logical_operator(Node *node) {
 
   if (node->kind == ND_LOGNOT) {
     gen(node->lhs);
-    writeline("  cmp rax, 0");
+    writeline("  cmp al, 0");
     writeline("  sete al");
     writeline("  movzx rax, al");
     return;
@@ -1502,10 +1507,10 @@ void gen_logical_operator(Node *node) {
 
   if (node->kind == ND_LOGOR) {
     gen(node->lhs);
-    writeline("  cmp rax, 0");
+    writeline("  cmp al, 0");
     writeline("  jne .Ltrue%d", node->label_index);
     gen(node->rhs);
-    writeline("  cmp rax, 0");
+    writeline("  cmp al, 0");
     writeline("  jne .Ltrue%d", node->label_index);
     writeline("  mov rax, 0");
     writeline("  jmp .Lend%d", node->label_index);
@@ -1517,10 +1522,10 @@ void gen_logical_operator(Node *node) {
 
   if (node->kind == ND_LOGAND) {
     gen(node->lhs);
-    writeline("  cmp rax, 0");
+    writeline("  cmp al, 0");
     writeline("  je .Lfalse%d", node->label_index);
     gen(node->rhs);
-    writeline("  cmp rax, 0");
+    writeline("  cmp al, 0");
     writeline("  je .Lfalse%d", node->label_index);
     writeline("  mov rax, 1");
     writeline("  jmp .Lend%d", node->label_index);
@@ -1536,6 +1541,7 @@ void gen_logical_operator(Node *node) {
 void gen_bit_operator(Node *node) {
   assert(is_integer(node->type));
   assert(is_integer(node->lhs->type));
+  assert(same_type(node->type, node->lhs->type));
 
   if (node->kind == ND_BITNOT) {
     gen(node->lhs);
@@ -1558,7 +1564,6 @@ void gen_bit_operator(Node *node) {
     return;
   }
 
-  assert(same_type(node->type, node->lhs->type));
   assert(same_type(node->type, node->rhs->type));
 
   gen(node->lhs);
@@ -1806,8 +1811,9 @@ void gen(Node *node) {
     return;
   case ND_COND:
     comment(node->token, "ND_COND %d", node->label_index);
+    assert(node->condition->type->kind == TYPE_BOOL);
     gen(node->condition);
-    writeline("  cmp rax, 0");
+    writeline("  cmp al, 0");
     writeline("  je .Lcond_rhs%d", node->label_index);
     gen(node->lhs);
     writeline("  jmp .Lend%d", node->label_index);

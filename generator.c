@@ -11,6 +11,11 @@ static const char *reg_args2[] = {"di", "si", "dx", "cx", "r8w", "r9w"};
 static const char *reg_args4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 static const char *reg_args8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
+static const char *reg_ax[] = {NULL, "al", "ax", NULL, "eax",
+                               NULL, NULL, NULL, "rax"};
+static const char *reg_dx[] = {NULL, "dl", "dx", NULL, "edx",
+                               NULL, NULL, NULL, "rdx"};
+
 // Check the rsp alignment by the variable rsp_shift.
 // In the AST traversal, rsp_shift follows the push and pop operations.
 // In any single expression and any statement,
@@ -226,14 +231,7 @@ void load(Type *type) {
       xmm_used = true;
     } else {
       writeline("  mov rax, 0");
-      if (type->size == 1)
-        writeline("  mov al, byte ptr [r10]");
-      else if (type->size == 2)
-        writeline("  mov ax, word ptr [r10]");
-      else if (type->size == 4)
-        writeline("  mov eax, dword ptr [r10]");
-      else
-        writeline("  mov rax, [r10]");
+      writeline("  mov %s, [r10]", reg_ax[type->size > 8 ? 8 : type->size]);
       rax_used = true;
     }
 
@@ -249,17 +247,9 @@ void load(Type *type) {
       else
         assert(false);
     } else {
-      writeline("  mov %s, 0", rax_used ? "rdx" : "rax");
-      if (type->size == 8 + 1)
-        writeline("  mov %s, byte ptr [r10+8]", rax_used ? "dl" : "al");
-      else if (type->size == 8 + 2)
-        writeline("  mov %s, word ptr [r10+8]", rax_used ? "dx" : "ax");
-      else if (type->size == 8 + 4)
-        writeline("  mov %s, dword ptr [r10+8]", rax_used ? "edx" : "eax");
-      else if (type->size == 8 + 8)
-        writeline("  mov %s, [r10+8]", rax_used ? "rdx" : "rax");
-      else
-        assert(false);
+      const char **reg = rax_used ? reg_dx : reg_ax;
+      writeline("  mov %s, 0", reg[8]);
+      writeline("  mov %s, [r10+8]", reg[type->size - 8]);
     }
     return;
   }
@@ -320,14 +310,7 @@ void store(Type *type) {
           writeline("  movsd [r10], xmm0");
         xmm_used = true;
       } else {
-        if (type->size == 1)
-          writeline("  mov byte ptr [r10], al");
-        else if (type->size == 2)
-          writeline("  mov word ptr [r10], ax");
-        else if (type->size == 4)
-          writeline("  mov dword ptr [r10], eax");
-        else
-          writeline("  mov [r10], rax");
+        writeline("  mov [r10], %s", reg_ax[type->size > 8 ? 8 : type->size]);
         rax_used = true;
       }
 
@@ -343,16 +326,8 @@ void store(Type *type) {
         else
           assert(false);
       } else {
-        if (type->size == 8 + 1)
-          writeline("  mov byte ptr [r10+8], %s", rax_used ? "dl" : "al");
-        else if (type->size == 8 + 2)
-          writeline("  mov word ptr [r10+8], %s", rax_used ? "dx" : "ax");
-        else if (type->size == 8 + 4)
-          writeline("  mov dword ptr [r10+8], %s", rax_used ? "edx" : "eax");
-        else if (type->size == 8 + 8)
-          writeline("  mov [r10+8], %s", rax_used ? "rdx" : "rax");
-        else
-          assert(false);
+        writeline("  mov [r10+8], %s",
+                  (rax_used ? reg_dx : reg_ax)[type->size - 8]);
       }
       return;
     }
@@ -371,16 +346,7 @@ void store(Type *type) {
     return;
   }
 
-  if (type->size == 1)
-    writeline("  mov [r10], al");
-  else if (type->size == 2)
-    writeline("  mov [r10], ax");
-  else if (type->size == 4)
-    writeline("  mov [r10], eax");
-  else if (type->size == 8)
-    writeline("  mov [r10], rax");
-  else
-    assert(false);
+  writeline("  mov [r10], %s", reg_ax[type->size]);
 }
 
 void gen_if(Node *node) {

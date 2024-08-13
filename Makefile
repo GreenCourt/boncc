@@ -83,11 +83,11 @@ $(TEST_EXE_DIR)/gcc_%: $(TEST_OBJ_DIR)/gcc_%.o $(TEST_OBJ_DIR)/gcc_common.o
 abitest: $(TEST_EXE_DIR)/call_gcc_obj $(TEST_EXE_DIR)/called_by_gcc
 	for i in $^; do echo $$i; $$i || exit $$?; done
 
-$(TEST_EXE_DIR)/call_gcc_obj: $(TEST_OBJ_DIR)/gcc_call.o $(TEST_OBJ_DIR)/func.o $(TEST_OBJ_DIR)/common.o
+$(TEST_EXE_DIR)/called_by_gcc: $(TEST_OBJ_DIR)/gcc_call.o $(TEST_OBJ_DIR)/func.o $(TEST_OBJ_DIR)/common.o
 	@mkdir -p $(TEST_EXE_DIR)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-$(TEST_EXE_DIR)/called_by_gcc: $(TEST_OBJ_DIR)/call.o $(TEST_OBJ_DIR)/gcc_func.o $(TEST_OBJ_DIR)/gcc_common.o
+$(TEST_EXE_DIR)/call_gcc_obj: $(TEST_OBJ_DIR)/call.o $(TEST_OBJ_DIR)/gcc_func.o $(TEST_OBJ_DIR)/gcc_common.o
 	@mkdir -p $(TEST_EXE_DIR)
 	$(CC) -o $@ $^ $(LDFLAGS)
 

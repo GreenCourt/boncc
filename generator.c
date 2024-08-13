@@ -19,6 +19,8 @@ static const char *reg_ax[] = {NULL, "al", "ax", NULL, "eax",
                                NULL, NULL, NULL, "rax"};
 static const char *reg_dx[] = {NULL, "dl", "dx", NULL, "edx",
                                NULL, NULL, NULL, "rdx"};
+static const char *reg_r10[] = {NULL, "r10b", "r10w", NULL, "r10d",
+                                NULL, NULL,   NULL,   "r10"};
 
 // Check the rsp alignment by the variable rsp_shift.
 // In the AST traversal, rsp_shift follows the push and pop operations.
@@ -442,57 +444,112 @@ void gen_block(Node *node) {
 
 void gen_call(Node *node) {
   assert(is_funcptr(node->lhs->type));
-  assert(node->args->size <= 6);
 
   int n_fp = 0;
+  int alignment = 0;
+  int shift_by_args = 0;
 
-  // put arguments into registers
+  // put arguments into registers or the stack
   {
     int sz = node->args->size;
     int count_gp = pass_on_memory(node->type);
     int count_fp = 0;
 
-    // push args to stack
+    Vector *args_on_register = new_vector(0, sizeof(Node *));
+    Vector *args_on_stack = new_vector(0, sizeof(Node *));
+
+    // scan args to see where to place them
     for (int i = 0; i < sz; ++i) {
       Node *d = *(Node **)vector_get(node->args, i);
-      gen(d);
       if (is_float(d->type)) {
-        push_xmm(0, d->type->kind);
-        count_fp++;
+        if (count_fp == 8) {
+          vector_push(args_on_stack, &d);
+          shift_by_args += iceil(d->type->size, 8);
+        } else {
+          vector_push(args_on_register, &d);
+          count_fp++;
+        }
       } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
-        push("rax");
-        count_gp++;
+        if (count_gp == 6) {
+          vector_push(args_on_stack, &d);
+          shift_by_args += iceil(d->type->size, 8);
+        } else {
+          vector_push(args_on_register, &d);
+          count_gp++;
+        }
       } else {
         assert(false);
       }
     }
-    assert(sz + pass_on_memory(node->type) == count_gp + count_fp);
+
+    // Align rsp before evaluating the arguments.
+    // After this alignment, args_on_stack are evaluated and pushed to the
+    // stack. Then args_on_register are evaluated, pushed to the stack, and
+    // popped to registers. The stack operations for args_on_register are
+    // balanced and do not affect the rsp. Here, rsp must be aligned
+    // considering the shift by args_on_stack and the current rsp_shift.
+    alignment = (rsp_shift + shift_by_args) % 16;
+    if (alignment) {
+      // shift 8byte because rps is alywas aligned to 8byte
+      assert(alignment % 8 == 0);
+      writeline("  sub rsp, 8 # alignment");
+      rsp_shift += 8;
+    }
+
     n_fp = count_fp;
 
-    // pop args to registers
-    for (int i = sz - 1; i >= 0; --i) {
-      Node *d = *(Node **)vector_get(node->args, i);
-      if (is_float(d->type)) {
-        pop_xmm(--count_fp, d->type->kind);
-      } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
-        pop(reg_args[8][--count_gp]);
-      } else {
-        assert(false);
+    if (args_on_stack->size > 0) {
+      comment(NULL, "push arguments that will be passed by stack memory");
+      int before = rsp_shift;
+      for (int i = args_on_stack->size - 1; i >= 0; --i) {
+        Node *d = *(Node **)vector_get(args_on_stack, i);
+        gen(d);
+        if (is_float(d->type)) {
+          push_xmm(0, d->type->kind);
+        } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
+          push("rax");
+        } else {
+          assert(false);
+        }
+      }
+      assert(rsp_shift == before + shift_by_args);
+    }
+
+    if (args_on_register->size > 0) {
+      comment(NULL, "push arguments that will be passed by registers");
+      for (int i = 0; i < args_on_register->size; ++i) {
+        Node *d = *(Node **)vector_get(args_on_register, i);
+        gen(d);
+        if (is_float(d->type)) {
+          push_xmm(0, d->type->kind);
+        } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
+          push("rax");
+        } else {
+          assert(false);
+        }
+      }
+
+      comment(NULL, "pop arguments to registers");
+      for (int i = args_on_register->size - 1; i >= 0; --i) {
+        Node *d = *(Node **)vector_get(args_on_register, i);
+        if (is_float(d->type)) {
+          assert(count_fp > 0);
+          pop_xmm(--count_fp, d->type->kind);
+        } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
+          assert(count_gp > 0);
+          pop(reg_args[8][--count_gp]);
+        } else {
+          assert(false);
+        }
       }
     }
 
     if (pass_on_memory(node->type)) {
       // hidden argument to pass return_buffer address
-      writeline("  mov rdi, rbp");
-      writeline("  sub rdi, %d", node->caller->return_buffer_offset);
+      writeline("  mov rdi, rbp # hidden argument of return buffer address");
+      writeline("  sub rdi, %d # hidden argument of return buffer address",
+                node->caller->return_buffer_offset);
     }
-  }
-
-  bool require_alignment = (rsp_shift % 16) != 0;
-  if (require_alignment) {
-    assert(rsp_shift % 16 == 8);
-    writeline("  sub rsp, 8"); // RSP is always aligned to 8 by this compiler
-    rsp_shift += 8;
   }
 
   if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC) {
@@ -505,9 +562,11 @@ void gen_call(Node *node) {
     writeline("  mov al, %d", n_fp);
     writeline("  call r10");
   }
-  if (require_alignment) {
-    writeline("  add rsp, 8"); // recover RSP
-    rsp_shift -= 8;
+  if (alignment || shift_by_args) {
+    // undo the 16byte alignment and the shift by arguments pushed to stack
+    int shift = alignment + shift_by_args;
+    writeline("  add rsp, %d", shift);
+    rsp_shift -= shift;
   }
 
   if (!pass_on_memory(node->type) && is_integer(node->type) &&
@@ -845,6 +904,9 @@ void gen_func(Function *func) {
   {
     int count_gp = 0;
     int count_fp = 0;
+    int ofs = 16; // offset to access arguments passed by stack memory.
+                  // This is initialized by 16,
+                  // because of "call" and "push rbp" in the prologue.
 
     // save the address to the return buffer given by caller
     if (pass_on_memory(func->type->return_type))
@@ -857,17 +919,38 @@ void gen_func(Function *func) {
     for (int i = 0; i < func->params->size; ++i) {
       Variable *v = *(Variable **)vector_get(func->params, i);
       if (is_float(v->type)) {
-        if (v->type->kind == TYPE_FLOAT)
-          writeline("  movss [rbp-%d], xmm%d", v->offset, count_fp++);
-        else if (v->type->kind == TYPE_DOUBLE)
-          writeline("  movsd [rbp-%d], xmm%d", v->offset, count_fp++);
-        else if (v->type->kind == TYPE_LDOUBLE)
-          assert(false);
-        else
-          assert(false);
+        if (count_fp == 8) {
+          if (v->type->kind == TYPE_FLOAT) {
+            writeline("  movss xmm0, [rbp+%d]", ofs);
+            writeline("  movss [rbp-%d], xmm0", v->offset);
+          } else if (v->type->kind == TYPE_DOUBLE) {
+            writeline("  movsd xmm0, [rbp+%d]", ofs);
+            writeline("  movsd [rbp-%d], xmm0", v->offset);
+          } else if (v->type->kind == TYPE_LDOUBLE) {
+            assert(false);
+          } else {
+            assert(false);
+          }
+          ofs += iceil(v->type->size, 8);
+        } else {
+          if (v->type->kind == TYPE_FLOAT)
+            writeline("  movss [rbp-%d], xmm%d", v->offset, count_fp++);
+          else if (v->type->kind == TYPE_DOUBLE)
+            writeline("  movsd [rbp-%d], xmm%d", v->offset, count_fp++);
+          else if (v->type->kind == TYPE_LDOUBLE)
+            assert(false);
+          else
+            assert(false);
+        }
       } else if (is_integer(v->type) || v->type->kind == TYPE_PTR) {
-        writeline("  mov [rbp-%d], %s", v->offset,
-                  reg_args[v->type->size][count_gp++]);
+        if (count_gp == 6) {
+          writeline("  mov r10, [rbp+%d]", ofs);
+          writeline("  mov [rbp-%d], %s", v->offset, reg_r10[v->type->size]);
+          ofs += iceil(v->type->size, 8);
+        } else {
+          writeline("  mov [rbp-%d], %s", v->offset,
+                    reg_args[v->type->size][count_gp++]);
+        }
       } else {
         assert(false);
       }

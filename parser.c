@@ -938,9 +938,6 @@ void func(Type *type, int qualifier, Token **nx) {
             "currently struct/union parameter is not supported");
   }
 
-  if (f->params->size > 6)
-    error(&f->token->pos, "maximum number of parameter is currently 6");
-
   if (type->is_variadic) {
     // push hidden local variable for variadic arguments
     Type *t = base_type(TYPE_UCHAR);
@@ -2144,9 +2141,6 @@ Node *tail(Node *x, Token **nx) {
 
       vector_push(node->args, &e);
     } while (consume(TK_COMMA, nx));
-
-    if (node->args->size > 6)
-      error(&node->token->pos, "maximum number of argument is currently 6");
 
     expect(TK_RPAREN, nx);
     return node;

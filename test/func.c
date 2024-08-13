@@ -325,3 +325,40 @@ U7 return_union7z(long long z0, long long z1, long long z2, long long z3) {
   u.z[3] = z3;
   return u;
 }
+
+int pass_by_stack1(int a, int b, int c, int d, int e, int f, char g, short h,
+                   int i) {
+  return a + b + c + d + e + f + g + h + i;
+}
+
+int pass_by_stack2(int a, int b, float c, double d, int e, int f, char g,
+                   short h, int i, long long j, int k) {
+  if (c != 1.1f || d != 2.2)
+    return -1;
+  return a + b + e + f + g + h + i + j + k;
+}
+
+int pass_by_stack3(int a, int b, int c, int d, int e, int f, char g, short h,
+                   int i, double j, float k) {
+  if (j != 1.1 || k != 2.2f)
+    return -1;
+  return a + b + c + d + e + f + g + h + i;
+}
+
+int pass_by_stack4(int a, int b, float c, double d, int e, int f, char g,
+                   short h, int i, long long j, int k, double l, float m) {
+  if (c != 1.1f || d != 2.2 || l != 3.3 || m != 4.4f)
+    return -1;
+  return a + b + e + f + g + h + i + j + k;
+}
+
+int pass_by_stack5(int a, int b, float c, double d, int e, int f, char g,
+                   short h, int i, long long j, int k, double l, float m,
+                   float n, double o, double p, float q, float r, double s,
+                   int t) {
+
+  if (c != 1.1f || d != 2.2 || l != 3.3 || m != 4.4f || n != 5.5f || o != 6.6 ||
+      p != 7.7 || q != 8.8f || r != 9.9f || s != 10.10)
+    return -1;
+  return a + b + e + f + g + h + i + j + k + t;
+}

@@ -205,3 +205,16 @@ typedef union {
 U7 return_union7x(float x);
 U7 return_union7y(short y);
 U7 return_union7z(long long z0, long long z1, long long z2, long long z3);
+
+int pass_by_stack1(int a, int b, int c, int d, int e, int f, char g, short h,
+                   int i);
+int pass_by_stack2(int a, int b, float c, double d, int e, int f, char g,
+                   short h, int i, long long j, int k);
+int pass_by_stack3(int a, int b, int c, int d, int e, int f, char g, short h,
+                   int i, double j, float k);
+int pass_by_stack4(int a, int b, float c, double d, int e, int f, char g,
+                   short h, int i, long long j, int k, double l, float m);
+int pass_by_stack5(int a, int b, float c, double d, int e, int f, char g,
+                   short h, int i, long long j, int k, double l, float m,
+                   float n, double o, double p, float q, float r, double s,
+                   int t);

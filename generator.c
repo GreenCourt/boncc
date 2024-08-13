@@ -1080,10 +1080,15 @@ void gen_cast(Node *node) {
     error(NULL, "long double is currently not supported");
   }
 
-  if (from->kind == TYPE_BOOL && is_integer(to))
-    return;
+  assert((is_integer(from) || from->kind == TYPE_PTR) &&
+         (is_integer(to) || to->kind == TYPE_PTR));
 
-  if ((is_integer(from) || from->kind == TYPE_PTR) && to->kind == TYPE_BOOL) {
+  if (from->kind == TYPE_BOOL) {
+    writeline("  movzx rax, al");
+    return;
+  }
+
+  if (to->kind == TYPE_BOOL) {
     writeline("  cmp rax, 0");
     writeline("  setne al");
     writeline("  movzb rax, al");

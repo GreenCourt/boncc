@@ -224,38 +224,20 @@ void load(Type *type) {
 
   if (is_struct_union(type)) {
     writeline("  mov r10, rax");
-
-    bool xmm_used = 0;
-    bool rax_used = 0;
-
-    // put first 8byte onto register
-    if (use_xmm(type, 0, 8)) {
-      if (type->size == 4)
-        writeline("  movss xmm0, [r10]");
-      else
-        writeline("  movsd xmm0, [r10]");
-      xmm_used = true;
-    } else {
-      writeline("  mov rax, 0");
-      writeline("  mov %s, [r10]", reg_ax[type->size > 8 ? 8 : type->size]);
-      rax_used = true;
-    }
-
-    if (type->size <= 8)
-      return;
-
-    // put second 8byte onto register
-    if (use_xmm(type, 8, 16)) {
-      if (type->size == 8 + 4)
-        writeline("  movss xmm%d, [r10+8]", xmm_used ? 1 : 0);
-      else if (type->size == 8 + 8)
-        writeline("  movsd xmm%d, [r10+8]", xmm_used ? 1 : 0);
-      else
-        assert(false);
-    } else {
-      const char **reg = rax_used ? reg_dx : reg_ax;
-      writeline("  mov %s, 0", reg[8]);
-      writeline("  mov %s, [r10+8]", reg[type->size - 8]);
+    int xmm_index = 0;
+    const char **reg = reg_ax;
+    for (int b = 0; b < type->size; b += 8) {
+      // put 8byte onto register
+      if (use_xmm(type, b, b + 8)) {
+        if (type->size == b + 4)
+          writeline("  movss xmm%d, [r10+%d]", xmm_index++, b);
+        else
+          writeline("  movsd xmm%d, [r10+%d]", xmm_index++, b);
+      } else {
+        writeline("  mov %s, [r10+%d]",
+                  reg[type->size - b > 8 ? 8 : type->size - b], b);
+        reg = reg_dx;
+      }
     }
     return;
   }
@@ -294,48 +276,32 @@ void store(Type *type) {
   if (is_struct_union(type)) {
     if (pass_on_memory(type)) {
       // src  : the struct/union that rax is pointing to
-      // dest : the struct/union that the address popped from stack is pointing
-      // to
+      // dest : the address popped from stack
       for (int i = 0; i < type->size; i++) {
         // copy each bytes like memcpy
         writeline("  mov r11b, [rax+%d]", i);
         writeline("  mov [r10+%d], r11b", i);
       }
-    } else {
-      // src  : the struct/union on registers
-      // dest : the struct/union that the address popped from stack is pointing
-      // to
-      bool xmm_used = 0;
-      bool rax_used = 0;
-
-      // copy first 8byte from register
-      if (use_xmm(type, 0, 8)) {
-        if (type->size == 4)
-          writeline("  movss [r10], xmm0");
-        else
-          writeline("  movsd [r10], xmm0");
-        xmm_used = true;
-      } else {
-        writeline("  mov [r10], %s", reg_ax[type->size > 8 ? 8 : type->size]);
-        rax_used = true;
-      }
-
-      if (type->size <= 8)
-        return;
-
-      // copy second 8byte from register
-      if (use_xmm(type, 8, 16)) {
-        if (type->size == 8 + 4)
-          writeline("  movss [r10+8], xmm%d", xmm_used ? 1 : 0);
-        else if (type->size == 8 + 8)
-          writeline("  movsd [r10+8], xmm%d", xmm_used ? 1 : 0);
-        else
-          assert(false);
-      } else {
-        writeline("  mov [r10+8], %s",
-                  (rax_used ? reg_dx : reg_ax)[type->size - 8]);
-      }
       return;
+    }
+
+    // src  : the struct/union on registers
+    // dest : the struct/union that the address popped from stack is pointing
+    // to
+    int xmm_index = 0;
+    const char **reg = reg_ax;
+    for (int b = 0; b < type->size; b += 8) {
+      // copy 8byte from register
+      if (use_xmm(type, b, b + 8)) {
+        if (type->size == b + 4)
+          writeline("  movss [r10+%d], xmm%d", b, xmm_index++);
+        else
+          writeline("  movsd [r10+%d], xmm%d", b, xmm_index++);
+      } else {
+        writeline("  mov [r10+%d], %s", b,
+                  reg[type->size - b > 8 ? 8 : type->size - b]);
+        reg = reg_dx;
+      }
     }
     return;
   }

@@ -13,8 +13,7 @@ TESTS=$(basename $(filter-out common.c func.c,$(notdir $(wildcard test/*.c))))
 boncc: $(addprefix $(OBJ_DIR)/,$(addsuffix .o,$(DEP)))
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-test: boncc gtest stage1test abitest
-all: gtest stage1test abitest stage2test stage3test
+test: boncc gtest stage1test abitest stage2test stage3test
 
 clean:
 	rm -rf boncc boncc2 boncc3 $(OBJ_DIR) $(TEST_OBJ_DIR) $(TEST_EXE_DIR)
@@ -27,7 +26,7 @@ $(OBJ_DIR)/%.o:%.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
 
 -include $(OBJ_DIR)/*.d
-.PHONY: all test stage1test stage2test stage3test abitest clean fmt gtest
+.PHONY: test stage1test stage2test stage3test abitest clean fmt gtest
 
 BONCC_INCLUDE_PATH?=$(TOPDIR)/include
 EXTRA_CFLAGS:=

@@ -452,6 +452,8 @@ void gen_call(Node *node) {
         assert(false);
       }
     }
+    assert(count_gp <= 6);
+    assert(count_fp <= 8);
 
     // Align rsp before evaluating the arguments.
     // After this alignment, args_on_stack are evaluated and pushed to the
@@ -517,10 +519,13 @@ void gen_call(Node *node) {
 
     if (pass_on_memory(node->type)) {
       // hidden argument to pass return_buffer address
+      assert(count_gp-- == 1);
       writeline("  mov rdi, rbp # hidden argument of return buffer address");
       writeline("  sub rdi, %d # hidden argument of return buffer address",
                 node->caller->return_buffer_offset);
     }
+    assert(count_gp == 0);
+    assert(count_fp == 0);
   }
 
   if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC) {

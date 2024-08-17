@@ -10,6 +10,9 @@ typedef struct {
 typedef __va_list va_list[1];
 typedef va_list __gnuc_va_list; // for compatibility
 
-#define va_start(ap, last) do { *(ap) = *(__va_list *)__hidden_va_area__; } while (0)
+#define va_start(ap, last)                                                     \
+  do {                                                                         \
+    *(ap) = *(__va_list *)__hidden_va_area__;                                  \
+  } while (0)
 
 #endif

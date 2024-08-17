@@ -8,31 +8,31 @@ int main() {
       r = a + 2;
     else
       r = a;
-    VERIFY(5, r);
+    verify(5, r);
     if (a < 3)
       r = a + 2;
     else
       r = a;
-    VERIFY(3, r);
+    verify(3, r);
   }
   {
     int b = 0;
     for (int a = 0; a < 10; a++)
       b = a * 2;
-    VERIFY(18, b);
+    verify(18, b);
   }
   {
     int a = 0;
     for (; a < 10;)
       a = a + 1;
-    VERIFY(10, a);
+    verify(10, a);
   }
   {
     int a = 0;
     int b = 0;
     for (; a < 10;)
       a = a + 1, b = b + 2;
-    VERIFY(20, b);
+    verify(20, b);
   }
   {
     int a = 0;
@@ -41,19 +41,19 @@ int main() {
       a = a + 1;
       b = b + 2;
     }
-    VERIFY(20, b);
+    verify(20, b);
   }
   {
     int s = 0;
     for (int i = 1; i <= 10; i++)
       s = s + i;
-    VERIFY(55, s);
+    verify(55, s);
   }
   {
     int s = 0;
     for (int i = 1, *p; i <= 10; i = i + 1)
       s = s + sizeof(p);
-    VERIFY(80, s);
+    verify(80, s);
   }
   {
       // empty block
@@ -68,19 +68,19 @@ int main() {
         if (j == 10)
           break;
       }
-      VERIFY(55, s);
+      verify(55, s);
       if (i == 5)
         continue;
       outer = outer + i;
     }
-    VERIFY(50, outer);
+    verify(50, outer);
   }
   {
     int x = 2;
     switch (x)
     case 2:
       x = 3;
-    VERIFY(3, x);
+    verify(3, x);
   }
   {
     int x = 2;
@@ -89,7 +89,7 @@ int main() {
       x = 3;
       x = x + 1;
     }
-      VERIFY(4, x);
+      verify(4, x);
   }
   {
     int x = 2;
@@ -103,8 +103,8 @@ int main() {
     case 3:
       x = 4;
     }
-    VERIFY(4, x);
-    VERIFY(3, y);
+    verify(4, x);
+    verify(3, y);
   }
   {
     int x = 2;
@@ -120,8 +120,8 @@ int main() {
     case 4:
       y = 6;
     }
-    VERIFY(1, x);
-    VERIFY(6, y);
+    verify(1, x);
+    verify(6, y);
   }
   {
     int x = 2;
@@ -142,9 +142,9 @@ int main() {
     case 4:
       y = 6;
     }
-    VERIFY(1, x);
-    VERIFY(6, y);
-    VERIFY(4, z);
+    verify(1, x);
+    verify(6, y);
+    verify(4, z);
   }
   {
     int x = 2;
@@ -162,8 +162,8 @@ int main() {
       x = 4;
       break;
     }
-    VERIFY(2, x);
-    VERIFY(3, y);
+    verify(2, x);
+    verify(3, y);
   }
   {
     int x = 0;
@@ -172,7 +172,7 @@ int main() {
       if (x == 10)
         continue;
     } while (x < 10);
-    VERIFY(10, x);
+    verify(10, x);
   }
   {
     int x = 0;
@@ -183,8 +183,8 @@ int main() {
         continue;
       y = y + 3;
     } while (x < 10);
-    VERIFY(10, x);
-    VERIFY(27, y);
+    verify(10, x);
+    verify(27, y);
   }
   {
     int x = 0;
@@ -195,46 +195,46 @@ int main() {
         break;
       y = y + 3;
     } while (x < 10);
-    VERIFY(5, x);
-    VERIFY(12, y);
+    verify(5, x);
+    verify(12, y);
   }
   {
     int x = -1;
     if (0, 0, 0, 5)
       x = 3;
-    VERIFY(3, x);
+    verify(3, x);
     if (2, 3, 4, 0)
       x = 4;
-    VERIFY(3, x);
+    verify(3, x);
   }
   {
     int x = -1;
     while (0, x) {
-      VERIFY(-1, x);
+      verify(-1, x);
       x = 0;
     }
-    VERIFY(0, x);
+    verify(0, x);
   }
   {
     int x = -4;
     do {
-      VERIFY(1, x < 0);
+      verify(1, x < 0);
       x++;
     } while (1, 2, 3, x);
-    VERIFY(0, x);
+    verify(0, x);
   }
   {
     int x = -4;
     do {
-      VERIFY(1, x < 0);
+      verify(1, x < 0);
       x++;
     } while (1, 2, 3, x);
-    VERIFY(0, x);
+    verify(0, x);
   }
   {
     int x, y;
     for (x = 2, y = 3; 1, x < 10; x++, y++) {
-      VERIFY(1, y - x);
+      verify(1, y - x);
     }
   }
   {
@@ -242,7 +242,7 @@ int main() {
   foo:;
     int x = 1;
     if (r) {
-      VERIFY(1, x);
+      verify(1, x);
       goto end;
     }
     r = 1;

@@ -29,9 +29,9 @@ struct global_struct_to_test_initializer g1 = {1, {2}, {3}, {{5}, {7, {8, 9}}}};
 struct global_struct_to_test_initializer g2 = {1, 2, {3}, 5};
 
 int main() {
-  VERIFY(12, sizeof(g));
-  VERIFY(12, sizeof(struct global_struct1));
-  VERIFY(12, sizeof(struct global_struct2));
+  verify(12, sizeof(g));
+  verify(12, sizeof(struct global_struct1));
+  verify(12, sizeof(struct global_struct2));
 
   {
     // shadow
@@ -39,7 +39,7 @@ int main() {
       int a;
       char c;
     };
-    VERIFY(8, sizeof(struct global_struct1));
+    verify(8, sizeof(struct global_struct1));
   }
   {
     // declare unnamed struct and variable at same time
@@ -51,10 +51,10 @@ int main() {
     x.a = 11;
     x.b = 12;
     x.c = 13;
-    VERIFY(12, sizeof(x));
-    VERIFY(11, x.a);
-    VERIFY(12, x.b);
-    VERIFY(13, x.c);
+    verify(12, sizeof(x));
+    verify(11, x.a);
+    verify(12, x.b);
+    verify(13, x.c);
   }
   {
     // declare named struct
@@ -65,7 +65,7 @@ int main() {
       char d;
       char *e;
     };
-    VERIFY(24, sizeof(struct st));
+    verify(24, sizeof(struct st));
   }
   {
     // this block contains only struct declaration
@@ -89,20 +89,20 @@ int main() {
     x.b = 6;
     x.c = 7;
     x.d = 9;
-    VERIFY(24, sizeof(struct st));
-    VERIFY(24, sizeof(x));
-    VERIFY(8, sizeof(x.b));
-    VERIFY(5, x.a);
-    VERIFY(6, x.b);
-    VERIFY(7, x.c);
-    VERIFY(9, x.d);
+    verify(24, sizeof(struct st));
+    verify(24, sizeof(x));
+    verify(8, sizeof(x.b));
+    verify(5, x.a);
+    verify(6, x.b);
+    verify(7, x.c);
+    verify(9, x.d);
   }
   {
     // empty struct;
     struct empty {
     } x;
-    VERIFY(0, sizeof(struct empty));
-    VERIFY(0, sizeof(x));
+    verify(0, sizeof(struct empty));
+    verify(0, sizeof(x));
   }
   {
     // pointer
@@ -117,17 +117,17 @@ int main() {
     p->b = 6;
     p->c = 7;
     p->d = 9;
-    VERIFY(12, sizeof(struct st));
-    VERIFY(8, sizeof(p));
-    VERIFY(4, sizeof(p->b));
-    VERIFY(5, p->a);
-    VERIFY(6, p->b);
-    VERIFY(7, p->c);
-    VERIFY(9, p->d);
-    VERIFY(5, x.a);
-    VERIFY(6, x.b);
-    VERIFY(7, x.c);
-    VERIFY(9, x.d);
+    verify(12, sizeof(struct st));
+    verify(8, sizeof(p));
+    verify(4, sizeof(p->b));
+    verify(5, p->a);
+    verify(6, p->b);
+    verify(7, p->c);
+    verify(9, p->d);
+    verify(5, x.a);
+    verify(6, x.b);
+    verify(7, x.c);
+    verify(9, x.d);
   }
   {
     // struct pointer in the struct
@@ -138,7 +138,7 @@ int main() {
     struct st x;
     x.a = 12;
     x.p = &x;
-    VERIFY(12, x.p->a);
+    verify(12, x.p->a);
   }
   {
     // forward declaration
@@ -149,8 +149,8 @@ int main() {
     };
     struct S a;
     struct S; // declare twice
-    VERIFY(8, sizeof(struct S));
-    VERIFY(8, sizeof(a));
+    verify(8, sizeof(struct S));
+    verify(8, sizeof(a));
   }
   {
     union U1 {
@@ -175,20 +175,20 @@ int main() {
     struct S s;
     s.a = 3;
     s.b = 5;
-    VERIFY(3, s.a);
-    VERIFY(5, s.b);
+    verify(3, s.a);
+    verify(5, s.b);
 
     u1.y = 42;
-    VERIFY(42, u1.y);
+    verify(42, u1.y);
     u1.z[2] = 3;
-    VERIFY(3, u1.z[2]);
+    verify(3, u1.z[2]);
     u1.y = 100;
-    VERIFY(1, u1.z[2] != 3);
+    verify(1, u1.z[2] != 3);
 
     union U2 u2;
     u2.s.a = 14;
-    VERIFY(14, u2.s.a);
-    VERIFY(14, u2.t.c);
+    verify(14, u2.s.a);
+    verify(14, u2.t.c);
   }
   {
     struct S {
@@ -196,7 +196,7 @@ int main() {
       const int y;
     } s;
     s.x = 12;
-    VERIFY(12, s.x);
+    verify(12, s.x);
   }
   {
     struct S {
@@ -205,12 +205,12 @@ int main() {
         int b;
       } x;
     };
-    VERIFY(8, sizeof(struct S));
+    verify(8, sizeof(struct S));
     struct S s;
     s.x.a = 2;
     s.x.b = 3;
-    VERIFY(2, s.x.a);
-    VERIFY(3, s.x.b);
+    verify(2, s.x.a);
+    verify(3, s.x.b);
   }
   {
     struct S {
@@ -219,11 +219,11 @@ int main() {
         int b;
       } x;
     };
-    VERIFY(4, sizeof(struct S));
+    verify(4, sizeof(struct S));
     struct S s;
     s.x.a = 2;
-    VERIFY(2, s.x.a);
-    VERIFY(2, s.x.b);
+    verify(2, s.x.a);
+    verify(2, s.x.b);
   }
   {
     union U {
@@ -232,11 +232,11 @@ int main() {
         int b;
       } x;
     };
-    VERIFY(4, sizeof(union U));
+    verify(4, sizeof(union U));
     union U u;
     u.x.a = 2;
-    VERIFY(2, u.x.a);
-    VERIFY(2, u.x.b);
+    verify(2, u.x.a);
+    verify(2, u.x.b);
   }
   {
     union U {
@@ -245,12 +245,12 @@ int main() {
         int b;
       } x;
     };
-    VERIFY(8, sizeof(union U));
+    verify(8, sizeof(union U));
     union U u;
     u.x.a = 2;
     u.x.b = 3;
-    VERIFY(2, u.x.a);
-    VERIFY(3, u.x.b);
+    verify(2, u.x.a);
+    verify(3, u.x.b);
   }
   {
     union U {
@@ -260,13 +260,13 @@ int main() {
         int b;
       };
     };
-    VERIFY(8, sizeof(union U));
+    verify(8, sizeof(union U));
     union U u;
     u.a = 2;
     u.b = 3;
-    VERIFY(2, u.a);
-    VERIFY(3, u.b);
-    VERIFY(2, u.q);
+    verify(2, u.a);
+    verify(3, u.b);
+    verify(2, u.q);
   }
 
   {
@@ -277,11 +277,11 @@ int main() {
         int b;
       };
     };
-    VERIFY(4, sizeof(union U));
+    verify(4, sizeof(union U));
     union U u;
     u.a = 12;
-    VERIFY(12, u.b);
-    VERIFY(12, u.q);
+    verify(12, u.b);
+    verify(12, u.q);
   }
 
   {
@@ -292,12 +292,12 @@ int main() {
         long b;
       };
     };
-    VERIFY(16, sizeof(struct S));
+    verify(16, sizeof(struct S));
     struct S s;
     s.a = 4;
-    VERIFY(4, s.a);
+    verify(4, s.a);
     s.b = 7;
-    VERIFY(7, s.b);
+    verify(7, s.b);
   }
   {
     struct S {
@@ -308,12 +308,12 @@ int main() {
       };
       int c;
     };
-    VERIFY(16, sizeof(struct S));
+    verify(16, sizeof(struct S));
     struct S s;
     s.a = 2;
     s.b = 3;
-    VERIFY(2, s.a);
-    VERIFY(3, s.b);
+    verify(2, s.a);
+    verify(3, s.b);
   }
   {
     struct S {
@@ -326,12 +326,12 @@ int main() {
     x.b = 5;
     x.c = 6;
     y = x;
-    VERIFY(4, x.a);
-    VERIFY(5, x.b);
-    VERIFY(6, x.c);
-    VERIFY(4, y.a);
-    VERIFY(5, y.b);
-    VERIFY(6, y.c);
+    verify(4, x.a);
+    verify(5, x.b);
+    verify(6, x.c);
+    verify(4, y.a);
+    verify(5, y.b);
+    verify(6, y.c);
   }
   {
     union U {
@@ -342,13 +342,13 @@ int main() {
     union U x, y;
     x.a = 6;
     y = x;
-    VERIFY(6, y.a);
+    verify(6, y.a);
     x.b = 4;
     y = x;
-    VERIFY(4, y.b);
+    verify(4, y.b);
     x.c = 8;
     y = x;
-    VERIFY(8, y.c);
+    verify(8, y.c);
   }
   {
     struct S {
@@ -364,13 +364,13 @@ int main() {
     y.b = 2;
     y.c = 3;
     struct S z = 1 ? x : y;
-    VERIFY(4, z.a);
-    VERIFY(5, z.b);
-    VERIFY(6, z.c);
+    verify(4, z.a);
+    verify(5, z.b);
+    verify(6, z.c);
     z = 0 ? x : y;
-    VERIFY(1, z.a);
-    VERIFY(2, z.b);
-    VERIFY(3, z.c);
+    verify(1, z.a);
+    verify(2, z.b);
+    verify(3, z.c);
   }
   {
     // test align
@@ -386,74 +386,74 @@ int main() {
         short d2;
       } d[2];
     };
-    VERIFY(28, sizeof(struct S));
+    verify(28, sizeof(struct S));
   }
   {
     // local initializer
     struct global_struct_to_test_initializer x = {
         1, {2}, {3}, {{5}, {7, {8, 9}}}};
     struct global_struct_to_test_initializer y = {1, 2, {3}, 5};
-    VERIFY(36, sizeof(x));
-    VERIFY(1, x.a);
-    VERIFY(2, x.b.b1);
-    VERIFY(3, x.c[0]);
-    VERIFY(0, x.c[1]);
-    VERIFY(0, x.c[2]);
-    VERIFY(5, x.d[0].d1);
-    VERIFY(0, x.d[0].d2[0]);
-    VERIFY(0, x.d[0].d2[1]);
-    VERIFY(0, x.d[0].d2[2]);
-    VERIFY(7, x.d[1].d1);
-    VERIFY(8, x.d[1].d2[0]);
-    VERIFY(9, x.d[1].d2[1]);
-    VERIFY(0, x.d[1].d2[2]);
+    verify(36, sizeof(x));
+    verify(1, x.a);
+    verify(2, x.b.b1);
+    verify(3, x.c[0]);
+    verify(0, x.c[1]);
+    verify(0, x.c[2]);
+    verify(5, x.d[0].d1);
+    verify(0, x.d[0].d2[0]);
+    verify(0, x.d[0].d2[1]);
+    verify(0, x.d[0].d2[2]);
+    verify(7, x.d[1].d1);
+    verify(8, x.d[1].d2[0]);
+    verify(9, x.d[1].d2[1]);
+    verify(0, x.d[1].d2[2]);
 
-    VERIFY(36, sizeof(y));
-    VERIFY(1, y.a);
-    VERIFY(2, y.b.b1);
-    VERIFY(3, y.c[0]);
-    VERIFY(0, y.c[1]);
-    VERIFY(0, y.c[2]);
-    VERIFY(5, y.d[0].d1);
-    VERIFY(0, y.d[0].d2[0]);
-    VERIFY(0, y.d[0].d2[1]);
-    VERIFY(0, y.d[0].d2[2]);
-    VERIFY(0, y.d[1].d1);
-    VERIFY(0, y.d[1].d2[0]);
-    VERIFY(0, y.d[1].d2[1]);
-    VERIFY(0, y.d[1].d2[2]);
+    verify(36, sizeof(y));
+    verify(1, y.a);
+    verify(2, y.b.b1);
+    verify(3, y.c[0]);
+    verify(0, y.c[1]);
+    verify(0, y.c[2]);
+    verify(5, y.d[0].d1);
+    verify(0, y.d[0].d2[0]);
+    verify(0, y.d[0].d2[1]);
+    verify(0, y.d[0].d2[2]);
+    verify(0, y.d[1].d1);
+    verify(0, y.d[1].d2[0]);
+    verify(0, y.d[1].d2[1]);
+    verify(0, y.d[1].d2[2]);
   }
   {
     // global initializer
-    VERIFY(36, sizeof(g1));
-    VERIFY(1, g1.a);
-    VERIFY(2, g1.b.b1);
-    VERIFY(3, g1.c[0]);
-    VERIFY(0, g1.c[1]);
-    VERIFY(0, g1.c[2]);
-    VERIFY(5, g1.d[0].d1);
-    VERIFY(0, g1.d[0].d2[0]);
-    VERIFY(0, g1.d[0].d2[1]);
-    VERIFY(0, g1.d[0].d2[2]);
-    VERIFY(7, g1.d[1].d1);
-    VERIFY(8, g1.d[1].d2[0]);
-    VERIFY(9, g1.d[1].d2[1]);
-    VERIFY(0, g1.d[1].d2[2]);
+    verify(36, sizeof(g1));
+    verify(1, g1.a);
+    verify(2, g1.b.b1);
+    verify(3, g1.c[0]);
+    verify(0, g1.c[1]);
+    verify(0, g1.c[2]);
+    verify(5, g1.d[0].d1);
+    verify(0, g1.d[0].d2[0]);
+    verify(0, g1.d[0].d2[1]);
+    verify(0, g1.d[0].d2[2]);
+    verify(7, g1.d[1].d1);
+    verify(8, g1.d[1].d2[0]);
+    verify(9, g1.d[1].d2[1]);
+    verify(0, g1.d[1].d2[2]);
 
-    VERIFY(36, sizeof(g2));
-    VERIFY(1, g2.a);
-    VERIFY(2, g2.b.b1);
-    VERIFY(3, g2.c[0]);
-    VERIFY(0, g2.c[1]);
-    VERIFY(0, g2.c[2]);
-    VERIFY(5, g2.d[0].d1);
-    VERIFY(0, g2.d[0].d2[0]);
-    VERIFY(0, g2.d[0].d2[1]);
-    VERIFY(0, g2.d[0].d2[2]);
-    VERIFY(0, g2.d[1].d1);
-    VERIFY(0, g2.d[1].d2[0]);
-    VERIFY(0, g2.d[1].d2[1]);
-    VERIFY(0, g2.d[1].d2[2]);
+    verify(36, sizeof(g2));
+    verify(1, g2.a);
+    verify(2, g2.b.b1);
+    verify(3, g2.c[0]);
+    verify(0, g2.c[1]);
+    verify(0, g2.c[2]);
+    verify(5, g2.d[0].d1);
+    verify(0, g2.d[0].d2[0]);
+    verify(0, g2.d[0].d2[1]);
+    verify(0, g2.d[0].d2[2]);
+    verify(0, g2.d[1].d1);
+    verify(0, g2.d[1].d2[0]);
+    verify(0, g2.d[1].d2[1]);
+    verify(0, g2.d[1].d2[2]);
   }
   return 0;
 }

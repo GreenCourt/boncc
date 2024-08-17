@@ -465,6 +465,8 @@ Number *number_mul(Number *l, Number *r) {
 
 Number *number_div(Number *l, Number *r) {
   assert(l->type->kind != TYPE_PTR && r->type->kind != TYPE_PTR);
+  assert(is_float(implicit_type_conversion(l->type, r->type)) ||
+         !is_integer_zero(r));
 
   Number *ret = calloc(1, sizeof(Number));
   ret->type = implicit_type_conversion(l->type, r->type);
@@ -514,6 +516,7 @@ Number *number_div(Number *l, Number *r) {
 
 Number *number_mod(Number *l, Number *r) {
   assert(is_integer(l->type) && is_integer(r->type));
+  assert(!is_integer_zero(r));
 
   Number *ret = calloc(1, sizeof(Number));
   ret->type = implicit_type_conversion(l->type, r->type);

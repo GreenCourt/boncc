@@ -598,14 +598,14 @@ Variable *is_const_var_addr(Node *node) {
   return NULL;
 }
 
+Number *eval(Node *node);
+
 bool is_constant_number(Node *node) {
   assert(node);
   switch (node->kind) {
   case ND_ADD:
   case ND_SUB:
   case ND_MUL:
-  case ND_DIV:
-  case ND_MOD:
   case ND_BITXOR:
   case ND_BITOR:
   case ND_BITAND:
@@ -617,6 +617,14 @@ bool is_constant_number(Node *node) {
   case ND_LOGAND:
   case ND_LOGOR:
   case ND_LE:
+    return is_constant_number(node->lhs) && is_constant_number(node->rhs);
+  case ND_DIV:
+  case ND_MOD:
+    if (!is_constant_number(node->rhs))
+      return false;
+    if (!is_float(implicit_type_conversion(node->lhs->type, node->rhs->type)) &&
+        is_integer_zero(eval(node->rhs)))
+      return false; // integer division by zero is not a constant
     return is_constant_number(node->lhs) && is_constant_number(node->rhs);
   case ND_LOGNOT:
   case ND_BITNOT:
@@ -633,6 +641,9 @@ bool is_constant_number(Node *node) {
 }
 
 Number *eval(Node *node) {
+  if (!is_constant_number(node))
+    error(node->token ? &node->token->pos : NULL, "not a constant expr");
+
   switch (node->kind) {
   case ND_ADD:
     return number_add(eval(node->lhs), eval(node->rhs));
@@ -677,7 +688,6 @@ Number *eval(Node *node) {
   case ND_NUM:
     return node->num;
   default:
-    error(node->token ? &node->token->pos : NULL, "not a constant expr");
-    return 0;
+    assert(false);
   }
 }

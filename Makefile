@@ -26,6 +26,7 @@ $(OBJ_DIR)/%.o:%.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
 
 -include $(OBJ_DIR)/*.d
+-include $(TEST_OBJ_DIR)/*.d
 .PHONY: test stage1test stage2test stage3test abitest clean fmt gtest
 
 BONCC_INCLUDE_PATH?=$(TOPDIR)/include
@@ -62,10 +63,7 @@ gtest: $(addprefix $(TEST_EXE_DIR)/,$(addprefix gcc_,$(TESTS)))
 
 $(TEST_OBJ_DIR)/gcc_%.o: test/%.c
 	@mkdir -p $(TEST_OBJ_DIR)
-	gcc -c -w $(EXTRA_TEST_FLAGS) -o $@ $<
-
-$(TEST_OBJ_DIR)/gcc_call.o: test/func.h
-$(TEST_OBJ_DIR)/gcc_func.o: test/func.h
+	gcc -c -w -MMD $(EXTRA_TEST_FLAGS) -o $@ $<
 
 $(TEST_EXE_DIR)/gcc_call: $(TEST_OBJ_DIR)/gcc_func.o
 $(TEST_EXE_DIR)/gcc_vector: $(OBJ_DIR)/vector.o

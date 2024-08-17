@@ -932,10 +932,6 @@ void func(Type *type, int qualifier, Token **nx) {
     Variable *var = new_local_variable(ty, 0);
     set_offset(var);
     vector_push(f->params, &var);
-
-    if (is_struct_union(ty))
-      error(&f->token->pos,
-            "currently struct/union parameter is not supported");
   }
 
   if (type->is_variadic) {
@@ -2123,9 +2119,6 @@ Node *tail(Node *x, Token **nx) {
 
     do {
       Node *e = assign(nx);
-
-      if (is_struct_union(e->type))
-        error(&op->pos, "currently passing struct/union is not supported");
 
       if (!f->is_variadic && f->params->size == node->args->size)
         error(&op->pos, "too many arguments");

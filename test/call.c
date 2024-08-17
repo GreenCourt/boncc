@@ -349,6 +349,143 @@ int main() {
                           4.4f, 5.5f, 6.6, 7.7, 8.8f, 9.9f, 10.101, 512),
            __FILE__, __LINE__);
   }
-
+  {
+    S1 s1 = {12};
+    verify(12, pass_struct1(s1), __FILE__, __LINE__);
+    s1.x = 8;
+    verify(15, pass_struct2(1, 2, 4, s1), __FILE__, __LINE__);
+    S4 s4 = {1.1f};
+    verify(16, pass_struct3(1, 2, 4, s1, s4), __FILE__, __LINE__);
+    s4.x = 1.11f;
+    verify(14, pass_struct3(1, 2, 4, s1, s4), __FILE__, __LINE__);
+    S7 s7 = {1.1f, 4};
+    verify(10, pass_struct4(1, 2, 4, s1, 2.2, s7), __FILE__, __LINE__);
+    verify(18, pass_struct4(1, 2, 4, s1, 2.22, s7), __FILE__, __LINE__);
+    s7.x = 1.11f;
+    verify(8, pass_struct4(1, 2, 4, s1, 2.2, s7), __FILE__, __LINE__);
+    s7.x = 1.1f;
+    S6 s6 = {3.3f, 4.4f};
+    verify(9, pass_struct5(1, 2, 4, 2.2, s6, s7), __FILE__, __LINE__);
+    verify(17, pass_struct5(1, 2, 4, 2.22, s6, s7), __FILE__, __LINE__);
+    s7.x = 1.11f;
+    verify(7, pass_struct5(1, 2, 4, 2.2, s6, s7), __FILE__, __LINE__);
+    s6.x = 3.33f;
+    verify(1, pass_struct5(1, 2, 4, 2.2, s6, s7), __FILE__, __LINE__);
+    s6.x = 3.3f;
+    s6.y = 4.44f;
+    verify(-1, pass_struct5(1, 2, 4, 2.2, s6, s7), __FILE__, __LINE__);
+  }
+  {
+    S13 s13 = {{2, 4, 6}, 8, 10};
+    verify(30, pass_struct6(s13), __FILE__, __LINE__);
+  }
+  {
+    S9 s9 = {17, 4.4f};
+    verify(19, pass_struct7(s9), __FILE__, __LINE__);
+    s9.x = 13;
+    s9.y = 3.3;
+    verify(12, pass_struct7(s9), __FILE__, __LINE__);
+    s9.x = 7;
+    s9.y = 4.4f;
+    verify(3, pass_struct8(1, 2, 4, 2.2, 3.3f, s9), __FILE__, __LINE__);
+    verify(11, pass_struct8(1, 2, 4, 2.3, 3.3f, s9), __FILE__, __LINE__);
+    verify(7, pass_struct8(1, 2, 4, 2.2, 3.4f, s9), __FILE__, __LINE__);
+    s9.x = 12;
+    s9.y = 3.5;
+    verify(5, pass_struct8(1, 2, 4, 2.2, 3.3f, s9), __FILE__, __LINE__);
+  }
+  {
+    S10 s10 = {4.4f, 17};
+    verify(19, pass_struct9(s10), __FILE__, __LINE__);
+    s10.y = 13;
+    s10.x = 3.3;
+    verify(12, pass_struct9(s10), __FILE__, __LINE__);
+    s10.y = 7;
+    s10.x = 4.4f;
+    verify(3, pass_struct10(1, 2, 4, 2.2, 3.3f, s10), __FILE__, __LINE__);
+    verify(11, pass_struct10(1, 2, 4, 2.3, 3.3f, s10), __FILE__, __LINE__);
+    verify(7, pass_struct10(1, 2, 4, 2.2, 3.4f, s10), __FILE__, __LINE__);
+    s10.y = 12;
+    s10.x = 3.5;
+    verify(5, pass_struct10(1, 2, 4, 2.2, 3.3f, s10), __FILE__, __LINE__);
+  }
+  {
+    S19 s19;
+    s19.x[0] = 6;
+    s19.x[1] = 7;
+    verify(-1, pass_struct11(s19), __FILE__, __LINE__);
+    s19.x[0] = 7;
+    s19.x[1] = 6;
+    verify(1, pass_struct11(s19), __FILE__, __LINE__);
+  }
+  {
+    S16 s16;
+    s16.x[0] = 1.1f;
+    s16.x[1] = 2.2f;
+    s16.x[2] = 3.3f;
+    s16.x[3] = 4.4f;
+    verify(15, pass_struct12(s16), __FILE__, __LINE__);
+  }
+  {
+    S9 s9 = {14, 5.5f};
+    S10 s10 = pass_struct13(s9);
+    verify(15, s10.y, __FILE__, __LINE__);
+    verify(1, s10.x == 5.5f, __FILE__, __LINE__);
+  }
+  {
+    S16 s16 = {{7.7f, 8.8f, 3.3f, 1.1f}};
+    S16 ret = pass_struct14(s16);
+    verify(1, ret.x[0] == 1.1f, __FILE__, __LINE__);
+    verify(1, ret.x[1] == 7.7f, __FILE__, __LINE__);
+    verify(1, ret.x[2] == 8.8f, __FILE__, __LINE__);
+    verify(1, ret.x[3] == 3.3f, __FILE__, __LINE__);
+  }
+  {
+    S20 s20 = {{23, 24, 25, 26}};
+    S20 ret = pass_struct15(s20);
+    verify(1, ret.x[0] == 26, __FILE__, __LINE__);
+    verify(1, ret.x[1] == 23, __FILE__, __LINE__);
+    verify(1, ret.x[2] == 24, __FILE__, __LINE__);
+    verify(1, ret.x[3] == 25, __FILE__, __LINE__);
+  }
+  {
+    S21 s21;
+    s21.x[0] = 6.6;
+    s21.x[1] = 7.7;
+    s21.y = 21;
+    s21.z = -44;
+    verify(-13, pass_struct16(s21), __FILE__, __LINE__);
+    s21.x[1] = 7.8;
+    verify(-21, pass_struct16(s21), __FILE__, __LINE__);
+    s21.x[0] = 8.7;
+    s21.x[1] = 7.7;
+    verify(-20, pass_struct16(s21), __FILE__, __LINE__);
+  }
+  {
+    S21 s21 = {{1.1, 3.3}, 7, 9};
+    S21 ret = pass_struct17(s21);
+    verify(1, ret.x[0] == 3.3, __FILE__, __LINE__);
+    verify(1, ret.x[1] == 1.1, __FILE__, __LINE__);
+    verify(9, ret.y, __FILE__, __LINE__);
+    verify(7, ret.z, __FILE__, __LINE__);
+  }
+  {
+    U1 u1;
+    u1.x[0] = 5;
+    u1.x[1] = 13;
+    u1.x[2] = 7;
+    verify(18, pass_union1x(u1), __FILE__, __LINE__);
+    u1.y = 1.34;
+    verify(1, pass_union1y(u1) == 1.34, __FILE__, __LINE__);
+    u1.z = 8;
+    verify(24, pass_union1z(u1), __FILE__, __LINE__);
+  }
+  {
+    U5 u5;
+    u5.x = 5.55;
+    verify(1, pass_union5x(u5) == 5.55, __FILE__, __LINE__);
+    u5.y = 19;
+    verify(19, pass_union5y(u5), __FILE__, __LINE__);
+  }
   return 0;
 }

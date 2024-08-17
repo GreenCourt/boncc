@@ -218,3 +218,26 @@ int pass_by_stack5(int a, int b, float c, double d, int e, int f, char g,
                    short h, int i, long long j, int k, double l, float m,
                    float n, double o, double p, float q, float r, double s,
                    int t);
+
+long long pass_struct1(S1 s);
+long long pass_struct2(int a, int b, int c, S1 s);
+long long pass_struct3(int a, int b, int c, S1 s1, S4 s4);
+long long pass_struct4(int a, int b, int c, S1 s1, double d, S7 s7);
+long long pass_struct5(int a, int b, int c, double d, S6 s6, S7 s7);
+long long pass_struct6(S13 s13);
+long long pass_struct7(S9 s9);
+long long pass_struct8(int a, int b, int c, double d, float e, S9 s9);
+long long pass_struct9(S10 s10);
+long long pass_struct10(int a, int b, int c, double d, float e, S10 s10);
+long long pass_struct11(S19 s19);
+long long pass_struct12(S16 s16);
+S10 pass_struct13(S9 s9);
+S16 pass_struct14(S16 s16);
+S20 pass_struct15(S20 s20);
+long long pass_struct16(S21 s21);
+S21 pass_struct17(S21 s21);
+int pass_union1x(U1 u1);
+double pass_union1y(U1 u1);
+short pass_union1z(U1 u1);
+double pass_union5x(U5 u5);
+int pass_union5y(U5 u5);

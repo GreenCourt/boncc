@@ -71,8 +71,6 @@ int minus1() { return -1; }
 
 void empty() {}
 
-int vsprintf(char *, char *, va_list);
-
 int sprintf_(char *s, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
@@ -362,3 +360,81 @@ int pass_by_stack5(int a, int b, float c, double d, int e, int f, char g,
     return -1;
   return a + b + e + f + g + h + i + j + k + t;
 }
+
+long long pass_struct1(S1 s) { return s.x; }
+
+long long pass_struct2(int a, int b, int c, S1 s) { return a + b + c + s.x; }
+
+long long pass_struct3(int a, int b, int c, S1 s1, S4 s4) {
+  return a + b + c + s1.x + (s4.x == 1.1f ? 1 : -1);
+}
+
+long long pass_struct4(int a, int b, int c, S1 s1, double d, S7 s7) {
+  return a + b + c + s1.x + (d == 2.2 ? -10 : -2) + (s7.x == 1.1f ? 1 : -1) +
+         s7.y;
+}
+
+long long pass_struct5(int a, int b, int c, double d, S6 s6, S7 s7) {
+  return a + b + c + (s6.x == 3.3f ? 3 : -3) + (s6.y == 4.4f ? 4 : -4) +
+         (d == 2.2 ? -10 : -2) + (s7.x == 1.1f ? 1 : -1) + s7.y;
+}
+
+long long pass_struct6(S13 s13) {
+  return s13.x[0] + s13.x[1] + s13.x[2] + s13.y + s13.z;
+}
+
+long long pass_struct7(S9 s9) { return s9.x + (s9.y == 4.4f ? 2 : -1); }
+
+long long pass_struct8(int a, int b, int c, double d, float e, S9 s9) {
+  return a + b + c + (d == 2.2 ? -10 : -2) + (e == 3.3f ? -3 : 1) + s9.x +
+         (s9.y == 4.4f ? 2 : -1);
+}
+
+long long pass_struct9(S10 s10) { return s10.y + (s10.x == 4.4f ? 2 : -1); }
+
+long long pass_struct10(int a, int b, int c, double d, float e, S10 s10) {
+  return a + b + c + (d == 2.2 ? -10 : -2) + (e == 3.3f ? -3 : 1) + s10.y +
+         (s10.x == 4.4f ? 2 : -1);
+}
+
+long long pass_struct11(S19 s19) { return s19.x[0] - s19.x[1]; }
+
+long long pass_struct12(S16 s16) {
+  return (s16.x[0] == 1.1f ? 1 : 0) + (s16.x[1] == 2.2f ? 2 : 0) +
+         (s16.x[2] == 3.3f ? 4 : 0) + (s16.x[3] == 4.4f ? 8 : 0);
+}
+
+S10 pass_struct13(S9 s9) {
+  S10 s10 = {s9.y, s9.x + 1};
+  return s10;
+}
+
+S16 pass_struct14(S16 s16) {
+  S16 ret = {{s16.x[3], s16.x[0], s16.x[1], s16.x[2]}};
+  return ret;
+}
+
+S20 pass_struct15(S20 s20) {
+  S20 ret = {{s20.x[3], s20.x[0], s20.x[1], s20.x[2]}};
+  return ret;
+}
+
+long long pass_struct16(S21 s21) {
+  return (s21.x[0] == 6.6 ? 3 : -4) + (s21.x[1] == 7.7 ? 7 : -1) + s21.y +
+         s21.z;
+}
+
+S21 pass_struct17(S21 s21) {
+  S21 ret = {{s21.x[1], s21.x[0]}, s21.z, s21.y};
+  return ret;
+}
+
+int pass_union1x(U1 u1) { return u1.x[0] * 2 - u1.x[1] + u1.x[2] * 3; }
+
+double pass_union1y(U1 u1) { return u1.y; }
+
+short pass_union1z(U1 u1) { return u1.z * 3; }
+
+double pass_union5x(U5 u5) { return u5.x; }
+
+int pass_union5y(U5 u5) { return u5.y; }

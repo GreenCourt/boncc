@@ -202,7 +202,7 @@ bool use_xmm(Type *type, int begin, int end) {
       if (m->offset >= begin) {
         if (!use_xmm(m->type, 0, end - m->offset))
           return false;
-      } else if (m->offset + m->type->size >= begin) {
+      } else if (m->offset + m->type->size > begin) {
         if (!use_xmm(m->type, begin - m->offset, end - m->offset))
           return false;
       }
@@ -229,10 +229,8 @@ void load(Type *type) {
     for (int b = 0; b < type->size; b += 8) {
       // put 8byte onto register
       if (use_xmm(type, b, b + 8)) {
-        if (type->size == b + 4)
-          writeline("  movss xmm%d, [r10+%d]", xmm_index++, b);
-        else
-          writeline("  movsd xmm%d, [r10+%d]", xmm_index++, b);
+        writeline("  movs%c xmm%d, [r10+%d]", type->size == b + 4 ? 's' : 'd',
+                  xmm_index++, b);
       } else {
         writeline("  mov %s, [r10+%d]",
                   reg[type->size - b > 8 ? 8 : type->size - b], b);
@@ -293,10 +291,8 @@ void store(Type *type) {
     for (int b = 0; b < type->size; b += 8) {
       // copy 8byte from register
       if (use_xmm(type, b, b + 8)) {
-        if (type->size == b + 4)
-          writeline("  movss [r10+%d], xmm%d", b, xmm_index++);
-        else
-          writeline("  movsd [r10+%d], xmm%d", b, xmm_index++);
+        writeline("  movs%c [r10+%d], xmm%d", type->size == b + 4 ? 's' : 'd',
+                  b, xmm_index++);
       } else {
         writeline("  mov [r10+%d], %s", b,
                   reg[type->size - b > 8 ? 8 : type->size - b]);
@@ -319,6 +315,16 @@ void store(Type *type) {
   }
 
   writeline("  mov [r10], %s", reg_ax[type->size]);
+}
+
+static void push_struct_union(Type *type) {
+  // push the struct/union loaded by load()
+  assert(is_struct_union(type));
+  int shift = iceil(type->size, 8);
+  writeline("  sub rsp, %d", shift);
+  rsp_shift += shift;
+  push("rsp"); // popped by store()
+  store(type);
 }
 
 void gen_if(Node *node) {
@@ -448,6 +454,24 @@ void gen_call(Node *node) {
           vector_push(args_on_register, &d);
           count_gp++;
         }
+      } else if (is_struct_union(d->type)) {
+        if (pass_on_memory(d->type)) {
+          vector_push(args_on_stack, &d);
+          shift_by_args += iceil(d->type->size, 8);
+        } else {
+          int required_fp =
+              use_xmm(d->type, 0, 8) +
+              (d->type->size > 8 && use_xmm(d->type, 8, 16) ? 1 : 0);
+          int required_gp = (d->type->size > 8 ? 2 : 1) - required_fp;
+          if (count_gp + required_gp > 7 || count_fp + required_fp > 9) {
+            vector_push(args_on_stack, &d);
+            shift_by_args += iceil(d->type->size, 8);
+          } else {
+            vector_push(args_on_register, &d);
+            count_gp += required_gp;
+            count_fp += required_fp;
+          }
+        }
       } else {
         assert(false);
       }
@@ -481,6 +505,8 @@ void gen_call(Node *node) {
           push_xmm(0, d->type->kind);
         } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
           push("rax");
+        } else if (is_struct_union(d->type)) {
+          push_struct_union(d->type);
         } else {
           assert(false);
         }
@@ -488,6 +514,7 @@ void gen_call(Node *node) {
       assert(rsp_shift == before + shift_by_args);
     }
 
+    int before = rsp_shift;
     if (args_on_register->size > 0) {
       comment(NULL, "push arguments that will be passed by registers");
       for (int i = 0; i < args_on_register->size; ++i) {
@@ -497,6 +524,8 @@ void gen_call(Node *node) {
           push_xmm(0, d->type->kind);
         } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
           push("rax");
+        } else if (is_struct_union(d->type)) {
+          push_struct_union(d->type);
         } else {
           assert(false);
         }
@@ -511,11 +540,37 @@ void gen_call(Node *node) {
         } else if (is_integer(d->type) || d->type->kind == TYPE_PTR) {
           assert(count_gp > 0);
           pop(reg_args[8][--count_gp]);
+        } else if (is_struct_union(d->type)) {
+          assert(d->type->size <= 16);
+          int required_fp =
+              use_xmm(d->type, 0, 8) +
+              (d->type->size > 8 && use_xmm(d->type, 8, 16) ? 1 : 0);
+          int required_gp = (d->type->size > 8 ? 2 : 1) - required_fp;
+          int xmm_index = count_fp - required_fp;
+          int reg_index = count_gp - required_gp;
+          assert(xmm_index >= 0);
+          assert(reg_index >= 0);
+          for (int b = 0; b < d->type->size; b += 8) {
+            if (use_xmm(d->type, b, b + 8))
+              writeline("  movs%c xmm%d, [rsp]",
+                        d->type->size == b + 4 ? 's' : 'd', xmm_index++);
+            else
+              writeline("  mov %s, [rsp]", reg_args[8][reg_index++]);
+            writeline("  add rsp, 8");
+            rsp_shift -= 8;
+            assert(xmm_index <= 8);
+            assert(reg_index <= 6);
+          }
+          count_gp -= required_gp;
+          count_fp -= required_fp;
+          assert(count_gp >= 0);
+          assert(count_fp >= 0);
         } else {
           assert(false);
         }
       }
     }
+    assert(rsp_shift == before);
 
     if (pass_on_memory(node->type)) {
       // hidden argument to pass return_buffer address
@@ -926,6 +981,38 @@ void gen_func(Function *func) {
         } else {
           writeline("  mov [rbp-%d], %s", v->offset,
                     reg_args[v->type->size][count_gp++]);
+        }
+      } else if (is_struct_union(v->type)) {
+        bool on_stack = pass_on_memory(v->type);
+        if (!on_stack) {
+          int required_fp =
+              use_xmm(v->type, 0, 8) +
+              (v->type->size > 8 && use_xmm(v->type, 8, 16) ? 1 : 0);
+          int required_gp = (v->type->size > 8 ? 2 : 1) - required_fp;
+          on_stack =
+              (count_gp + required_gp > 6) || (count_fp + required_fp > 8);
+        }
+
+        if (on_stack) {
+          for (int b = 0; b < v->type->size; b++) {
+            // copy each bytes like memcpy
+            writeline("  mov r10b, [rbp+%d]", ofs + b);
+            writeline("  mov [rbp-%d], r10b", v->offset - b);
+          }
+        } else {
+          for (int b = 0; b < v->type->size; b += 8) {
+            // copy 8byte from register
+            if (use_xmm(v->type, b, b + 8))
+              writeline("  movs%c [rbp-%d], xmm%d",
+                        v->type->size == b + 4 ? 's' : 'd', v->offset - b,
+                        count_fp++);
+            else
+              writeline("  mov [rbp-%d], %s", v->offset - b,
+                        reg_args[v->type->size - b > 8 ? 8 : v->type->size - b]
+                                [count_gp++]);
+            assert(count_gp <= 6);
+            assert(count_fp <= 8);
+          }
         }
       } else {
         assert(false);

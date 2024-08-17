@@ -29,9 +29,9 @@ struct global_struct_to_test_initializer g1 = {1, {2}, {3}, {{5}, {7, {8, 9}}}};
 struct global_struct_to_test_initializer g2 = {1, 2, {3}, 5};
 
 int main() {
-  verify(12, sizeof(g), __FILE__, __LINE__);
-  verify(12, sizeof(struct global_struct1), __FILE__, __LINE__);
-  verify(12, sizeof(struct global_struct2), __FILE__, __LINE__);
+  VERIFY(12, sizeof(g));
+  VERIFY(12, sizeof(struct global_struct1));
+  VERIFY(12, sizeof(struct global_struct2));
 
   {
     // shadow
@@ -39,7 +39,7 @@ int main() {
       int a;
       char c;
     };
-    verify(8, sizeof(struct global_struct1), __FILE__, __LINE__);
+    VERIFY(8, sizeof(struct global_struct1));
   }
   {
     // declare unnamed struct and variable at same time
@@ -51,10 +51,10 @@ int main() {
     x.a = 11;
     x.b = 12;
     x.c = 13;
-    verify(12, sizeof(x), __FILE__, __LINE__);
-    verify(11, x.a, __FILE__, __LINE__);
-    verify(12, x.b, __FILE__, __LINE__);
-    verify(13, x.c, __FILE__, __LINE__);
+    VERIFY(12, sizeof(x));
+    VERIFY(11, x.a);
+    VERIFY(12, x.b);
+    VERIFY(13, x.c);
   }
   {
     // declare named struct
@@ -65,7 +65,7 @@ int main() {
       char d;
       char *e;
     };
-    verify(24, sizeof(struct st), __FILE__, __LINE__);
+    VERIFY(24, sizeof(struct st));
   }
   {
     // this block contains only struct declaration
@@ -89,20 +89,20 @@ int main() {
     x.b = 6;
     x.c = 7;
     x.d = 9;
-    verify(24, sizeof(struct st), __FILE__, __LINE__);
-    verify(24, sizeof(x), __FILE__, __LINE__);
-    verify(8, sizeof(x.b), __FILE__, __LINE__);
-    verify(5, x.a, __FILE__, __LINE__);
-    verify(6, x.b, __FILE__, __LINE__);
-    verify(7, x.c, __FILE__, __LINE__);
-    verify(9, x.d, __FILE__, __LINE__);
+    VERIFY(24, sizeof(struct st));
+    VERIFY(24, sizeof(x));
+    VERIFY(8, sizeof(x.b));
+    VERIFY(5, x.a);
+    VERIFY(6, x.b);
+    VERIFY(7, x.c);
+    VERIFY(9, x.d);
   }
   {
     // empty struct;
     struct empty {
     } x;
-    verify(0, sizeof(struct empty), __FILE__, __LINE__);
-    verify(0, sizeof(x), __FILE__, __LINE__);
+    VERIFY(0, sizeof(struct empty));
+    VERIFY(0, sizeof(x));
   }
   {
     // pointer
@@ -117,17 +117,17 @@ int main() {
     p->b = 6;
     p->c = 7;
     p->d = 9;
-    verify(12, sizeof(struct st), __FILE__, __LINE__);
-    verify(8, sizeof(p), __FILE__, __LINE__);
-    verify(4, sizeof(p->b), __FILE__, __LINE__);
-    verify(5, p->a, __FILE__, __LINE__);
-    verify(6, p->b, __FILE__, __LINE__);
-    verify(7, p->c, __FILE__, __LINE__);
-    verify(9, p->d, __FILE__, __LINE__);
-    verify(5, x.a, __FILE__, __LINE__);
-    verify(6, x.b, __FILE__, __LINE__);
-    verify(7, x.c, __FILE__, __LINE__);
-    verify(9, x.d, __FILE__, __LINE__);
+    VERIFY(12, sizeof(struct st));
+    VERIFY(8, sizeof(p));
+    VERIFY(4, sizeof(p->b));
+    VERIFY(5, p->a);
+    VERIFY(6, p->b);
+    VERIFY(7, p->c);
+    VERIFY(9, p->d);
+    VERIFY(5, x.a);
+    VERIFY(6, x.b);
+    VERIFY(7, x.c);
+    VERIFY(9, x.d);
   }
   {
     // struct pointer in the struct
@@ -138,7 +138,7 @@ int main() {
     struct st x;
     x.a = 12;
     x.p = &x;
-    verify(12, x.p->a, __FILE__, __LINE__);
+    VERIFY(12, x.p->a);
   }
   {
     // forward declaration
@@ -149,8 +149,8 @@ int main() {
     };
     struct S a;
     struct S; // declare twice
-    verify(8, sizeof(struct S), __FILE__, __LINE__);
-    verify(8, sizeof(a), __FILE__, __LINE__);
+    VERIFY(8, sizeof(struct S));
+    VERIFY(8, sizeof(a));
   }
   {
     union U1 {
@@ -175,20 +175,20 @@ int main() {
     struct S s;
     s.a = 3;
     s.b = 5;
-    verify(3, s.a, __FILE__, __LINE__);
-    verify(5, s.b, __FILE__, __LINE__);
+    VERIFY(3, s.a);
+    VERIFY(5, s.b);
 
     u1.y = 42;
-    verify(42, u1.y, __FILE__, __LINE__);
+    VERIFY(42, u1.y);
     u1.z[2] = 3;
-    verify(3, u1.z[2], __FILE__, __LINE__);
+    VERIFY(3, u1.z[2]);
     u1.y = 100;
-    verify(1, u1.z[2] != 3, __FILE__, __LINE__);
+    VERIFY(1, u1.z[2] != 3);
 
     union U2 u2;
     u2.s.a = 14;
-    verify(14, u2.s.a, __FILE__, __LINE__);
-    verify(14, u2.t.c, __FILE__, __LINE__);
+    VERIFY(14, u2.s.a);
+    VERIFY(14, u2.t.c);
   }
   {
     struct S {
@@ -196,7 +196,7 @@ int main() {
       const int y;
     } s;
     s.x = 12;
-    verify(12, s.x, __FILE__, __LINE__);
+    VERIFY(12, s.x);
   }
   {
     struct S {
@@ -205,12 +205,12 @@ int main() {
         int b;
       } x;
     };
-    verify(8, sizeof(struct S), __FILE__, __LINE__);
+    VERIFY(8, sizeof(struct S));
     struct S s;
     s.x.a = 2;
     s.x.b = 3;
-    verify(2, s.x.a, __FILE__, __LINE__);
-    verify(3, s.x.b, __FILE__, __LINE__);
+    VERIFY(2, s.x.a);
+    VERIFY(3, s.x.b);
   }
   {
     struct S {
@@ -219,11 +219,11 @@ int main() {
         int b;
       } x;
     };
-    verify(4, sizeof(struct S), __FILE__, __LINE__);
+    VERIFY(4, sizeof(struct S));
     struct S s;
     s.x.a = 2;
-    verify(2, s.x.a, __FILE__, __LINE__);
-    verify(2, s.x.b, __FILE__, __LINE__);
+    VERIFY(2, s.x.a);
+    VERIFY(2, s.x.b);
   }
   {
     union U {
@@ -232,11 +232,11 @@ int main() {
         int b;
       } x;
     };
-    verify(4, sizeof(union U), __FILE__, __LINE__);
+    VERIFY(4, sizeof(union U));
     union U u;
     u.x.a = 2;
-    verify(2, u.x.a, __FILE__, __LINE__);
-    verify(2, u.x.b, __FILE__, __LINE__);
+    VERIFY(2, u.x.a);
+    VERIFY(2, u.x.b);
   }
   {
     union U {
@@ -245,12 +245,12 @@ int main() {
         int b;
       } x;
     };
-    verify(8, sizeof(union U), __FILE__, __LINE__);
+    VERIFY(8, sizeof(union U));
     union U u;
     u.x.a = 2;
     u.x.b = 3;
-    verify(2, u.x.a, __FILE__, __LINE__);
-    verify(3, u.x.b, __FILE__, __LINE__);
+    VERIFY(2, u.x.a);
+    VERIFY(3, u.x.b);
   }
   {
     union U {
@@ -260,13 +260,13 @@ int main() {
         int b;
       };
     };
-    verify(8, sizeof(union U), __FILE__, __LINE__);
+    VERIFY(8, sizeof(union U));
     union U u;
     u.a = 2;
     u.b = 3;
-    verify(2, u.a, __FILE__, __LINE__);
-    verify(3, u.b, __FILE__, __LINE__);
-    verify(2, u.q, __FILE__, __LINE__);
+    VERIFY(2, u.a);
+    VERIFY(3, u.b);
+    VERIFY(2, u.q);
   }
 
   {
@@ -277,11 +277,11 @@ int main() {
         int b;
       };
     };
-    verify(4, sizeof(union U), __FILE__, __LINE__);
+    VERIFY(4, sizeof(union U));
     union U u;
     u.a = 12;
-    verify(12, u.b, __FILE__, __LINE__);
-    verify(12, u.q, __FILE__, __LINE__);
+    VERIFY(12, u.b);
+    VERIFY(12, u.q);
   }
 
   {
@@ -292,12 +292,12 @@ int main() {
         long b;
       };
     };
-    verify(16, sizeof(struct S), __FILE__, __LINE__);
+    VERIFY(16, sizeof(struct S));
     struct S s;
     s.a = 4;
-    verify(4, s.a, __FILE__, __LINE__);
+    VERIFY(4, s.a);
     s.b = 7;
-    verify(7, s.b, __FILE__, __LINE__);
+    VERIFY(7, s.b);
   }
   {
     struct S {
@@ -308,12 +308,12 @@ int main() {
       };
       int c;
     };
-    verify(16, sizeof(struct S), __FILE__, __LINE__);
+    VERIFY(16, sizeof(struct S));
     struct S s;
     s.a = 2;
     s.b = 3;
-    verify(2, s.a, __FILE__, __LINE__);
-    verify(3, s.b, __FILE__, __LINE__);
+    VERIFY(2, s.a);
+    VERIFY(3, s.b);
   }
   {
     struct S {
@@ -326,12 +326,12 @@ int main() {
     x.b = 5;
     x.c = 6;
     y = x;
-    verify(4, x.a, __FILE__, __LINE__);
-    verify(5, x.b, __FILE__, __LINE__);
-    verify(6, x.c, __FILE__, __LINE__);
-    verify(4, y.a, __FILE__, __LINE__);
-    verify(5, y.b, __FILE__, __LINE__);
-    verify(6, y.c, __FILE__, __LINE__);
+    VERIFY(4, x.a);
+    VERIFY(5, x.b);
+    VERIFY(6, x.c);
+    VERIFY(4, y.a);
+    VERIFY(5, y.b);
+    VERIFY(6, y.c);
   }
   {
     union U {
@@ -342,13 +342,13 @@ int main() {
     union U x, y;
     x.a = 6;
     y = x;
-    verify(6, y.a, __FILE__, __LINE__);
+    VERIFY(6, y.a);
     x.b = 4;
     y = x;
-    verify(4, y.b, __FILE__, __LINE__);
+    VERIFY(4, y.b);
     x.c = 8;
     y = x;
-    verify(8, y.c, __FILE__, __LINE__);
+    VERIFY(8, y.c);
   }
   {
     struct S {
@@ -364,13 +364,13 @@ int main() {
     y.b = 2;
     y.c = 3;
     struct S z = 1 ? x : y;
-    verify(4, z.a, __FILE__, __LINE__);
-    verify(5, z.b, __FILE__, __LINE__);
-    verify(6, z.c, __FILE__, __LINE__);
+    VERIFY(4, z.a);
+    VERIFY(5, z.b);
+    VERIFY(6, z.c);
     z = 0 ? x : y;
-    verify(1, z.a, __FILE__, __LINE__);
-    verify(2, z.b, __FILE__, __LINE__);
-    verify(3, z.c, __FILE__, __LINE__);
+    VERIFY(1, z.a);
+    VERIFY(2, z.b);
+    VERIFY(3, z.c);
   }
   {
     // test align
@@ -386,74 +386,74 @@ int main() {
         short d2;
       } d[2];
     };
-    verify(28, sizeof(struct S), __FILE__, __LINE__);
+    VERIFY(28, sizeof(struct S));
   }
   {
     // local initializer
     struct global_struct_to_test_initializer x = {
         1, {2}, {3}, {{5}, {7, {8, 9}}}};
     struct global_struct_to_test_initializer y = {1, 2, {3}, 5};
-    verify(36, sizeof(x), __FILE__, __LINE__);
-    verify(1, x.a, __FILE__, __LINE__);
-    verify(2, x.b.b1, __FILE__, __LINE__);
-    verify(3, x.c[0], __FILE__, __LINE__);
-    verify(0, x.c[1], __FILE__, __LINE__);
-    verify(0, x.c[2], __FILE__, __LINE__);
-    verify(5, x.d[0].d1, __FILE__, __LINE__);
-    verify(0, x.d[0].d2[0], __FILE__, __LINE__);
-    verify(0, x.d[0].d2[1], __FILE__, __LINE__);
-    verify(0, x.d[0].d2[2], __FILE__, __LINE__);
-    verify(7, x.d[1].d1, __FILE__, __LINE__);
-    verify(8, x.d[1].d2[0], __FILE__, __LINE__);
-    verify(9, x.d[1].d2[1], __FILE__, __LINE__);
-    verify(0, x.d[1].d2[2], __FILE__, __LINE__);
+    VERIFY(36, sizeof(x));
+    VERIFY(1, x.a);
+    VERIFY(2, x.b.b1);
+    VERIFY(3, x.c[0]);
+    VERIFY(0, x.c[1]);
+    VERIFY(0, x.c[2]);
+    VERIFY(5, x.d[0].d1);
+    VERIFY(0, x.d[0].d2[0]);
+    VERIFY(0, x.d[0].d2[1]);
+    VERIFY(0, x.d[0].d2[2]);
+    VERIFY(7, x.d[1].d1);
+    VERIFY(8, x.d[1].d2[0]);
+    VERIFY(9, x.d[1].d2[1]);
+    VERIFY(0, x.d[1].d2[2]);
 
-    verify(36, sizeof(y), __FILE__, __LINE__);
-    verify(1, y.a, __FILE__, __LINE__);
-    verify(2, y.b.b1, __FILE__, __LINE__);
-    verify(3, y.c[0], __FILE__, __LINE__);
-    verify(0, y.c[1], __FILE__, __LINE__);
-    verify(0, y.c[2], __FILE__, __LINE__);
-    verify(5, y.d[0].d1, __FILE__, __LINE__);
-    verify(0, y.d[0].d2[0], __FILE__, __LINE__);
-    verify(0, y.d[0].d2[1], __FILE__, __LINE__);
-    verify(0, y.d[0].d2[2], __FILE__, __LINE__);
-    verify(0, y.d[1].d1, __FILE__, __LINE__);
-    verify(0, y.d[1].d2[0], __FILE__, __LINE__);
-    verify(0, y.d[1].d2[1], __FILE__, __LINE__);
-    verify(0, y.d[1].d2[2], __FILE__, __LINE__);
+    VERIFY(36, sizeof(y));
+    VERIFY(1, y.a);
+    VERIFY(2, y.b.b1);
+    VERIFY(3, y.c[0]);
+    VERIFY(0, y.c[1]);
+    VERIFY(0, y.c[2]);
+    VERIFY(5, y.d[0].d1);
+    VERIFY(0, y.d[0].d2[0]);
+    VERIFY(0, y.d[0].d2[1]);
+    VERIFY(0, y.d[0].d2[2]);
+    VERIFY(0, y.d[1].d1);
+    VERIFY(0, y.d[1].d2[0]);
+    VERIFY(0, y.d[1].d2[1]);
+    VERIFY(0, y.d[1].d2[2]);
   }
   {
     // global initializer
-    verify(36, sizeof(g1), __FILE__, __LINE__);
-    verify(1, g1.a, __FILE__, __LINE__);
-    verify(2, g1.b.b1, __FILE__, __LINE__);
-    verify(3, g1.c[0], __FILE__, __LINE__);
-    verify(0, g1.c[1], __FILE__, __LINE__);
-    verify(0, g1.c[2], __FILE__, __LINE__);
-    verify(5, g1.d[0].d1, __FILE__, __LINE__);
-    verify(0, g1.d[0].d2[0], __FILE__, __LINE__);
-    verify(0, g1.d[0].d2[1], __FILE__, __LINE__);
-    verify(0, g1.d[0].d2[2], __FILE__, __LINE__);
-    verify(7, g1.d[1].d1, __FILE__, __LINE__);
-    verify(8, g1.d[1].d2[0], __FILE__, __LINE__);
-    verify(9, g1.d[1].d2[1], __FILE__, __LINE__);
-    verify(0, g1.d[1].d2[2], __FILE__, __LINE__);
+    VERIFY(36, sizeof(g1));
+    VERIFY(1, g1.a);
+    VERIFY(2, g1.b.b1);
+    VERIFY(3, g1.c[0]);
+    VERIFY(0, g1.c[1]);
+    VERIFY(0, g1.c[2]);
+    VERIFY(5, g1.d[0].d1);
+    VERIFY(0, g1.d[0].d2[0]);
+    VERIFY(0, g1.d[0].d2[1]);
+    VERIFY(0, g1.d[0].d2[2]);
+    VERIFY(7, g1.d[1].d1);
+    VERIFY(8, g1.d[1].d2[0]);
+    VERIFY(9, g1.d[1].d2[1]);
+    VERIFY(0, g1.d[1].d2[2]);
 
-    verify(36, sizeof(g2), __FILE__, __LINE__);
-    verify(1, g2.a, __FILE__, __LINE__);
-    verify(2, g2.b.b1, __FILE__, __LINE__);
-    verify(3, g2.c[0], __FILE__, __LINE__);
-    verify(0, g2.c[1], __FILE__, __LINE__);
-    verify(0, g2.c[2], __FILE__, __LINE__);
-    verify(5, g2.d[0].d1, __FILE__, __LINE__);
-    verify(0, g2.d[0].d2[0], __FILE__, __LINE__);
-    verify(0, g2.d[0].d2[1], __FILE__, __LINE__);
-    verify(0, g2.d[0].d2[2], __FILE__, __LINE__);
-    verify(0, g2.d[1].d1, __FILE__, __LINE__);
-    verify(0, g2.d[1].d2[0], __FILE__, __LINE__);
-    verify(0, g2.d[1].d2[1], __FILE__, __LINE__);
-    verify(0, g2.d[1].d2[2], __FILE__, __LINE__);
+    VERIFY(36, sizeof(g2));
+    VERIFY(1, g2.a);
+    VERIFY(2, g2.b.b1);
+    VERIFY(3, g2.c[0]);
+    VERIFY(0, g2.c[1]);
+    VERIFY(0, g2.c[2]);
+    VERIFY(5, g2.d[0].d1);
+    VERIFY(0, g2.d[0].d2[0]);
+    VERIFY(0, g2.d[0].d2[1]);
+    VERIFY(0, g2.d[0].d2[2]);
+    VERIFY(0, g2.d[1].d1);
+    VERIFY(0, g2.d[1].d2[0]);
+    VERIFY(0, g2.d[1].d2[1]);
+    VERIFY(0, g2.d[1].d2[2]);
   }
   return 0;
 }

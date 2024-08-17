@@ -14,155 +14,155 @@ typedef struct {
 } typedef_global_unnamed_struct;
 
 int main() {
-  verify(4, sizeof(int), __FILE__, __LINE__);
-  verify(1, sizeof(char), __FILE__, __LINE__);
-  verify(2, sizeof(short), __FILE__, __LINE__);
-  verify(2, sizeof(short int), __FILE__, __LINE__);
-  verify(8, sizeof(long), __FILE__, __LINE__);
-  verify(8, sizeof(long long), __FILE__, __LINE__);
-  verify(8, sizeof(long long int), __FILE__, __LINE__);
-  verify(8, sizeof(int *), __FILE__, __LINE__);
-  verify(8, sizeof(char *), __FILE__, __LINE__);
-  verify(32, sizeof(char *[4]), __FILE__, __LINE__);
-  verify(48, sizeof(int *[3][2]), __FILE__, __LINE__);
-  verify(1, sizeof(signed char), __FILE__, __LINE__);
-  verify(1, sizeof(unsigned char), __FILE__, __LINE__);
-  verify(1, sizeof(char signed), __FILE__, __LINE__);
-  verify(1, sizeof(char unsigned), __FILE__, __LINE__);
-  verify(4, sizeof(unsigned), __FILE__, __LINE__);
-  verify(4, sizeof(signed), __FILE__, __LINE__);
-  verify(4, sizeof(signed int), __FILE__, __LINE__);
-  verify(4, sizeof(unsigned int), __FILE__, __LINE__);
-  verify(4, sizeof(int signed), __FILE__, __LINE__);
-  verify(4, sizeof(int unsigned), __FILE__, __LINE__);
-  verify(2, sizeof(signed short), __FILE__, __LINE__);
-  verify(2, sizeof(signed short int), __FILE__, __LINE__);
-  verify(2, sizeof(unsigned short), __FILE__, __LINE__);
-  verify(2, sizeof(unsigned short int), __FILE__, __LINE__);
-  verify(2, sizeof(short signed), __FILE__, __LINE__);
-  verify(2, sizeof(short signed int), __FILE__, __LINE__);
-  verify(2, sizeof(short unsigned), __FILE__, __LINE__);
-  verify(2, sizeof(short unsigned int), __FILE__, __LINE__);
-  verify(2, sizeof(int short signed), __FILE__, __LINE__);
-  verify(2, sizeof(int short unsigned), __FILE__, __LINE__);
-  verify(2, sizeof(int short unsigned), __FILE__, __LINE__);
-  verify(2, sizeof(int signed short), __FILE__, __LINE__);
-  verify(2, sizeof(int unsigned short), __FILE__, __LINE__);
-  verify(2, sizeof(int unsigned short), __FILE__, __LINE__);
-  verify(8, sizeof(signed long), __FILE__, __LINE__);
-  verify(8, sizeof(signed long long), __FILE__, __LINE__);
-  verify(8, sizeof(signed long long int), __FILE__, __LINE__);
-  verify(8, sizeof(unsigned long), __FILE__, __LINE__);
-  verify(8, sizeof(unsigned long long), __FILE__, __LINE__);
-  verify(8, sizeof(unsigned long long int), __FILE__, __LINE__);
-  verify(8, sizeof(long signed), __FILE__, __LINE__);
-  verify(8, sizeof(long signed long), __FILE__, __LINE__);
-  verify(8, sizeof(long signed long int), __FILE__, __LINE__);
-  verify(8, sizeof(long unsigned), __FILE__, __LINE__);
-  verify(8, sizeof(long unsigned long), __FILE__, __LINE__);
-  verify(8, sizeof(long unsigned long int), __FILE__, __LINE__);
-  verify(8, sizeof(long long int unsigned), __FILE__, __LINE__);
-  verify(8, sizeof(long long int signed), __FILE__, __LINE__);
+  VERIFY(4, sizeof(int));
+  VERIFY(1, sizeof(char));
+  VERIFY(2, sizeof(short));
+  VERIFY(2, sizeof(short int));
+  VERIFY(8, sizeof(long));
+  VERIFY(8, sizeof(long long));
+  VERIFY(8, sizeof(long long int));
+  VERIFY(8, sizeof(int *));
+  VERIFY(8, sizeof(char *));
+  VERIFY(32, sizeof(char *[4]));
+  VERIFY(48, sizeof(int *[3][2]));
+  VERIFY(1, sizeof(signed char));
+  VERIFY(1, sizeof(unsigned char));
+  VERIFY(1, sizeof(char signed));
+  VERIFY(1, sizeof(char unsigned));
+  VERIFY(4, sizeof(unsigned));
+  VERIFY(4, sizeof(signed));
+  VERIFY(4, sizeof(signed int));
+  VERIFY(4, sizeof(unsigned int));
+  VERIFY(4, sizeof(int signed));
+  VERIFY(4, sizeof(int unsigned));
+  VERIFY(2, sizeof(signed short));
+  VERIFY(2, sizeof(signed short int));
+  VERIFY(2, sizeof(unsigned short));
+  VERIFY(2, sizeof(unsigned short int));
+  VERIFY(2, sizeof(short signed));
+  VERIFY(2, sizeof(short signed int));
+  VERIFY(2, sizeof(short unsigned));
+  VERIFY(2, sizeof(short unsigned int));
+  VERIFY(2, sizeof(int short signed));
+  VERIFY(2, sizeof(int short unsigned));
+  VERIFY(2, sizeof(int short unsigned));
+  VERIFY(2, sizeof(int signed short));
+  VERIFY(2, sizeof(int unsigned short));
+  VERIFY(2, sizeof(int unsigned short));
+  VERIFY(8, sizeof(signed long));
+  VERIFY(8, sizeof(signed long long));
+  VERIFY(8, sizeof(signed long long int));
+  VERIFY(8, sizeof(unsigned long));
+  VERIFY(8, sizeof(unsigned long long));
+  VERIFY(8, sizeof(unsigned long long int));
+  VERIFY(8, sizeof(long signed));
+  VERIFY(8, sizeof(long signed long));
+  VERIFY(8, sizeof(long signed long int));
+  VERIFY(8, sizeof(long unsigned));
+  VERIFY(8, sizeof(long unsigned long));
+  VERIFY(8, sizeof(long unsigned long int));
+  VERIFY(8, sizeof(long long int unsigned));
+  VERIFY(8, sizeof(long long int signed));
 
-  verify(4, sizeof(float), __FILE__, __LINE__);
-  verify(8, sizeof(double), __FILE__, __LINE__);
-  verify(16, sizeof(long double), __FILE__, __LINE__);
-  verify(16, sizeof(double long), __FILE__, __LINE__);
+  VERIFY(4, sizeof(float));
+  VERIFY(8, sizeof(double));
+  VERIFY(16, sizeof(long double));
+  VERIFY(16, sizeof(double long));
 
-  verify(4, sizeof(1U), __FILE__, __LINE__);
-  verify(8, sizeof(1L), __FILE__, __LINE__);
-  verify(8, sizeof(1ULL), __FILE__, __LINE__);
-  verify(8, sizeof(1LL), __FILE__, __LINE__);
-  verify(4, sizeof(1u), __FILE__, __LINE__);
-  verify(8, sizeof(1l), __FILE__, __LINE__);
-  verify(8, sizeof(1uLL), __FILE__, __LINE__);
-  verify(8, sizeof(1ll), __FILE__, __LINE__);
+  VERIFY(4, sizeof(1U));
+  VERIFY(8, sizeof(1L));
+  VERIFY(8, sizeof(1ULL));
+  VERIFY(8, sizeof(1LL));
+  VERIFY(4, sizeof(1u));
+  VERIFY(8, sizeof(1l));
+  VERIFY(8, sizeof(1uLL));
+  VERIFY(8, sizeof(1ll));
 
-  verify(255, 0xFF, __FILE__, __LINE__);
-  verify(255, 0xFFLL, __FILE__, __LINE__);
-  verify(4, sizeof(0xFF), __FILE__, __LINE__);
-  verify(8, sizeof(0xFFLL), __FILE__, __LINE__);
-  verify(255, 0xFf, __FILE__, __LINE__);
-  verify(255, 0xfFll, __FILE__, __LINE__);
-  verify(4, sizeof(0xfF), __FILE__, __LINE__);
-  verify(8, sizeof(0xffLL), __FILE__, __LINE__);
+  VERIFY(255, 0xFF);
+  VERIFY(255, 0xFFLL);
+  VERIFY(4, sizeof(0xFF));
+  VERIFY(8, sizeof(0xFFLL));
+  VERIFY(255, 0xFf);
+  VERIFY(255, 0xfFll);
+  VERIFY(4, sizeof(0xfF));
+  VERIFY(8, sizeof(0xffLL));
 
-  verify(10, 012ll, __FILE__, __LINE__);
-  verify(4, sizeof(012U), __FILE__, __LINE__);
-  verify(8, sizeof(012ull), __FILE__, __LINE__);
+  VERIFY(10, 012ll);
+  VERIFY(4, sizeof(012U));
+  VERIFY(8, sizeof(012ull));
 
-  verify(8, sizeof(18446744073709551615U), __FILE__, __LINE__);
-  verify(8, sizeof(0xFFFFFFFFFFFFFFFF), __FILE__, __LINE__);
-  verify(1, 18446744073709551615U == 0xFFFFFFFFFFFFFFFF, __FILE__, __LINE__);
+  VERIFY(8, sizeof(18446744073709551615U));
+  VERIFY(8, sizeof(0xFFFFFFFFFFFFFFFF));
+  VERIFY(1, 18446744073709551615U == 0xFFFFFFFFFFFFFFFF);
 
-  verify(4, sizeof(typedef_global_enum), __FILE__, __LINE__);
-  verify(4, sizeof(enum global_enum), __FILE__, __LINE__);
-  verify(4, sizeof(g), __FILE__, __LINE__);
-  verify(2, g, __FILE__, __LINE__);
-  verify(4, sizeof(X0), __FILE__, __LINE__);
-  verify(4, sizeof(X1), __FILE__, __LINE__);
-  verify(4, sizeof(X2), __FILE__, __LINE__);
+  VERIFY(4, sizeof(typedef_global_enum));
+  VERIFY(4, sizeof(enum global_enum));
+  VERIFY(4, sizeof(g));
+  VERIFY(2, g);
+  VERIFY(4, sizeof(X0));
+  VERIFY(4, sizeof(X1));
+  VERIFY(4, sizeof(X2));
 
-  verify(4, sizeof(typedef_global_unnamed_enum), __FILE__, __LINE__);
-  verify(4, sizeof(A), __FILE__, __LINE__);
-  verify(4, sizeof(B), __FILE__, __LINE__);
-  verify(4, sizeof(C), __FILE__, __LINE__);
-  verify(0, A, __FILE__, __LINE__);
-  verify(1, B, __FILE__, __LINE__);
-  verify(2, C, __FILE__, __LINE__);
+  VERIFY(4, sizeof(typedef_global_unnamed_enum));
+  VERIFY(4, sizeof(A));
+  VERIFY(4, sizeof(B));
+  VERIFY(4, sizeof(C));
+  VERIFY(0, A);
+  VERIFY(1, B);
+  VERIFY(2, C);
 
-  verify(8, sizeof(typedef_global_unnamed_struct), __FILE__, __LINE__);
+  VERIFY(8, sizeof(typedef_global_unnamed_struct));
 
   {
     // named enum
     enum X { X0, X1, X2 };
     enum X a = X1;
-    verify(4, sizeof(a), __FILE__, __LINE__);
-    verify(4, sizeof(enum X), __FILE__, __LINE__);
-    verify(4, sizeof(X0), __FILE__, __LINE__);
-    verify(4, sizeof(X1), __FILE__, __LINE__);
-    verify(4, sizeof(X2), __FILE__, __LINE__);
-    verify(1, a, __FILE__, __LINE__);
-    verify(0, X0, __FILE__, __LINE__);
-    verify(1, X1, __FILE__, __LINE__);
-    verify(2, X2, __FILE__, __LINE__);
+    VERIFY(4, sizeof(a));
+    VERIFY(4, sizeof(enum X));
+    VERIFY(4, sizeof(X0));
+    VERIFY(4, sizeof(X1));
+    VERIFY(4, sizeof(X2));
+    VERIFY(1, a);
+    VERIFY(0, X0);
+    VERIFY(1, X1);
+    VERIFY(2, X2);
   }
   {
     // named enum and vardec at same time
     enum X { X0, X1, X2 } a = X1;
-    verify(4, sizeof(a), __FILE__, __LINE__);
-    verify(4, sizeof(enum X), __FILE__, __LINE__);
-    verify(4, sizeof(X0), __FILE__, __LINE__);
-    verify(4, sizeof(X1), __FILE__, __LINE__);
-    verify(4, sizeof(X2), __FILE__, __LINE__);
-    verify(1, a, __FILE__, __LINE__);
-    verify(0, X0, __FILE__, __LINE__);
-    verify(1, X1, __FILE__, __LINE__);
-    verify(2, X2, __FILE__, __LINE__);
+    VERIFY(4, sizeof(a));
+    VERIFY(4, sizeof(enum X));
+    VERIFY(4, sizeof(X0));
+    VERIFY(4, sizeof(X1));
+    VERIFY(4, sizeof(X2));
+    VERIFY(1, a);
+    VERIFY(0, X0);
+    VERIFY(1, X1);
+    VERIFY(2, X2);
   }
   {
     // shadow
     enum X { X0, X1 };
-    verify(0, X0, __FILE__, __LINE__);
-    verify(1, X1, __FILE__, __LINE__);
+    VERIFY(0, X0);
+    VERIFY(1, X1);
     {
       enum Y { X1, X0 };
-      verify(1, X0, __FILE__, __LINE__);
-      verify(0, X1, __FILE__, __LINE__);
+      VERIFY(1, X0);
+      VERIFY(0, X1);
     }
   }
   {
     // unnamed enum
     enum { X0, X1 };
-    verify(0, X0, __FILE__, __LINE__);
-    verify(1, X1, __FILE__, __LINE__);
+    VERIFY(0, X0);
+    VERIFY(1, X1);
   }
   {
     // unnamed enum and vardec at same time
     enum { X0, X1 } a = X1;
-    verify(0, X0, __FILE__, __LINE__);
-    verify(1, X1, __FILE__, __LINE__);
-    verify(1, a, __FILE__, __LINE__);
+    VERIFY(0, X0);
+    VERIFY(1, X1);
+    VERIFY(1, a);
   }
   {
     // forward declaration
@@ -170,38 +170,38 @@ int main() {
     enum E { A, B };
     enum E a;
     enum E; // declare twice
-    verify(4, sizeof(enum E), __FILE__, __LINE__);
-    verify(4, sizeof(a), __FILE__, __LINE__);
-    verify(4, sizeof(A), __FILE__, __LINE__);
-    verify(4, sizeof(B), __FILE__, __LINE__);
+    VERIFY(4, sizeof(enum E));
+    VERIFY(4, sizeof(a));
+    VERIFY(4, sizeof(A));
+    VERIFY(4, sizeof(B));
   }
   {
     typedef int T;
     T x;
-    verify(4, sizeof(T), __FILE__, __LINE__);
-    verify(4, sizeof(x), __FILE__, __LINE__);
+    VERIFY(4, sizeof(T));
+    VERIFY(4, sizeof(x));
   }
   {
     typedef char T;
     T x;
     typedef T S;
     S y;
-    verify(1, sizeof(T), __FILE__, __LINE__);
-    verify(1, sizeof(x), __FILE__, __LINE__);
-    verify(1, sizeof(S), __FILE__, __LINE__);
-    verify(1, sizeof(y), __FILE__, __LINE__);
+    VERIFY(1, sizeof(T));
+    VERIFY(1, sizeof(x));
+    VERIFY(1, sizeof(S));
+    VERIFY(1, sizeof(y));
   }
   {
     typedef int *int_p, I, int_array3[3];
-    verify(8, sizeof(int_p), __FILE__, __LINE__);
-    verify(4, sizeof(I), __FILE__, __LINE__);
-    verify(12, sizeof(int_array3), __FILE__, __LINE__);
+    VERIFY(8, sizeof(int_p));
+    VERIFY(4, sizeof(I));
+    VERIFY(12, sizeof(int_array3));
   }
   {
     typedef char *char_p, C, char_array3[3];
-    verify(8, sizeof(char_p), __FILE__, __LINE__);
-    verify(1, sizeof(C), __FILE__, __LINE__);
-    verify(3, sizeof(char_array3), __FILE__, __LINE__);
+    VERIFY(8, sizeof(char_p));
+    VERIFY(1, sizeof(C));
+    VERIFY(3, sizeof(char_array3));
   }
   {
     // typdedef struct
@@ -212,9 +212,9 @@ int main() {
     };
     typedef struct S S; // twice
     S x;
-    verify(8, sizeof(S), __FILE__, __LINE__);
-    verify(8, sizeof(struct S), __FILE__, __LINE__);
-    verify(8, sizeof(x), __FILE__, __LINE__);
+    VERIFY(8, sizeof(S));
+    VERIFY(8, sizeof(struct S));
+    VERIFY(8, sizeof(x));
   }
   {
     // typdedef and struct definition at same time
@@ -222,9 +222,9 @@ int main() {
       int a;
     } S;
     S x;
-    verify(4, sizeof(S), __FILE__, __LINE__);
-    verify(4, sizeof(struct S), __FILE__, __LINE__);
-    verify(4, sizeof(x), __FILE__, __LINE__);
+    VERIFY(4, sizeof(S));
+    VERIFY(4, sizeof(struct S));
+    VERIFY(4, sizeof(x));
   }
   {
     // typdedef enum
@@ -232,49 +232,49 @@ int main() {
     enum T { A, B, C };
     typedef enum T T; // twice
     T x;
-    verify(4, sizeof(T), __FILE__, __LINE__);
-    verify(4, sizeof(enum T), __FILE__, __LINE__);
-    verify(4, sizeof(x), __FILE__, __LINE__);
-    verify(4, sizeof(A), __FILE__, __LINE__);
-    verify(4, sizeof(B), __FILE__, __LINE__);
-    verify(4, sizeof(C), __FILE__, __LINE__);
-    verify(0, A, __FILE__, __LINE__);
-    verify(1, B, __FILE__, __LINE__);
-    verify(2, C, __FILE__, __LINE__);
+    VERIFY(4, sizeof(T));
+    VERIFY(4, sizeof(enum T));
+    VERIFY(4, sizeof(x));
+    VERIFY(4, sizeof(A));
+    VERIFY(4, sizeof(B));
+    VERIFY(4, sizeof(C));
+    VERIFY(0, A);
+    VERIFY(1, B);
+    VERIFY(2, C);
   }
   {
     // typdedef and enum definition at same time
     typedef enum T { A, B, C } T;
     T x;
-    verify(4, sizeof(T), __FILE__, __LINE__);
-    verify(4, sizeof(enum T), __FILE__, __LINE__);
-    verify(4, sizeof(x), __FILE__, __LINE__);
-    verify(4, sizeof(A), __FILE__, __LINE__);
-    verify(4, sizeof(B), __FILE__, __LINE__);
-    verify(4, sizeof(C), __FILE__, __LINE__);
-    verify(0, A, __FILE__, __LINE__);
-    verify(1, B, __FILE__, __LINE__);
-    verify(2, C, __FILE__, __LINE__);
+    VERIFY(4, sizeof(T));
+    VERIFY(4, sizeof(enum T));
+    VERIFY(4, sizeof(x));
+    VERIFY(4, sizeof(A));
+    VERIFY(4, sizeof(B));
+    VERIFY(4, sizeof(C));
+    VERIFY(0, A);
+    VERIFY(1, B);
+    VERIFY(2, C);
   }
   {
     enum T { A, B = 5, C, D = 4, E };
-    verify(0, A, __FILE__, __LINE__);
-    verify(5, B, __FILE__, __LINE__);
-    verify(6, C, __FILE__, __LINE__);
-    verify(4, D, __FILE__, __LINE__);
-    verify(5, E, __FILE__, __LINE__);
+    VERIFY(0, A);
+    VERIFY(5, B);
+    VERIFY(6, C);
+    VERIFY(4, D);
+    VERIFY(5, E);
   }
   {
     _Bool x = 12;
-    verify(1, x, __FILE__, __LINE__);
+    VERIFY(1, x);
     x = 0;
-    verify(0, x, __FILE__, __LINE__);
+    VERIFY(0, x);
     x = 1;
-    verify(1, x, __FILE__, __LINE__);
+    VERIFY(1, x);
     int a = 123;
-    verify(1, (_Bool)a, __FILE__, __LINE__);
+    VERIFY(1, (_Bool)a);
     a = 0;
-    verify(0, (_Bool)a, __FILE__, __LINE__);
+    VERIFY(0, (_Bool)a);
   }
   {
     int a = 12;
@@ -282,10 +282,10 @@ int main() {
     (void)(void)a;
   }
   {
-    verify(0x0, '\x0', __FILE__, __LINE__);
-    verify(0xb, '\xb', __FILE__, __LINE__);
-    verify(0x7a, '\x7a', __FILE__, __LINE__);
-    verify(-1, '\xff', __FILE__, __LINE__);
+    VERIFY(0x0, '\x0');
+    VERIFY(0xb, '\xb');
+    VERIFY(0x7a, '\x7a');
+    VERIFY(-1, '\xff');
   }
   return 0;
 }

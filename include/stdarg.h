@@ -14,5 +14,7 @@ typedef va_list __gnuc_va_list; // for compatibility
   do {                                                                         \
     *(ap) = *(__va_list *)__hidden_va_area__;                                  \
   } while (0)
+#define va_end(ap)
+#define va_copy(dest, src) ((dest)[0] = (src)[0])
 
 #endif

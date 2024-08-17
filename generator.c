@@ -932,9 +932,9 @@ void gen_func(Function *func) {
   // 3. rbp (8byte) is pushed in the prologue.
   rsp_shift = 0;
 
+  int count_gp = 0;
+  int count_fp = 0;
   {
-    int count_gp = 0;
-    int count_fp = 0;
     int ofs = 16; // offset to access arguments passed by stack memory.
                   // This is initialized by 16,
                   // because of "call" and "push rbp" in the prologue.
@@ -1029,14 +1029,14 @@ void gen_func(Function *func) {
 
   if (func->hidden_va_area) {
     // write variadic argument information to hidden_va_area
-    int num_gp = func->params->size;
     int ofs = func->hidden_va_area->offset;
 
     // va_list
     comment(NULL, "va_list: %.*s", func->ident->len, func->ident->str);
-    writeline("  mov dword ptr [rbp-%d], %d", ofs, num_gp * 8); // gp_offset
-    writeline("  mov dword ptr [rbp-%d], 0", ofs - 4); // fp_offset (TODO)
-    writeline("  movq [rbp-%d], 0", ofs - 8);    // overflow_arg_area (TODO)
+    writeline("  mov dword ptr [rbp-%d], %d", ofs, count_gp * 8); // gp_offset
+    writeline("  mov dword ptr [rbp-%d], %d", ofs - 4,
+              6 * 8 + count_fp + 16);            // fp_offset
+    writeline("  movq [rbp-%d], 16", ofs - 8);   // overflow_arg_area
     writeline("  movq [rbp-%d], rbp", ofs - 16); // reg_save_area = rbp
     writeline("  subq [rbp-%d], %d", ofs - 16,
               ofs - 24); // reg_save_area -= ofs - 24

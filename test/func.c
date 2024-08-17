@@ -429,6 +429,33 @@ S21 pass_struct17(S21 s21) {
   return ret;
 }
 
+S17 pass_struct18(S17 s17) {
+  S17 ret = {{s17.x[1], s17.x[0]}};
+  return ret;
+}
+
+S17 pass_struct19(double a, double b, double c, double d, double e, double f,
+                  double g, S17 s17) {
+  S17 ret = {{s17.x[1], s17.x[0]}};
+  return ret;
+}
+
+S17 pass_struct20(double a, double b, double c, double d, double e, double f,
+                  double g, double h, S17 s17) {
+  S17 ret = {{s17.x[1], s17.x[0]}};
+  return ret;
+}
+
+S19 pass_struct21(int a, int b, int c, int d, int e, S19 s19) {
+  S19 ret = {{s19.x[1], s19.x[0]}};
+  return ret;
+}
+
+S19 pass_struct22(int a, int b, int c, int d, int e, int f, S19 s19) {
+  S19 ret = {{s19.x[1], s19.x[0]}};
+  return ret;
+}
+
 int pass_union1x(U1 u1) { return u1.x[0] * 2 - u1.x[1] + u1.x[2] * 3; }
 
 double pass_union1y(U1 u1) { return u1.y; }

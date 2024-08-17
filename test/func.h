@@ -236,6 +236,13 @@ S16 pass_struct14(S16 s16);
 S20 pass_struct15(S20 s20);
 long long pass_struct16(S21 s21);
 S21 pass_struct17(S21 s21);
+S17 pass_struct18(S17 s17);
+S17 pass_struct19(double a, double b, double c, double d, double e, double f,
+                  double g, S17 s17);
+S17 pass_struct20(double a, double b, double c, double d, double e, double f,
+                  double g, double h, S17 s17);
+S19 pass_struct21(int a, int b, int c, int d, int e, S19 s19);
+S19 pass_struct22(int a, int b, int c, int d, int e, int f, S19 s19);
 int pass_union1x(U1 u1);
 double pass_union1y(U1 u1);
 short pass_union1z(U1 u1);

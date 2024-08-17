@@ -463,7 +463,7 @@ void gen_call(Node *node) {
               use_xmm(d->type, 0, 8) +
               (d->type->size > 8 && use_xmm(d->type, 8, 16) ? 1 : 0);
           int required_gp = (d->type->size > 8 ? 2 : 1) - required_fp;
-          if (count_gp + required_gp > 7 || count_fp + required_fp > 9) {
+          if (count_gp + required_gp > 6 || count_fp + required_fp > 8) {
             vector_push(args_on_stack, &d);
             shift_by_args += iceil(d->type->size, 8);
           } else {

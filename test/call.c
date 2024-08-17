@@ -487,5 +487,39 @@ int main() {
     u5.y = 19;
     verify(19, pass_union5y(u5), __FILE__, __LINE__);
   }
+  {
+    S17 s17;
+    s17.x[0] = 3.33;
+    s17.x[1] = 4.44;
+    S17 ret = pass_struct18(s17);
+    verify(1, ret.x[0] == 4.44, __FILE__, __LINE__);
+    verify(1, ret.x[1] == 3.33, __FILE__, __LINE__);
+
+    s17.x[0] = 5.55;
+    s17.x[1] = 6.66;
+    ret = pass_struct19(0, 1, 2, 3, 4, 5, 6, s17);
+    verify(1, ret.x[0] == 6.66, __FILE__, __LINE__);
+    verify(1, ret.x[1] == 5.55, __FILE__, __LINE__);
+
+    s17.x[0] = 7.77;
+    s17.x[1] = 8.88;
+    ret = pass_struct20(0, 1, 2, 3, 4, 5, 6, 7, s17);
+    verify(1, ret.x[0] == 8.88, __FILE__, __LINE__);
+    verify(1, ret.x[1] == 7.77, __FILE__, __LINE__);
+  }
+  {
+    S19 s19;
+    s19.x[0] = 3;
+    s19.x[1] = 4;
+    S19 ret = pass_struct21(1, 2, 3, 4, 5, s19);
+    verify(4, ret.x[0], __FILE__, __LINE__);
+    verify(3, ret.x[1], __FILE__, __LINE__);
+
+    s19.x[0] = 5;
+    s19.x[1] = 6;
+    ret = pass_struct22(1, 2, 3, 4, 5, 6, s19);
+    verify(6, ret.x[0], __FILE__, __LINE__);
+    verify(5, ret.x[1], __FILE__, __LINE__);
+  }
   return 0;
 }

@@ -1763,6 +1763,18 @@ void gen_comparison_operator(Node *node) {
   assert(false);
 }
 
+void gen_cond(Node *node) {
+  assert(node->condition->type->kind == TYPE_BOOL);
+  gen(node->condition);
+  writeline("  cmp al, 0");
+  writeline("  je .Lcond_rhs%d", node->label_index);
+  gen(node->lhs);
+  writeline("  jmp .Lend%d", node->label_index);
+  writeline(".Lcond_rhs%d:", node->label_index);
+  gen(node->rhs);
+  writeline(".Lend%d:", node->label_index);
+}
+
 void gen(Node *node) {
   int shift_before = rsp_shift;
   switch (node->kind) {
@@ -1878,15 +1890,7 @@ void gen(Node *node) {
     return;
   case ND_COND:
     comment(node->token, "ND_COND %d", node->label_index);
-    assert(node->condition->type->kind == TYPE_BOOL);
-    gen(node->condition);
-    writeline("  cmp al, 0");
-    writeline("  je .Lcond_rhs%d", node->label_index);
-    gen(node->lhs);
-    writeline("  jmp .Lend%d", node->label_index);
-    writeline(".Lcond_rhs%d:", node->label_index);
-    gen(node->rhs);
-    writeline(".Lend%d:", node->label_index);
+    gen_cond(node);
     assert(shift_before == rsp_shift);
     return;
   case ND_ADDR:

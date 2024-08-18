@@ -226,5 +226,47 @@ int main() {
       verify(-2, y);
     }
   }
+  {
+    int x = 7, y = 2;
+    verify(14, x * y);
+    verify(9, x + y);
+    verify(5, x - y);
+    verify(3, x / y);
+    verify(1, x % y);
+    verify(28, x << y);
+    verify(1, x >> y);
+    verify(-8, ~x);
+    verify(2, x & y);
+    verify(7, x | y);
+    verify(15, x | 8);
+    verify(5, x ^ y);
+    verify(0, !x);
+    verify(1, x && y);
+    verify(0, !x && y);
+    verify(1, x || y);
+    verify(1, !x || y);
+    verify(0, !x || !y);
+  }
+  {
+    short x = 7, y = 2;
+    verify(14, x * y);
+    verify(9, x + y);
+    verify(5, x - y);
+    verify(3, x / y);
+    verify(1, x % y);
+    verify(28, x << y);
+    verify(1, x >> y);
+    verify(-8, ~x);
+    verify(2, x & y);
+    verify(7, x | y);
+    verify(15, x | 8);
+    verify(5, x ^ y);
+    verify(0, !x);
+    verify(1, x && y);
+    verify(0, !x && y);
+    verify(1, x || y);
+    verify(1, !x || y);
+    verify(0, !x || !y);
+  }
   return 0;
 }

@@ -18,6 +18,7 @@ int *p_num_addr = 3 + &a;
 int *p_num = 1;
 int *p_array[][2] = {{&a + 1, &a + 2}, {&a + 3, &a + 4}};
 int **pp_array[][2] = {{&p + 1, &p + 2}, {&p + 3, &p + 4}};
+long long global_pointer_sub = &a - &a;
 
 int main() {
   verify(&a, p);
@@ -46,6 +47,8 @@ int main() {
   verify(12, **(pp_array[0][1] - 2));
   verify(12, **(pp_array[1][0] - 3));
   verify(12, **(pp_array[1][1] - 4));
+
+  verify(0, global_pointer_sub);
 
   {
     int x = 3;

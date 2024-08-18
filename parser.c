@@ -1969,9 +1969,9 @@ Node *unary(Token **nx) {
       type = unary(nx)->type;
     }
     if (type->kind == TYPE_VOID)
-      error(&tok->pos, "invalud sizeof operation for void type");
+      error(&tok->pos, "invalid sizeof operation for void type");
     if (type->size < 0)
-      error(&tok->pos, "invalud sizeof operation for incomplete type");
+      error(&tok->pos, "invalid sizeof operation for incomplete type");
     return new_node_num_ulong(tok, type->size);
   }
   if (consume(TK_INC, nx)) {

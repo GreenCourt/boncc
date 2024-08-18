@@ -128,6 +128,64 @@ static void pop_xmm(int n, TypeKind kind) {
   assert(rsp_shift >= 0);
 }
 
+void gen_constexpr(Node *node) {
+  assert(node->num);
+  assert(node->is_constant_expr);
+
+  if (is_float(node->type)) {
+    FloatLiteral *f = calloc(1, sizeof(FloatLiteral));
+    f->num = node->num;
+    f->index = float_literal_index++;
+    vector_push(float_literals, &f);
+
+    if (node->type->kind == TYPE_FLOAT)
+      writeline("  movss xmm0, .float%d[rip] # const expr", f->index);
+    else if (node->type->kind == TYPE_DOUBLE)
+      writeline("  movsd xmm0, .float%d[rip] # const expr", f->index);
+    else if (node->type->kind == TYPE_LDOUBLE)
+      error(NULL, "long double is currently not supported");
+    else
+      assert(false);
+    return;
+  }
+
+  switch (node->type->kind) {
+  case TYPE_LONG:
+    writeline("  mov rax, %lld # const expr", number2long(node->num));
+    break;
+  case TYPE_ULONG:
+  case TYPE_PTR:
+    writeline("  mov rax, %llu # const expr", number2ulong(node->num));
+    break;
+  case TYPE_INT:
+  case TYPE_ENUM:
+    writeline("  mov rax, %d # const expr", number2int(node->num));
+    break;
+  case TYPE_UINT:
+    writeline("  mov rax, %u # const expr", number2uint(node->num));
+    break;
+  case TYPE_SHORT:
+    writeline("  mov rax, %d # const expr", number2short(node->num));
+    break;
+  case TYPE_USHORT:
+    writeline("  mov rax, %u # const expr", number2ushort(node->num));
+    break;
+  case TYPE_CHAR:
+    writeline("  mov rax, %d # const expr", number2char(node->num));
+    break;
+  case TYPE_UCHAR:
+    writeline("  mov rax, %u # const expr", number2uchar(node->num));
+    break;
+  case TYPE_BOOL:
+    writeline("  mov rax, %d # const expr", number2bool(node->num));
+    break;
+  case TYPE_VOID:
+    break;
+  default:
+    assert(false);
+  }
+}
+
 void gen_address(Node *node) {
   // write address to rax
   switch (node->kind) {
@@ -1077,6 +1135,11 @@ void gen_cast(Node *node) {
   assert(is_scalar(from));
   assert(is_scalar(to) || to->kind == TYPE_VOID);
 
+  if (node->is_constant_expr) {
+    gen_constexpr(node);
+    return;
+  }
+
   gen(node->lhs);
   if (from->kind == to->kind)
     return;
@@ -1367,64 +1430,15 @@ void gen_cast(Node *node) {
   assert(false);
 }
 
-void gen_number(Node *node) {
-  assert(node->kind == ND_NUM);
-  assert(node->num);
-
-  if (is_float(node->type)) {
-    FloatLiteral *f = calloc(1, sizeof(FloatLiteral));
-    f->num = node->num;
-    f->index = float_literal_index++;
-    vector_push(float_literals, &f);
-
-    if (node->type->kind == TYPE_FLOAT)
-      writeline("  movss xmm0, .float%d[rip]", f->index);
-    else if (node->type->kind == TYPE_DOUBLE)
-      writeline("  movsd xmm0, .float%d[rip]", f->index);
-    else if (node->type->kind == TYPE_LDOUBLE)
-      error(NULL, "long double is currently not supported");
-    else
-      assert(false);
-    return;
-  }
-
-  switch (node->type->kind) {
-  case TYPE_LONG:
-    writeline("  mov rax, %lld", number2long(node->num));
-    break;
-  case TYPE_ULONG:
-  case TYPE_PTR:
-    writeline("  mov rax, %llu", number2ulong(node->num));
-    break;
-  case TYPE_INT:
-    writeline("  mov rax, %d", number2int(node->num));
-    break;
-  case TYPE_UINT:
-    writeline("  mov rax, %u", number2uint(node->num));
-    break;
-  case TYPE_SHORT:
-    writeline("  mov rax, %d", number2short(node->num));
-    break;
-  case TYPE_USHORT:
-    writeline("  mov rax, %u", number2ushort(node->num));
-    break;
-  case TYPE_CHAR:
-    writeline("  mov rax, %d", number2char(node->num));
-    break;
-  case TYPE_UCHAR:
-    writeline("  mov rax, %u", number2uchar(node->num));
-    break;
-  case TYPE_BOOL:
-    writeline("  mov rax, %d", number2bool(node->num));
-    break;
-  default:
-    assert(false);
-  }
-}
-
 void gen_numerical_operator(Node *node) {
   assert(same_type(node->type, node->lhs->type));
   assert(same_type(node->type, node->rhs->type));
+
+  if (node->is_constant_expr) {
+    gen_constexpr(node);
+    return;
+  }
+
   Type *operand_type = node->type;
 
   if (is_float(operand_type)) {
@@ -1562,6 +1576,11 @@ void gen_logical_operator(Node *node) {
   assert(node->type->kind == TYPE_BOOL);
   assert(node->lhs->type->kind == TYPE_BOOL);
 
+  if (node->is_constant_expr) {
+    gen_constexpr(node);
+    return;
+  }
+
   if (node->kind == ND_LOGNOT) {
     gen(node->lhs);
     writeline("  cmp al, 0");
@@ -1610,6 +1629,11 @@ void gen_bit_operator(Node *node) {
   assert(is_integer(node->lhs->type));
   assert(same_type(node->type, node->lhs->type));
 
+  if (node->is_constant_expr) {
+    gen_constexpr(node);
+    return;
+  }
+
   if (node->kind == ND_BITNOT) {
     gen(node->lhs);
     writeline("  not rax");
@@ -1652,6 +1676,12 @@ void gen_bit_operator(Node *node) {
 void gen_comparison_operator(Node *node) {
   assert(node->type->kind == TYPE_BOOL);
   assert(same_type(node->lhs->type, node->rhs->type));
+
+  if (node->is_constant_expr) {
+    gen_constexpr(node);
+    return;
+  }
+
   Type *operand_type = node->lhs->type;
 
   if (is_float(operand_type)) {
@@ -1765,6 +1795,12 @@ void gen_comparison_operator(Node *node) {
 
 void gen_cond(Node *node) {
   assert(node->condition->type->kind == TYPE_BOOL);
+
+  if (node->is_constant_expr) {
+    gen_constexpr(node);
+    return;
+  }
+
   gen(node->condition);
   writeline("  cmp al, 0");
   writeline("  je .Lcond_rhs%d", node->label_index);
@@ -1870,7 +1906,7 @@ void gen(Node *node) {
     return;
   case ND_NUM:
     comment(node->token, "ND_NUM %s", type_text(node->type->kind));
-    gen_number(node);
+    gen_constexpr(node);
     assert(shift_before == rsp_shift);
     return;
   case ND_VAR:

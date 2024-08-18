@@ -31,6 +31,7 @@ int number2int(Number *num) {
   case TYPE_CHAR:
   case TYPE_SHORT:
   case TYPE_INT:
+  case TYPE_ENUM:
   case TYPE_LONG:
     return (int)num->value.long_value;
   case TYPE_UCHAR:
@@ -59,6 +60,7 @@ unsigned int number2uint(Number *num) {
   case TYPE_CHAR:
   case TYPE_SHORT:
   case TYPE_INT:
+  case TYPE_ENUM:
   case TYPE_LONG:
     return (unsigned int)num->value.long_value;
   case TYPE_UCHAR:
@@ -87,6 +89,7 @@ long long number2long(Number *num) {
   case TYPE_CHAR:
   case TYPE_SHORT:
   case TYPE_INT:
+  case TYPE_ENUM:
   case TYPE_LONG:
     return (long long)num->value.long_value;
   case TYPE_UCHAR:
@@ -115,6 +118,7 @@ unsigned long long number2ulong(Number *num) {
   case TYPE_CHAR:
   case TYPE_SHORT:
   case TYPE_INT:
+  case TYPE_ENUM:
   case TYPE_LONG:
     return (unsigned long long)num->value.long_value;
   case TYPE_UCHAR:
@@ -143,6 +147,7 @@ short number2short(Number *num) {
   case TYPE_CHAR:
   case TYPE_SHORT:
   case TYPE_INT:
+  case TYPE_ENUM:
   case TYPE_LONG:
     return (short)num->value.long_value;
   case TYPE_UCHAR:
@@ -171,6 +176,7 @@ unsigned short number2ushort(Number *num) {
   case TYPE_CHAR:
   case TYPE_SHORT:
   case TYPE_INT:
+  case TYPE_ENUM:
   case TYPE_LONG:
     return (unsigned short)num->value.long_value;
   case TYPE_UCHAR:
@@ -199,6 +205,7 @@ char number2char(Number *num) {
   case TYPE_CHAR:
   case TYPE_SHORT:
   case TYPE_INT:
+  case TYPE_ENUM:
   case TYPE_LONG:
     return (char)num->value.long_value;
   case TYPE_UCHAR:
@@ -227,6 +234,7 @@ unsigned char number2uchar(Number *num) {
   case TYPE_CHAR:
   case TYPE_SHORT:
   case TYPE_INT:
+  case TYPE_ENUM:
   case TYPE_LONG:
     return (unsigned char)num->value.long_value;
   case TYPE_UCHAR:
@@ -255,6 +263,7 @@ bool number2bool(Number *num) {
   case TYPE_CHAR:
   case TYPE_SHORT:
   case TYPE_INT:
+  case TYPE_ENUM:
   case TYPE_LONG:
     return (bool)num->value.long_value;
   case TYPE_UCHAR:
@@ -283,6 +292,7 @@ float number2float(Number *num) {
   case TYPE_CHAR:
   case TYPE_SHORT:
   case TYPE_INT:
+  case TYPE_ENUM:
   case TYPE_LONG:
     return (float)num->value.long_value;
   case TYPE_UCHAR:
@@ -311,6 +321,7 @@ double number2double(Number *num) {
   case TYPE_CHAR:
   case TYPE_SHORT:
   case TYPE_INT:
+  case TYPE_ENUM:
   case TYPE_LONG:
     return (double)num->value.long_value;
   case TYPE_UCHAR:
@@ -346,6 +357,7 @@ Number *number_add(Number *l, Number *r) {
     ret->value.long_value = number2short(l) + number2short(r);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l) + number2int(r);
     break;
   case TYPE_LONG:
@@ -396,6 +408,7 @@ Number *number_sub(Number *l, Number *r) {
     ret->value.long_value = number2short(l) - number2short(r);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l) - number2int(r);
     break;
   case TYPE_LONG:
@@ -444,6 +457,7 @@ Number *number_mul(Number *l, Number *r) {
     ret->value.long_value = number2short(l) * number2short(r);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l) * number2int(r);
     break;
   case TYPE_LONG:
@@ -496,6 +510,7 @@ Number *number_div(Number *l, Number *r) {
     ret->value.long_value = number2short(l) / number2short(r);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l) / number2int(r);
     break;
   case TYPE_LONG:
@@ -547,6 +562,7 @@ Number *number_mod(Number *l, Number *r) {
     ret->value.long_value = number2short(l) % number2short(r);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l) % number2int(r);
     break;
   case TYPE_LONG:
@@ -586,6 +602,7 @@ Number *number_bitxor(Number *l, Number *r) {
     ret->value.long_value = number2short(l) ^ number2short(r);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l) ^ number2int(r);
     break;
   case TYPE_LONG:
@@ -625,6 +642,7 @@ Number *number_bitor(Number *l, Number *r) {
     ret->value.long_value = number2short(l) | number2short(r);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l) | number2int(r);
     break;
   case TYPE_LONG:
@@ -664,6 +682,7 @@ Number *number_bitand(Number *l, Number *r) {
     ret->value.long_value = number2short(l) & number2short(r);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l) & number2int(r);
     break;
   case TYPE_LONG:
@@ -703,6 +722,7 @@ Number *number_bitnot(Number *l) {
     ret->value.long_value = ~number2short(l);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = ~number2int(l);
     break;
   case TYPE_LONG:
@@ -742,6 +762,7 @@ Number *number_lshift(Number *l, Number *r) {
     ret->value.long_value = number2short(l) << number2short(r);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l) << number2int(r);
     break;
   case TYPE_LONG:
@@ -781,6 +802,7 @@ Number *number_rshift(Number *l, Number *r) {
     ret->value.long_value = number2short(l) >> number2short(r);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l) >> number2int(r);
     break;
   case TYPE_LONG:
@@ -823,6 +845,7 @@ Number *number_eq(Number *l, Number *r) {
     ret->value.long_value = number2short(l) == number2short(r);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l) == number2int(r);
     break;
   case TYPE_LONG:
@@ -874,6 +897,7 @@ Number *number_ne(Number *l, Number *r) {
     ret->value.long_value = number2short(l) != number2short(r);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l) != number2int(r);
     break;
   case TYPE_LONG:
@@ -925,6 +949,7 @@ Number *number_lt(Number *l, Number *r) {
     ret->value.long_value = number2short(l) < number2short(r);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l) < number2int(r);
     break;
   case TYPE_LONG:
@@ -976,6 +1001,7 @@ Number *number_le(Number *l, Number *r) {
     ret->value.long_value = number2short(l) <= number2short(r);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l) <= number2int(r);
     break;
   case TYPE_LONG:

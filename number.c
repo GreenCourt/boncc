@@ -10,6 +10,7 @@ Number *new_number_int(int val) {
 }
 
 bool is_integer_zero(Number *num) {
+  assert(num);
   if (!is_integer(num->type) && num->type->kind != TYPE_PTR)
     return false;
 
@@ -24,6 +25,7 @@ bool is_integer_zero(Number *num) {
 }
 
 int number2int(Number *num) {
+  assert(num);
   switch (num->type->kind) {
   case TYPE_BOOL:
   case TYPE_CHAR:
@@ -51,6 +53,7 @@ int number2int(Number *num) {
 }
 
 unsigned int number2uint(Number *num) {
+  assert(num);
   switch (num->type->kind) {
   case TYPE_BOOL:
   case TYPE_CHAR:
@@ -78,6 +81,7 @@ unsigned int number2uint(Number *num) {
 }
 
 long long number2long(Number *num) {
+  assert(num);
   switch (num->type->kind) {
   case TYPE_BOOL:
   case TYPE_CHAR:
@@ -105,6 +109,7 @@ long long number2long(Number *num) {
 }
 
 unsigned long long number2ulong(Number *num) {
+  assert(num);
   switch (num->type->kind) {
   case TYPE_BOOL:
   case TYPE_CHAR:
@@ -132,6 +137,7 @@ unsigned long long number2ulong(Number *num) {
 }
 
 short number2short(Number *num) {
+  assert(num);
   switch (num->type->kind) {
   case TYPE_BOOL:
   case TYPE_CHAR:
@@ -159,6 +165,7 @@ short number2short(Number *num) {
 }
 
 unsigned short number2ushort(Number *num) {
+  assert(num);
   switch (num->type->kind) {
   case TYPE_BOOL:
   case TYPE_CHAR:
@@ -186,6 +193,7 @@ unsigned short number2ushort(Number *num) {
 }
 
 char number2char(Number *num) {
+  assert(num);
   switch (num->type->kind) {
   case TYPE_BOOL:
   case TYPE_CHAR:
@@ -213,6 +221,7 @@ char number2char(Number *num) {
 }
 
 unsigned char number2uchar(Number *num) {
+  assert(num);
   switch (num->type->kind) {
   case TYPE_BOOL:
   case TYPE_CHAR:
@@ -240,6 +249,7 @@ unsigned char number2uchar(Number *num) {
 }
 
 bool number2bool(Number *num) {
+  assert(num);
   switch (num->type->kind) {
   case TYPE_BOOL:
   case TYPE_CHAR:
@@ -267,6 +277,7 @@ bool number2bool(Number *num) {
 }
 
 float number2float(Number *num) {
+  assert(num);
   switch (num->type->kind) {
   case TYPE_BOOL:
   case TYPE_CHAR:
@@ -294,6 +305,7 @@ float number2float(Number *num) {
 }
 
 double number2double(Number *num) {
+  assert(num);
   switch (num->type->kind) {
   case TYPE_BOOL:
   case TYPE_CHAR:
@@ -321,6 +333,7 @@ double number2double(Number *num) {
 }
 
 Number *number_add(Number *l, Number *r) {
+  assert(l && r);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = implicit_type_conversion(l->type, r->type);
 
@@ -368,6 +381,7 @@ Number *number_add(Number *l, Number *r) {
 }
 
 Number *number_sub(Number *l, Number *r) {
+  assert(l && r);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = (l->type->kind == TYPE_PTR && r->type->kind == TYPE_PTR)
                   ? base_type(TYPE_ULONG)
@@ -417,6 +431,7 @@ Number *number_sub(Number *l, Number *r) {
 }
 
 Number *number_mul(Number *l, Number *r) {
+  assert(l && r);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = implicit_type_conversion(l->type, r->type);
 
@@ -464,6 +479,7 @@ Number *number_mul(Number *l, Number *r) {
 }
 
 Number *number_div(Number *l, Number *r) {
+  assert(l && r);
   assert(l->type->kind != TYPE_PTR && r->type->kind != TYPE_PTR);
   assert(is_float(implicit_type_conversion(l->type, r->type)) ||
          !is_integer_zero(r));
@@ -515,6 +531,7 @@ Number *number_div(Number *l, Number *r) {
 }
 
 Number *number_mod(Number *l, Number *r) {
+  assert(l && r);
   assert(is_integer(l->type) && is_integer(r->type));
   assert(!is_integer_zero(r));
 
@@ -556,6 +573,7 @@ Number *number_mod(Number *l, Number *r) {
 }
 
 Number *number_bitxor(Number *l, Number *r) {
+  assert(l && r);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = implicit_type_conversion(l->type, r->type);
 
@@ -594,6 +612,7 @@ Number *number_bitxor(Number *l, Number *r) {
 }
 
 Number *number_bitor(Number *l, Number *r) {
+  assert(l && r);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = implicit_type_conversion(l->type, r->type);
 
@@ -632,6 +651,7 @@ Number *number_bitor(Number *l, Number *r) {
 }
 
 Number *number_bitand(Number *l, Number *r) {
+  assert(l && r);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = implicit_type_conversion(l->type, r->type);
 
@@ -670,6 +690,7 @@ Number *number_bitand(Number *l, Number *r) {
 }
 
 Number *number_bitnot(Number *l) {
+  assert(l);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = l->type;
 
@@ -708,6 +729,7 @@ Number *number_bitnot(Number *l) {
 }
 
 Number *number_lshift(Number *l, Number *r) {
+  assert(l && r);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = implicit_type_conversion(l->type, r->type);
 
@@ -746,6 +768,7 @@ Number *number_lshift(Number *l, Number *r) {
 }
 
 Number *number_rshift(Number *l, Number *r) {
+  assert(l && r);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = implicit_type_conversion(l->type, r->type);
 
@@ -784,6 +807,7 @@ Number *number_rshift(Number *l, Number *r) {
 }
 
 Number *number_eq(Number *l, Number *r) {
+  assert(l && r);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = base_type(TYPE_BOOL);
 
@@ -834,6 +858,7 @@ Number *number_eq(Number *l, Number *r) {
 }
 
 Number *number_ne(Number *l, Number *r) {
+  assert(l && r);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = base_type(TYPE_BOOL);
 
@@ -884,6 +909,7 @@ Number *number_ne(Number *l, Number *r) {
 }
 
 Number *number_lt(Number *l, Number *r) {
+  assert(l && r);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = base_type(TYPE_BOOL);
 
@@ -934,6 +960,7 @@ Number *number_lt(Number *l, Number *r) {
 }
 
 Number *number_le(Number *l, Number *r) {
+  assert(l && r);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = base_type(TYPE_BOOL);
 
@@ -984,10 +1011,12 @@ Number *number_le(Number *l, Number *r) {
 }
 
 Number *number_cond(Number *cond, Number *l, Number *r) {
+  assert(cond && l && r);
   return number2bool(cond) ? l : r;
 }
 
 Number *number_lognot(Number *l) {
+  assert(l);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = base_type(TYPE_BOOL);
   ret->value.long_value = !number2bool(l);
@@ -995,6 +1024,7 @@ Number *number_lognot(Number *l) {
 }
 
 Number *number_logand(Number *l, Number *r) {
+  assert(l && r);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = base_type(TYPE_BOOL);
   ret->value.long_value = number2bool(l) && number2bool(r);
@@ -1002,6 +1032,7 @@ Number *number_logand(Number *l, Number *r) {
 }
 
 Number *number_logor(Number *l, Number *r) {
+  assert(l && r);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = base_type(TYPE_BOOL);
   ret->value.long_value = number2bool(l) || number2bool(r);
@@ -1009,6 +1040,7 @@ Number *number_logor(Number *l, Number *r) {
 }
 
 Number *number_cast(Number *l, Type *type) {
+  assert(l);
   Number *ret = calloc(1, sizeof(Number));
   ret->type = type;
 
@@ -1023,6 +1055,7 @@ Number *number_cast(Number *l, Type *type) {
     ret->value.long_value = number2short(l);
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     ret->value.long_value = number2int(l);
     break;
   case TYPE_LONG:
@@ -1049,6 +1082,9 @@ Number *number_cast(Number *l, Type *type) {
     break;
   case TYPE_LDOUBLE:
     error(NULL, "long double is currently not supported");
+    break;
+  case TYPE_VOID:
+    // nothing to do
     break;
   default:
     assert(false);

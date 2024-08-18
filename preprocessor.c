@@ -591,10 +591,12 @@ Token *process_if(Token *prev) { // #if and #elif
     t->next = zero;
   }
 
-  Number *value = eval(expr(&directive->next));
+  Node *ex = expr(&directive->next);
+  if (!ex->is_constant_expr)
+    error(&ex->token->pos, "expr must be a constant.");
   Token *before_hash = find_elif_or_else_or_endif(prev);
 
-  if (number2bool(value)) {
+  if (number2bool(ex->num)) {
     Token *last = before_hash;
     while (!match_directive(before_hash->next, "endif"))
       before_hash = find_elif_or_else_or_endif(before_hash->next);

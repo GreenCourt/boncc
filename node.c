@@ -2,6 +2,9 @@
 #include <assert.h>
 #include <stdlib.h>
 
+static Number *eval(Node *node);
+Variable *is_const_var_addr(Node *node);
+
 Node *new_node_nop() {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_NOP;
@@ -17,6 +20,7 @@ Node *new_node_num_int(Token *tok, int val) {
   node->num = num;
   node->type = num->type;
   node->token = tok;
+  node->is_constant_expr = true;
   return node;
 }
 
@@ -29,6 +33,7 @@ Node *new_node_num_char(Token *tok, char val) {
   node->num = num;
   node->type = num->type;
   node->token = tok;
+  node->is_constant_expr = true;
   return node;
 }
 
@@ -41,6 +46,7 @@ Node *new_node_num_ulong(Token *tok, unsigned long long val) {
   node->num = num;
   node->type = num->type;
   node->token = tok;
+  node->is_constant_expr = true;
   return node;
 }
 
@@ -54,6 +60,7 @@ Node *new_node_num_pointer(Token *tok, unsigned long long val, Type *type) {
   node->num = num;
   node->type = num->type;
   node->token = tok;
+  node->is_constant_expr = true;
   return node;
 }
 
@@ -66,6 +73,7 @@ Node *new_node_num_zero(Token *tok, Type *type) {
   node->num = num;
   node->type = num->type;
   node->token = tok;
+  node->is_constant_expr = true;
   return node;
 }
 
@@ -75,6 +83,7 @@ Node *new_node_num(Token *tok, Number *num) {
   node->num = num;
   node->type = num->type;
   node->token = tok;
+  node->is_constant_expr = true;
   return node;
 }
 
@@ -98,6 +107,10 @@ Node *new_node_cast(Token *tok, Type *type, Node *operand) {
   node->token = tok;
   node->type = type;
   node->lhs = operand;
+  if (operand->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -118,6 +131,10 @@ Node *new_node_mul(Token *tok, Node *lhs, Node *rhs) {
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_MUL, lhs, rhs, type);
   node->token = tok;
+  if (lhs->is_constant_expr && rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -129,6 +146,12 @@ Node *new_node_div(Token *tok, Node *lhs, Node *rhs) {
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_DIV, lhs, rhs, type);
   node->token = tok;
+  // integer division by zero is not a constant
+  if (lhs->is_constant_expr && rhs->is_constant_expr &&
+      !is_integer_zero(eval(node->rhs))) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -140,6 +163,12 @@ Node *new_node_mod(Token *tok, Node *lhs, Node *rhs) {
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_MOD, lhs, rhs, type);
   node->token = tok;
+  // integer division by zero is not a constant
+  if (lhs->is_constant_expr && rhs->is_constant_expr &&
+      !is_integer_zero(eval(node->rhs))) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -165,18 +194,30 @@ Node *new_node_add(Token *tok, Node *lhs, Node *rhs) {
     rhs =
         new_node(ND_MUL, rhs,
                  new_node_num_pointer(NULL, lhs->type->base->size, type), type);
+    if (rhs->lhs->is_constant_expr && rhs->rhs->is_constant_expr) {
+      rhs->is_constant_expr = true;
+      eval(rhs);
+    }
   } else if (right_is_ptr) {
     assert(type->kind == TYPE_PTR);
     lhs = new_node_cast(NULL, type, lhs);
     lhs =
         new_node(ND_MUL, lhs,
                  new_node_num_pointer(NULL, rhs->type->base->size, type), type);
+    if (lhs->lhs->is_constant_expr && lhs->rhs->is_constant_expr) {
+      lhs->is_constant_expr = true;
+      eval(lhs);
+    }
   }
 
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_ADD, lhs, rhs, type);
   node->token = tok;
+  if (lhs->is_constant_expr && rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -207,17 +248,39 @@ Node *new_node_sub(Token *tok, Node *lhs, Node *rhs) {
     rhs =
         new_node(ND_MUL, rhs,
                  new_node_num_pointer(NULL, lhs->type->base->size, type), type);
+    if (rhs->lhs->is_constant_expr && rhs->rhs->is_constant_expr) {
+      rhs->is_constant_expr = true;
+      eval(rhs);
+    }
   }
 
   Type *base = lhs->type->base;
   lhs = new_node_cast(NULL, type, lhs);
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_SUB, lhs, rhs, type);
+  node->token = tok;
+
   if (left_is_ptr && right_is_ptr) {
     assert(type->kind == TYPE_ULONG);
     node = new_node(ND_DIV, node, new_node_num_ulong(NULL, base->size), type);
+    Variable *left_addr = is_const_var_addr(lhs);
+    Variable *right_addr = is_const_var_addr(rhs);
+
+    if (right_addr && left_addr == right_addr) {
+      // ND_SUB for a same variable is zero (e.g &a - &a).
+      node->is_constant_expr = true;
+      node->num = calloc(1, sizeof(Number));
+      node->num->type = type;
+    } else {
+      node->is_constant_expr = false;
+    }
+    return node;
   }
-  node->token = tok;
+
+  if (lhs->is_constant_expr && rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -246,6 +309,10 @@ Node *new_node_eq(Token *tok, Node *lhs, Node *rhs) {
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_EQ, lhs, rhs, base_type(TYPE_BOOL));
   node->token = tok;
+  if (lhs->is_constant_expr && rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -274,6 +341,10 @@ Node *new_node_ne(Token *tok, Node *lhs, Node *rhs) {
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_NE, lhs, rhs, base_type(TYPE_BOOL));
   node->token = tok;
+  if (lhs->is_constant_expr && rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -296,6 +367,10 @@ Node *new_node_lt(Token *tok, Node *lhs, Node *rhs) {
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_LT, lhs, rhs, base_type(TYPE_BOOL));
   node->token = tok;
+  if (lhs->is_constant_expr && rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -318,6 +393,10 @@ Node *new_node_le(Token *tok, Node *lhs, Node *rhs) {
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_LE, lhs, rhs, base_type(TYPE_BOOL));
   node->token = tok;
+  if (lhs->is_constant_expr && rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -351,6 +430,10 @@ Node *new_node_lognot(Token *tok, Node *operand) {
   operand = new_node_cast(NULL, base_type(TYPE_BOOL), operand);
   Node *node = new_node(ND_LOGNOT, operand, NULL, base_type(TYPE_BOOL));
   node->token = tok;
+  if (operand->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -369,6 +452,10 @@ Node *new_node_logand(Token *tok, Node *lhs, Node *rhs, int label_index) {
   Node *node = new_node(ND_LOGAND, lhs, rhs, type);
   node->token = tok;
   node->label_index = label_index;
+  if (lhs->is_constant_expr && rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -387,6 +474,10 @@ Node *new_node_logor(Token *tok, Node *lhs, Node *rhs, int label_index) {
   Node *node = new_node(ND_LOGOR, lhs, rhs, type);
   node->token = tok;
   node->label_index = label_index;
+  if (lhs->is_constant_expr && rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -398,6 +489,10 @@ Node *new_node_lshift(Token *tok, Node *lhs, Node *rhs) {
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_LSHIFT, lhs, rhs, type);
   node->token = tok;
+  if (lhs->is_constant_expr && rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -409,6 +504,10 @@ Node *new_node_rshift(Token *tok, Node *lhs, Node *rhs) {
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_RSHIFT, lhs, rhs, type);
   node->token = tok;
+  if (lhs->is_constant_expr && rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -420,6 +519,10 @@ Node *new_node_bitand(Token *tok, Node *lhs, Node *rhs) {
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_BITAND, lhs, rhs, type);
   node->token = tok;
+  if (lhs->is_constant_expr && rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -431,6 +534,10 @@ Node *new_node_bitor(Token *tok, Node *lhs, Node *rhs) {
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_BITOR, lhs, rhs, type);
   node->token = tok;
+  if (lhs->is_constant_expr && rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -442,6 +549,10 @@ Node *new_node_bitxor(Token *tok, Node *lhs, Node *rhs) {
   rhs = new_node_cast(NULL, type, rhs);
   Node *node = new_node(ND_BITXOR, lhs, rhs, type);
   node->token = tok;
+  if (lhs->is_constant_expr && rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -450,6 +561,10 @@ Node *new_node_bitnot(Token *tok, Node *operand) {
     error(tok ? &tok->pos : NULL, "invalid operands to unary ~ operator");
   Node *node = new_node(ND_BITNOT, operand, NULL, operand->type);
   node->token = tok;
+  if (operand->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -522,6 +637,12 @@ Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs,
   node->condition = new_node_cast(tok, base_type(TYPE_BOOL), cond);
   node->token = tok;
   node->label_index = label_index;
+
+  if (cond->is_constant_expr && lhs->is_constant_expr &&
+      rhs->is_constant_expr) {
+    node->is_constant_expr = true;
+    eval(node);
+  }
   return node;
 }
 
@@ -598,93 +719,54 @@ Variable *is_const_var_addr(Node *node) {
   return NULL;
 }
 
-Number *eval(Node *node);
-
-bool is_constant_number(Node *node) {
-  assert(node);
-  switch (node->kind) {
-  case ND_ADD:
-  case ND_SUB:
-  case ND_MUL:
-  case ND_BITXOR:
-  case ND_BITOR:
-  case ND_BITAND:
-  case ND_LSHIFT:
-  case ND_RSHIFT:
-  case ND_EQ:
-  case ND_NE:
-  case ND_LT:
-  case ND_LOGAND:
-  case ND_LOGOR:
-  case ND_LE:
-    return is_constant_number(node->lhs) && is_constant_number(node->rhs);
-  case ND_DIV:
-  case ND_MOD:
-    if (!is_constant_number(node->rhs))
-      return false;
-    if (!is_float(implicit_type_conversion(node->lhs->type, node->rhs->type)) &&
-        is_integer_zero(eval(node->rhs)))
-      return false; // integer division by zero is not a constant
-    return is_constant_number(node->lhs) && is_constant_number(node->rhs);
-  case ND_LOGNOT:
-  case ND_BITNOT:
-  case ND_CAST:
-    return is_constant_number(node->lhs);
-  case ND_COND:
-    return is_constant_number(node->condition) &&
-           is_constant_number(node->lhs) && is_constant_number(node->rhs);
-  case ND_NUM:
-    return true;
-  default:
-    return false;
-  }
-}
-
 Number *eval(Node *node) {
-  if (!is_constant_number(node))
-    error(node->token ? &node->token->pos : NULL, "not a constant expr");
+  assert(node->is_constant_expr);
+
+  if (node->num)
+    return node->num;
 
   switch (node->kind) {
   case ND_ADD:
-    return number_add(eval(node->lhs), eval(node->rhs));
+    return node->num = number_add(eval(node->lhs), eval(node->rhs));
   case ND_SUB:
-    return number_sub(eval(node->lhs), eval(node->rhs));
+    return node->num = number_sub(eval(node->lhs), eval(node->rhs));
   case ND_MUL:
-    return number_mul(eval(node->lhs), eval(node->rhs));
+    return node->num = number_mul(eval(node->lhs), eval(node->rhs));
   case ND_DIV:
-    return number_div(eval(node->lhs), eval(node->rhs));
+    return node->num = number_div(eval(node->lhs), eval(node->rhs));
   case ND_MOD:
-    return number_mod(eval(node->lhs), eval(node->rhs));
+    return node->num = number_mod(eval(node->lhs), eval(node->rhs));
   case ND_BITXOR:
-    return number_bitxor(eval(node->lhs), eval(node->rhs));
+    return node->num = number_bitxor(eval(node->lhs), eval(node->rhs));
   case ND_BITOR:
-    return number_bitor(eval(node->lhs), eval(node->rhs));
+    return node->num = number_bitor(eval(node->lhs), eval(node->rhs));
   case ND_BITAND:
-    return number_bitand(eval(node->lhs), eval(node->rhs));
+    return node->num = number_bitand(eval(node->lhs), eval(node->rhs));
   case ND_BITNOT:
-    return number_bitnot(eval(node->lhs));
+    return node->num = number_bitnot(eval(node->lhs));
   case ND_LSHIFT:
-    return number_lshift(eval(node->lhs), eval(node->rhs));
+    return node->num = number_lshift(eval(node->lhs), eval(node->rhs));
   case ND_RSHIFT:
-    return number_rshift(eval(node->lhs), eval(node->rhs));
+    return node->num = number_rshift(eval(node->lhs), eval(node->rhs));
   case ND_EQ:
-    return number_eq(eval(node->lhs), eval(node->rhs));
+    return node->num = number_eq(eval(node->lhs), eval(node->rhs));
   case ND_NE:
-    return number_ne(eval(node->lhs), eval(node->rhs));
+    return node->num = number_ne(eval(node->lhs), eval(node->rhs));
   case ND_LT:
-    return number_lt(eval(node->lhs), eval(node->rhs));
+    return node->num = number_lt(eval(node->lhs), eval(node->rhs));
   case ND_LE:
-    return number_le(eval(node->lhs), eval(node->rhs));
+    return node->num = number_le(eval(node->lhs), eval(node->rhs));
   case ND_COND:
-    return number_cond(eval(node->condition), eval(node->lhs), eval(node->rhs));
+    return node->num = number_cond(eval(node->condition), eval(node->lhs),
+                                   eval(node->rhs));
   case ND_LOGNOT:
-    return number_lognot(eval(node->lhs));
+    return node->num = number_lognot(eval(node->lhs));
   case ND_LOGAND:
-    return number_logand(eval(node->lhs), eval(node->rhs));
+    return node->num = number_logand(eval(node->lhs), eval(node->rhs));
   case ND_LOGOR:
-    return number_logor(eval(node->lhs), eval(node->rhs));
+    return node->num = number_logor(eval(node->lhs), eval(node->rhs));
   case ND_CAST:
-    return number_cast(eval(node->lhs), node->type);
+    return node->num = number_cast(eval(node->lhs), node->type);
   case ND_NUM:
     return node->num;
   default:

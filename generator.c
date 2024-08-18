@@ -752,12 +752,12 @@ void gen_global_pointer_init(VariableInit *init, Type *type) {
     Variable *left_addr = is_const_var_addr(init->expr->lhs);
     Variable *right_addr = is_const_var_addr(init->expr->rhs);
 
-    if (left_addr && is_constant_number(init->expr->rhs)) {
+    if (left_addr && init->expr->rhs->is_constant_expr) {
       writeline("  .quad %.*s+%lld", left_addr->ident->len,
-                left_addr->ident->str, number2ulong(eval(init->expr->rhs)));
-    } else if (right_addr && is_constant_number(init->expr->lhs)) {
+                left_addr->ident->str, number2ulong(init->expr->rhs->num));
+    } else if (right_addr && init->expr->lhs->is_constant_expr) {
       writeline("  .quad %.*s+%lld", right_addr->ident->len,
-                right_addr->ident->str, number2ulong(eval(init->expr->lhs)));
+                right_addr->ident->str, number2ulong(init->expr->lhs->num));
     } else {
       error(NULL, "unsupported initialization of a global pointer.");
     }
@@ -770,9 +770,9 @@ void gen_global_pointer_init(VariableInit *init, Type *type) {
     return;
   }
 
-  if (is_constant_number(init->expr)) {
+  if (init->expr->is_constant_expr) {
     assert(is_integer(init->expr->type) || init->expr->type->kind == TYPE_PTR);
-    writeline("  .quad %llu", number2ulong(eval(init->expr)));
+    writeline("  .quad %llu", number2ulong(init->expr->num));
     return;
   }
 
@@ -787,35 +787,36 @@ void gen_global_integer_init(VariableInit *init, Type *type) {
     init = *(VariableInit **)vector_get(init->vec, 0);
   }
   assert(init->expr);
-  Number *val = eval(init->expr);
+  if (!init->expr->is_constant_expr)
+    error(NULL, "initialization of a global must be a constant.");
   switch (type->kind) {
   case TYPE_LONG:
-    writeline("  .quad %lld", number2long(val));
+    writeline("  .quad %lld", number2long(init->expr->num));
     break;
   case TYPE_ULONG:
-    writeline("  .quad %llu", number2ulong(val));
+    writeline("  .quad %llu", number2ulong(init->expr->num));
     break;
   case TYPE_INT:
   case TYPE_ENUM:
-    writeline("  .long %d", number2int(val));
+    writeline("  .long %d", number2int(init->expr->num));
     break;
   case TYPE_UINT:
-    writeline("  .long %u", number2uint(val));
+    writeline("  .long %u", number2uint(init->expr->num));
     break;
   case TYPE_SHORT:
-    writeline("  .value %d", number2short(val));
+    writeline("  .value %d", number2short(init->expr->num));
     break;
   case TYPE_USHORT:
-    writeline("  .value %d", number2ushort(val));
+    writeline("  .value %d", number2ushort(init->expr->num));
     break;
   case TYPE_CHAR:
-    writeline("  .byte %d", number2char(val));
+    writeline("  .byte %d", number2char(init->expr->num));
     break;
   case TYPE_BOOL:
-    writeline("  .byte %d", number2bool(val));
+    writeline("  .byte %d", number2bool(init->expr->num));
     break;
   case TYPE_UCHAR:
-    writeline("  .byte %u", number2uchar(val));
+    writeline("  .byte %u", number2uchar(init->expr->num));
     break;
   default:
     assert(false);
@@ -855,7 +856,9 @@ void gen_global_float_init(VariableInit *init, Type *type) {
     init = *(VariableInit **)vector_get(init->vec, 0);
   }
   assert(init->expr);
-  write_float(eval(init->expr), type);
+  if (!init->expr->is_constant_expr)
+    error(NULL, "initialization of a global must be a constant.");
+  write_float(init->expr->num, type);
 }
 
 void gen_global_init(VariableInit *init, Type *type) {

@@ -278,9 +278,11 @@ struct Node {
   Token *token; // for error messages
   Node *lhs;
   Node *rhs;
-  Number *num;        // only for ND_NUM
   Variable *variable; // only for ND_VAR
   Type *type;
+
+  Number *num; // ND_NUM or constant expr
+  bool is_constant_expr;
 
   int label_index;
 

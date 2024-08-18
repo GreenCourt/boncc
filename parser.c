@@ -473,10 +473,12 @@ Type *consume_enum(Token **nx) {
       error(&id->pos, "duplicated identifier for enum element");
 
     if (consume(TK_ASSIGN, nx)) {
-      Number *num = eval(assign(nx));
-      if (!is_integer(num->type))
+      Node *nd = assign(nx);
+      if (!nd->is_constant_expr)
+        error(&id->pos, "enum value must be a constant expr");
+      if (!is_integer(nd->num->type))
         error(&id->pos, "enum value must be an integer");
-      val = number2int(num) - 1;
+      val = number2int(nd->num) - 1;
     }
     int *v = calloc(1, sizeof(int));
     *v = ++val;
@@ -625,14 +627,15 @@ Type *consume_type(Token **nx) {
 Type *consume_array_brackets(Type *type, Token **nx) {
   if (!consume(TK_LBRACKET, nx))
     return type;
-  int size = -1; // -1 will be assumed by rhs initializer
+  int size = -1; // if size==-1, size will be assumed by rhs initializer
   if ((*nx)->kind != TK_RBRACKET) {
     Token *tok_sz = *nx;
     Node *expr_sz = expr(nx);
     if (expr_sz) {
-      Number *num_size = eval(expr_sz);
-      size = number2int(num_size);
-      if (!is_integer(num_size->type) || size < 0)
+      if (!expr_sz->is_constant_expr)
+        error(&tok_sz->pos, "invalid array size (not a constant expr)");
+      size = number2int(expr_sz->num);
+      if (!is_integer(expr_sz->num->type) || size < 0)
         error(&tok_sz->pos, "invalid array size");
     }
   }
@@ -1514,17 +1517,18 @@ Node *stmt(Token **nx) {
     node->label_index = label_index++;
 
     Node *e = expr(nx);
-    Number *val = eval(e);
-    if (!is_integer(val->type))
+    if (!e->is_constant_expr)
+      error(&(*nx)->pos, "case label must be a constant");
+    if (!is_integer(e->num->type))
       error(&(*nx)->pos, "case label must be an integer");
     Node *c = sw->next_case;
     while (c) {
       assert(c->condition->kind == ND_NUM);
-      if (number2bool(number_eq(c->condition->num, val)))
+      if (number2bool(number_eq(c->condition->num, e->num)))
         error(&tok->pos, "duplicated case value detected");
       c = c->next_case;
     }
-    node->condition = new_node_num(NULL, val);
+    node->condition = new_node_num(NULL, e->num);
     expect(TK_COLON, nx);
     node->body = stmt(nx);
     node->next_case = sw->next_case;

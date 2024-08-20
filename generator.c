@@ -477,8 +477,88 @@ void gen_block(Node *node) {
   }
 }
 
+void gen_builtin_va_arg_gp(Node *node, int label_index) {
+  assert(node->args->size == 2);
+  comment(NULL, "builtin_va_arg_gp");
+  Node *ap = *(Node **)vector_get(node->args, 0);
+  gen(ap);                        // rax = &va_list
+  writeline("  mov rdi, rax");    // rdi = &gp_offset
+  writeline("  mov r10d, [rdi]"); // r10 = gp_offset
+  writeline("  cmp r10d, 48");
+  writeline("  jae .L_va_arg_stack%d", label_index);
+  writeline("  mov rax, [rdi+16]"); // rax = reg_save_area
+  writeline("  add rax, r10");      // rax = reg_save_area + gp_offset
+  writeline("  lea rdx, [r10+8]");  // rdx = gp_offset + 8
+  writeline("  mov [rdi], edx");    // gp_offset = rdx
+  writeline("  jmp .L_va_arg_end%d", label_index);
+  writeline(".L_va_arg_stack%d:", label_index);
+  writeline("  mov rax, [rdi+8]"); // rax = overflow_arg_area
+  writeline("  lea rdx, [rax+8]"); // rdx = overflow_arg_area + 8
+  writeline("  mov [rdi+8], rdx"); // overflow_arg_area = rdx
+  writeline(".L_va_arg_end%d:", label_index);
+}
+
+void gen_builtin_va_arg_fp(Node *node, int label_index) {
+  assert(node->args->size == 2);
+  comment(NULL, "builtin_va_arg_fp");
+  Node *ap = *(Node **)vector_get(node->args, 0);
+  gen(ap);                         // rax = &va_list
+  writeline("  lea rdi, [rax+4]"); // rdi = &fp_offset
+  writeline("  mov r10d, [rdi]");  // r10 = fp_offset
+  writeline("  cmp r10d, %d", 48 + 16 * 8);
+  writeline("  jae .L_va_arg_stack%d", label_index);
+  writeline("  mov rax, [rdi+12]"); // rax = reg_save_area
+  writeline("  add rax, r10");      // rax = reg_save_area + fp_offset
+  writeline("  lea rdx, [r10+16]"); // rdx = fp_offset + 16
+  writeline("  mov [rdi], edx");    // fp_offset = rdx
+  writeline("  jmp .L_va_arg_end%d", label_index);
+  writeline(".L_va_arg_stack%d:", label_index);
+  writeline("  mov rax, [rdi+4]"); // rax = overflow_arg_area
+  writeline("  lea rdx, [rax+8]"); // rdx = overflow_arg_area + 8
+  writeline("  mov [rdi+4], rdx"); // overflow_arg_area = rdx
+  writeline(".L_va_arg_end%d:", label_index);
+}
+
+void gen_builtin_va_arg(Node *node) {
+  assert(node->args->size == 2);
+  comment(NULL, "builtin_va_arg");
+  Node *atype = *(Node **)vector_get(node->args, 1);
+  // the second argument is automatically casted to (void*) by parser.c
+  assert(atype->kind == ND_CAST);
+  assert(atype->type->kind == TYPE_PTR);
+  assert(atype->type->base->kind == TYPE_VOID);
+
+  Type *type =
+      (atype->lhs->kind == ND_CAST && atype->lhs->type->kind == TYPE_PTR)
+          ? atype->lhs->type->base
+          : base_type(TYPE_VOID);
+
+  static int label_index = -1;
+  label_index++;
+
+  if (is_integer(type) || type->kind == TYPE_PTR) {
+    gen_builtin_va_arg_gp(node, label_index);
+  } else if (is_float(type)) {
+    gen_builtin_va_arg_fp(node, label_index);
+  } else if (pass_on_memory(type)) {
+    error(NULL, "currently, struct/union is not supported for va_arg");
+  } else if (is_struct_union(type)) {
+    assert(type->size <= 16);
+    error(NULL, "currently, struct/union is not supported for va_arg");
+  } else {
+    error(node->token ? &node->token->pos : NULL,
+          "unsupported type specified for va_arg");
+  }
+}
+
 void gen_call(Node *node) {
   assert(is_funcptr(node->lhs->type));
+
+  if (node->lhs->kind == ND_VAR && node->lhs->variable->kind == OBJ_FUNC &&
+      same_string_nt(node->lhs->variable->ident, "__builtin_va_arg")) {
+    gen_builtin_va_arg(node);
+    return;
+  }
 
   int n_fp = 0;
   int alignment = 0;
@@ -1096,8 +1176,9 @@ void gen_func(Function *func) {
     comment(NULL, "va_list: %.*s", func->ident->len, func->ident->str);
     writeline("  mov dword ptr [rbp-%d], %d", ofs, count_gp * 8); // gp_offset
     writeline("  mov dword ptr [rbp-%d], %d", ofs - 4,
-              6 * 8 + count_fp + 16);            // fp_offset
-    writeline("  movq [rbp-%d], 16", ofs - 8);   // overflow_arg_area
+              6 * 8 + count_fp * 16);            // fp_offset
+    writeline("  lea r10, [rbp+16]");            // r10 = rbp+16
+    writeline("  movq [rbp-%d], r10", ofs - 8);  // overflow_arg_area = rbp+16
     writeline("  movq [rbp-%d], rbp", ofs - 16); // reg_save_area = rbp
     writeline("  subq [rbp-%d], %d", ofs - 16,
               ofs - 24); // reg_save_area -= ofs - 24

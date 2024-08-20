@@ -248,3 +248,12 @@ double pass_union1y(U1 u1);
 short pass_union1z(U1 u1);
 double pass_union5x(U5 u5);
 int pass_union5y(U5 u5);
+
+int va_arg_int(int n, ...);
+long va_arg_long(int n, ...);
+short va_arg_short(int n, ...);
+unsigned short va_arg_ushort(int n, ...);
+int va_copy_int(int n, ...);
+int va_arg_double(int n, ...);
+int va_arg_float(int n, ...);
+int va_arg_int_double(int n, ...);

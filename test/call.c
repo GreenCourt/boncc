@@ -483,5 +483,89 @@ int main() {
     verify(6, ret.x[0]);
     verify(5, ret.x[1]);
   }
+
+  verify(-5, va_arg_int(1, -5));
+  verify(7, va_arg_int(3, 1, 2, 4));
+  verify(31, va_arg_int(5, 1, 2, 4, 8, 16));
+  verify(63, va_arg_int(6, 1, 2, 4, 8, 16, 32));
+  verify(255, va_arg_int(8, 1, 2, 4, 8, 16, 32, 64, 128));
+
+  verify(-5, va_arg_long(1, -5L));
+  verify(7, va_arg_long(3, 1L, 2L, 4L));
+  verify(31, va_arg_long(5, 1L, 2L, 4L, 8L, 16L));
+  verify(63, va_arg_long(6, 1L, 2L, 4L, 8L, 16L, 32L));
+  verify(255, va_arg_long(8, 1L, 2L, 4L, 8L, 16L, 32L, 64L, 128L));
+
+  verify(-5, va_arg_short(1, (short)-5));
+  verify(7, va_arg_short(3, (short)1, (short)2, (short)4));
+  verify(31,
+         va_arg_short(5, (short)1, (short)2, (short)4, (short)8, (short)16));
+  verify(63, va_arg_short(6, (short)1, (short)2, (short)4, (short)8, (short)16,
+                          (short)32));
+  verify(255, va_arg_short(8, (short)1, (short)2, (short)4, (short)8, (short)16,
+                           (short)32, (short)64, (short)128));
+
+  verify(2, va_arg_ushort(1, (unsigned short)2));
+  verify(7, va_arg_ushort(3, (unsigned short)1, (unsigned short)2,
+                          (unsigned short)4));
+  verify(31, va_arg_ushort(5, (unsigned short)1, (unsigned short)2,
+                           (unsigned short)4, (unsigned short)8,
+                           (unsigned short)16));
+  verify(63, va_arg_ushort(6, (unsigned short)1, (unsigned short)2,
+                           (unsigned short)4, (unsigned short)8,
+                           (unsigned short)16, (unsigned short)32));
+  verify(255, va_arg_ushort(8, (unsigned short)1, (unsigned short)2,
+                            (unsigned short)4, (unsigned short)8,
+                            (unsigned short)16, (unsigned short)32,
+                            (unsigned short)64, (unsigned short)128));
+
+  verify(-5, va_copy_int(1, -5));
+  verify(13, va_copy_int(3, 1, 2, 4));
+  verify(61, va_copy_int(5, 1, 2, 4, 8, 16));
+  verify(125, va_copy_int(6, 1, 2, 4, 8, 16, 32));
+  verify(509, va_copy_int(8, 1, 2, 4, 8, 16, 32, 64, 128));
+
+  verify(1, va_arg_float(1, 1.1f));
+  verify(4, va_arg_float(4, 1.1f, 2.2f, 3.3f, 4.4f));
+  verify(3, va_arg_float(4, 1.2f, 2.2f, 3.3f, 4.4f));
+  verify(3, va_arg_float(4, 1.1f, 2.2f, 3.3f, 4.5f));
+  verify(8, va_arg_float(8, 1.1f, 2.2f, 3.3f, 4.4f, 5.5f, 6.6f, 7.7f, 8.8f));
+  verify(9,
+         va_arg_float(9, 1.1f, 2.2f, 3.3f, 4.4f, 5.5f, 6.6f, 7.7f, 8.8f, 9.9f));
+  verify(11, va_arg_float(11, 1.1f, 2.2f, 3.3f, 4.4f, 5.5f, 6.6f, 7.7f, 8.8f,
+                          9.9f, 10.1f, 11.11f));
+  verify(10, va_arg_float(11, 1.1f, 2.2f, 3.3f, 4.4f, 5.5f, 6.6f, 7.7f, 8.8f,
+                          9.9f, 10.2f, 11.11f));
+  verify(10, va_arg_float(11, 1.1f, 2.2f, 3.3f, 4.4f, 5.5f, 6.6f, 7.7f, 8.8f,
+                          9.9f, 10.1f, 11.10f));
+
+  verify(1, va_arg_double(1, 1.1));
+  verify(4, va_arg_double(4, 1.1, 2.2, 3.3, 4.4));
+  verify(3, va_arg_double(4, 1.2, 2.2, 3.3, 4.4));
+  verify(3, va_arg_double(4, 1.1, 2.2, 3.3, 4.5));
+  verify(8, va_arg_double(8, 1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8));
+  verify(9, va_arg_double(9, 1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9));
+  verify(11, va_arg_double(11, 1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9,
+                           10.1, 11.11));
+  verify(10, va_arg_double(11, 1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9,
+                           10.2, 11.11));
+  verify(10, va_arg_double(11, 1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9,
+                           10.1, 11.10));
+
+  verify(158, va_arg_int_double(6, 5, 1.1, 25, 2.2, 125, 3.3));
+  verify(157, va_arg_int_double(6, 5, 1.1, 25, 2.2, 125, 3.2));
+  verify(61035166,
+         va_arg_int_double(22, 5, 1.1, 25, 2.2, 125, 3.3, 625, 4.4, 3125, 5.5,
+                           15625, 6.6, 78125, 7.7, 390625, 8.8, 1953125, 9.9,
+                           9765625, 10.10, 48828125, 11.11));
+  verify(61035165,
+         va_arg_int_double(22, 5, 1.1, 25, 2.2, 125, 3.3, 625, 4.4, 3125, 5.5,
+                           15625, 6.6, 78125, 7.7, 390625, 8.8, 1953125, 9.9,
+                           9765625, 10.10, 48828125, 11.12));
+  verify(61035165,
+         va_arg_int_double(22, 5, 1.1, 25, 2.2, 125, 3.4, 625, 4.4, 3125, 5.5,
+                           15625, 6.6, 78125, 7.7, 390625, 8.8, 1953125, 9.9,
+                           9765625, 10.10, 48828125, 11.11));
+
   return 0;
 }

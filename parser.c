@@ -881,6 +881,7 @@ Vector *vardec(Type *type, ObjectKind kind, int qualifier, Token **nx) {
 }
 
 void func(Type *type, int qualifier, Token **nx) {
+  assert(type->kind == TYPE_FUNC);
   assert(type->objdec);
   assert(type->objdec->str);
 
@@ -2134,6 +2135,23 @@ Node *tail(Node *x, Token **nx) {
       } else if (e->type->kind == TYPE_ARRAY) {
         // pass an array as a pointer
         e = new_node_cast(op, pointer_type(e->type->base), e);
+      } else {
+        // default argument promotions
+        switch (e->type->kind) {
+        case TYPE_FLOAT:
+          e = new_node_cast(op, base_type(TYPE_DOUBLE), e);
+          break;
+        case TYPE_CHAR:
+        case TYPE_SHORT:
+          e = new_node_cast(op, base_type(TYPE_INT), e);
+          break;
+        case TYPE_UCHAR:
+        case TYPE_USHORT:
+          e = new_node_cast(op, base_type(TYPE_UINT), e);
+          break;
+        default:
+          break;
+        }
       }
 
       vector_push(node->args, &e);
@@ -2155,6 +2173,20 @@ Node *postfix(Token **nx) {
   return p;
 }
 
+void register_builtin_functions() {
+  {
+    // __builtin_va_arg
+    Type *vp = pointer_type(base_type(TYPE_VOID));
+    Function *f = calloc(1, sizeof(Function));
+    f->type = func_type(vp);
+    f->kind = OBJ_FUNC;
+    f->ident = new_string("__builtin_va_arg", 0);
+    vector_push(f->type->params, &vp);
+    vector_push(f->type->params, &vp);
+    map_push(global_scope->objects, f->ident, f);
+  }
+}
+
 void parse(Token *input) {
   assert(input);
   Token *cur = input;
@@ -2166,6 +2198,7 @@ void parse(Token *input) {
   assert(current_scope == NULL);
   new_scope();
   global_scope = current_scope;
+  register_builtin_functions();
 
   while (cur->kind != TK_EOF)
     declaration(&cur);

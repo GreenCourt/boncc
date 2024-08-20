@@ -465,3 +465,93 @@ short pass_union1z(U1 u1) { return u1.z * 3; }
 double pass_union5x(U5 u5) { return u5.x; }
 
 int pass_union5y(U5 u5) { return u5.y; }
+
+int va_arg_int(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  int s = 0;
+  for (int i = 0; i < n; ++i)
+    s += va_arg(ap, int);
+  return s;
+}
+
+long va_arg_long(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  long s = 0;
+  for (int i = 0; i < n; ++i)
+    s += va_arg(ap, long);
+  return s;
+}
+
+short va_arg_short(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  short s = 0;
+  for (int i = 0; i < n; ++i) {
+    // promoted to int by default argument promotion
+    s += va_arg(ap, int);
+  }
+  return s;
+}
+
+unsigned short va_arg_ushort(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  unsigned short s = 0;
+  for (int i = 0; i < n; ++i) {
+    // promoted to unsigned int by default argument promotion
+    s += va_arg(ap, unsigned int);
+  }
+  return s;
+}
+
+int va_copy_int(int n, ...) {
+  va_list ap;
+  va_list ap2;
+  va_start(ap, n);
+  int s = va_arg(ap, int);
+  va_copy(ap2, ap);
+  for (int i = 1; i < n; ++i)
+    s += va_arg(ap, int);
+  for (int i = 1; i < n; ++i)
+    s += va_arg(ap2, int);
+  return s;
+}
+
+int va_arg_double(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  double r[] = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1, 11.11};
+  int s = 0;
+  for (int i = 0; i < n; ++i)
+    s += va_arg(ap, double) == r[i];
+  return s;
+}
+
+int va_arg_float(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  float r[] = {1.1f, 2.2f, 3.3f, 4.4f,  5.5f,  6.6f,
+               7.7f, 8.8f, 9.9f, 10.1f, 11.11f};
+  int s = 0;
+  for (int i = 0; i < n; ++i) {
+    // promoted to double by default argument promotion
+    s += va_arg(ap, double) == (double)r[i];
+  }
+  return s;
+}
+
+int va_arg_int_double(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  double r[] = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1, 11.11};
+  int s = 0;
+  for (int i = 0; i < n; ++i) {
+    if (i % 2)
+      s += va_arg(ap, double) == r[i / 2];
+    else
+      s += va_arg(ap, int);
+  }
+  return s;
+}

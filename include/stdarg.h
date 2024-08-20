@@ -16,5 +16,6 @@ typedef va_list __gnuc_va_list; // for compatibility
   } while (0)
 #define va_end(ap)
 #define va_copy(dest, src) ((dest)[0] = (src)[0])
+#define va_arg(ap, type) (*(type *)__builtin_va_arg(ap, (type *)0))
 
 #endif

@@ -67,20 +67,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  if (outpath == NULL) {
-    int len = strlen(input_path);
-    outpath = calloc(len + 3, sizeof(char));
-    strncpy(outpath, input_path, len);
-    if (len >= 2 && input_path[len - 2] == '.') {
-      outpath[len - 1] = 's';
-      outpath[len] = '\0';
-    } else {
-      outpath[len] = '.';
-      outpath[len + 1] = 's';
-      outpath[len + 2] = '\0';
-    }
-    outpath = basename(outpath);
-  }
+  if (outpath == NULL)
+    outpath = basename(replace_ext(input_path, "s"));
 
   Token *tokens = tokenize(read_file(input_path), input_path);
   tokens = preprocess(tokens);

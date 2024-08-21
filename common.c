@@ -117,6 +117,24 @@ char *path_join(char *dir, char *file) {
   return path;
 }
 
+char *replace_ext(const char *path, const char *ext) {
+  int path_len = strlen(path);
+  int ext_len = strlen(ext);
+  assert(ext_len && ext[0] != '.');
+  char *ret = calloc(path_len + ext_len + 1, sizeof(char));
+  strncpy(ret, path, path_len);
+  char *slash = strrchr(ret, '/');
+  char *dot = strrchr(ret, '.');
+  if (dot && (!slash || dot > slash)) {
+    strncpy(dot + 1, ext, ext_len);
+    *(dot + ext_len + 1) = '\0';
+  } else { // append if no extension found
+    *(ret + path_len) = '.';
+    strncpy(ret + path_len + 1, ext, ext_len);
+  }
+  return ret;
+}
+
 String *new_string(char *str, int len) {
   String *s = calloc(1, sizeof(String));
   s->str = str;

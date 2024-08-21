@@ -344,6 +344,7 @@ bool is_hexdigit(char c);
 __attribute__((format(printf, 2, 3))) void error(Position *pos, char *fmt, ...);
 char *read_file(char *path);
 char *path_join(char *dir, char *file);
+char *replace_ext(const char *path, const char *ext);
 
 String *new_string(char *str, int len);
 bool same_string(String *a, String *b);

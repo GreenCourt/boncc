@@ -519,6 +519,116 @@ void gen_builtin_va_arg_fp(Node *node, int label_index) {
   writeline(".L_va_arg_end%d:", label_index);
 }
 
+void gen_builtin_va_arg_struct_gp2(Node *node, int label_index) {
+  assert(node->args->size == 2);
+  comment(NULL, "builtin_va_arg_struct_gp2");
+  Node *ap = *(Node **)vector_get(node->args, 0);
+  gen(ap);                        // rax = &va_list
+  writeline("  mov rdi, rax");    // rdi = &gp_offset
+  writeline("  mov r10d, [rdi]"); // r10 = gp_offset
+  writeline("  cmp r10d, 40");
+  writeline("  jae .L_va_arg_stack%d", label_index);
+  writeline("  mov rax, [rdi+16]"); // rax = reg_save_area
+  writeline("  add rax, r10");      // rax = reg_save_area + gp_offset
+  writeline("  lea rdx, [r10+16]"); // rdx = gp_offset + 16
+  writeline("  mov [rdi], edx");    // gp_offset = rdx
+  writeline("  jmp .L_va_arg_end%d", label_index);
+  writeline(".L_va_arg_stack%d:", label_index);
+  writeline("  mov rax, [rdi+8]");  // rax = overflow_arg_area
+  writeline("  lea rdx, [rax+16]"); // rdx = overflow_arg_area + 16
+  writeline("  mov [rdi+8], rdx");  // overflow_arg_area = rdx
+  writeline(".L_va_arg_end%d:", label_index);
+}
+
+void gen_builtin_va_arg_struct_fp2(Node *node, int label_index) {
+  assert(node->args->size == 2);
+  comment(NULL, "builtin_va_arg_struct_fp2");
+  Node *ap = *(Node **)vector_get(node->args, 0);
+  gen(ap);                         // rax = &va_list
+  writeline("  lea rdi, [rax+4]"); // rdi = &fp_offset
+  writeline("  mov r10d, [rdi]");  // r10 = fp_offset
+  writeline("  cmp r10d, %d", 48 + 16 * 7);
+  writeline("  jae .L_va_arg_stack%d", label_index);
+  writeline("  mov rsi, [rdi+12]");  // rsi = reg_save_area
+  writeline("  lea rax, [rsi+176]"); // rax = (hidden 16byte buffer address)
+  writeline("  add rsi, r10");       // rsi = reg_save_area + fp_offset
+  writeline("  mov r11, [rsi]");     // r11 = *(reg_save_area + fp_offset)
+  writeline("  mov [rax], r11");     // *rax = r11
+  writeline("  mov r11, [rsi+16]");  // r11 = *(reg_save_area + fp_offset + 16)
+  writeline("  mov [rax+8], r11");   // *(rax+8) = r11
+  writeline("  lea rdx, [r10+32]");  // rdx = fp_offset + 32
+  writeline("  mov [rdi], edx");     // fp_offset = rdx
+  writeline("  jmp .L_va_arg_end%d", label_index);
+  writeline(".L_va_arg_stack%d:", label_index);
+  writeline("  mov rax, [rdi+4]");  // rax = overflow_arg_area
+  writeline("  lea rdx, [rax+16]"); // rdx = overflow_arg_area + 16
+  writeline("  mov [rdi+4], rdx");  // overflow_arg_area = rdx
+  writeline(".L_va_arg_end%d:", label_index);
+}
+
+void gen_builtin_va_arg_struct_gpfp(Node *node, int label_index,
+                                    bool fp_first) {
+  assert(node->args->size == 2);
+  comment(NULL, "builtin_va_arg_struct_gpfp");
+  Node *ap = *(Node **)vector_get(node->args, 0);
+  gen(ap);                         // rax = &va_list
+  writeline("  mov rdi, rax");     // rdi = &gp_offset
+  writeline("  lea rcx, [rax+4]"); // rcx = &fp_offset
+
+  writeline("  mov r10d, [rdi]"); // r10 = gp_offset
+  writeline("  cmp r10d, 48");
+  writeline("  jae .L_va_arg_stack%d", label_index);
+  writeline("  mov r11d, [rcx]"); // r11 = fp_offset
+  writeline("  cmp r11d, %d", 48 + 16 * 8);
+  writeline("  jae .L_va_arg_stack%d", label_index);
+
+  writeline("  mov rsi, [rdi+16]");  // rsi = reg_save_area
+  writeline("  lea rax, [rsi+176]"); // rax = (hidden 16byte buffer address)
+
+  if (fp_first) {
+    writeline("  add rsi, r11");      // rsi = reg_save_area + fp_offset
+    writeline("  mov r8, [rsi]");     // r8 = *(reg_save_area + fp_offset)
+    writeline("  mov [rax], r8");     // *rax = r8
+    writeline("  mov rsi, [rdi+16]"); // rsi = reg_save_area
+    writeline("  add rsi, r10");      // rsi = reg_save_area + gp_offset
+    writeline("  mov r8, [rsi]");     // r8 = *(reg_save_area + gp_offset)
+    writeline("  mov [rax+8], r8");   // *(rax+8) = r8
+  } else {
+    writeline("  add rsi, r10");      // rsi = reg_save_area + gp_offset
+    writeline("  mov r8, [rsi]");     // r8 = *(reg_save_area + gp_offset)
+    writeline("  mov [rax], r8");     // *(rax+8) = r8
+                                      //
+    writeline("  mov rsi, [rdi+16]"); // rsi = reg_save_area
+                                      //
+    writeline("  add rsi, r11");      // rsi = reg_save_area + fp_offset
+    writeline("  mov r8, [rsi]");     // r8 = *(reg_save_area + fp_offset)
+    writeline("  mov [rax+8], r8");   // *rax = r8
+  }
+  writeline("  lea rdx, [r10+8]");  // rdx = gp_offset + 8
+  writeline("  mov [rdi], edx");    // gp_offset = rdx
+  writeline("  lea rdx, [r11+16]"); // rdx = fp_offset + 16
+  writeline("  mov [rcx], edx");    // fp_offset = rdx
+  writeline("  jmp .L_va_arg_end%d", label_index);
+  writeline(".L_va_arg_stack%d:", label_index);
+  writeline("  mov rax, [rdi+8]");  // rax = overflow_arg_area
+  writeline("  lea rdx, [rax+16]"); // rdx = overflow_arg_area + 16
+  writeline("  mov [rdi+8], rdx");  // overflow_arg_area = rdx
+  writeline(".L_va_arg_end%d:", label_index);
+}
+
+void gen_builtin_va_arg_stack(Node *node, int size) {
+  assert(node->args->size == 2);
+  comment(NULL, "builtin_va_arg_stack");
+  Node *ap = *(Node **)vector_get(node->args, 0);
+  gen(ap);                         // rax = &va_list
+  writeline("  lea rdi, [rax+8]"); // rdi = &overflow_arg_area
+  writeline("  mov rax, [rdi]");   // rax = overflow_arg_area
+  writeline("  lea rdx, [rax+%d]",
+            iceil(size, 8));     // rdx = overflow_arg_area + iceil(size,8)
+  writeline("  mov [rdi], rdx"); // overflow_arg_area = rdx
+  comment(NULL, "end builtin_va_arg_stack");
+}
+
 void gen_builtin_va_arg(Node *node) {
   assert(node->args->size == 2);
   comment(NULL, "builtin_va_arg");
@@ -541,10 +651,28 @@ void gen_builtin_va_arg(Node *node) {
   } else if (is_float(type)) {
     gen_builtin_va_arg_fp(node, label_index);
   } else if (pass_on_memory(type)) {
-    error(NULL, "currently, struct/union is not supported for va_arg");
+    gen_builtin_va_arg_stack(node, type->size);
   } else if (is_struct_union(type)) {
-    assert(type->size <= 16);
-    error(NULL, "currently, struct/union is not supported for va_arg");
+    if (type->size <= 8) {
+      if (use_xmm(type, 0, 8))
+        gen_builtin_va_arg_fp(node, label_index);
+      else
+        gen_builtin_va_arg_gp(node, label_index);
+    } else if (type->size <= 16) {
+      bool fp1 = use_xmm(type, 0, 8);
+      bool fp2 = use_xmm(type, 8, 16);
+
+      if (fp1 && fp2)
+        gen_builtin_va_arg_struct_fp2(node, label_index);
+      else if (!fp1 && !fp2)
+        gen_builtin_va_arg_struct_gp2(node, label_index);
+      else if (fp1 && !fp2)
+        gen_builtin_va_arg_struct_gpfp(node, label_index, true);
+      else
+        gen_builtin_va_arg_struct_gpfp(node, label_index, false);
+    } else {
+      assert(false);
+    }
   } else {
     error(node->token ? &node->token->pos : NULL,
           "unsupported type specified for va_arg");

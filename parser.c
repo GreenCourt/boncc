@@ -949,7 +949,10 @@ void func(Type *type, int qualifier, Token **nx) {
     static const int sizeof_register_save_area =
         (/* gp */ 8 * 6) + (/* xmm0 - xmm7 */ 16 * 8);
     static const int sizeof_va_list = 24;
-    t = array_type(t, sizeof_va_list + sizeof_register_save_area);
+    static const int va_arg_buffer_size =
+        16; // a buffer used by __builtin_va_arg
+    t = array_type(t, sizeof_va_list + sizeof_register_save_area +
+                          va_arg_buffer_size);
     Variable *var = new_local_variable(t, 0);
     set_offset(var);
     f->hidden_va_area = var;

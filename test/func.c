@@ -555,3 +555,185 @@ int va_arg_int_double(int n, ...) {
   }
   return s;
 }
+
+long long va_arg_struct1(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  long long sum = 0;
+  for (int i = 0; i < n; ++i) {
+    S1 s = va_arg(ap, S1);
+    sum += s.x;
+  }
+  return sum;
+}
+
+int va_arg_struct2(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  int sum = 0;
+  for (int i = 0; i < n; ++i) {
+    S3 s = va_arg(ap, S3);
+    sum += s.x;
+  }
+  return sum;
+}
+
+int va_arg_struct3(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  float r[] = {1.1f, 2.2f, 3.3f, 4.4f, 5.5f, 6.6f, 7.7f, 8.8f, 9.9f, 10.1f};
+  int sum = 0;
+  for (int i = 0; i < n; ++i) {
+    S4 s = va_arg(ap, S4);
+    sum += s.x == r[i];
+  }
+  return sum;
+}
+
+int va_arg_struct4(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  double r[] = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1, 11.11};
+  int sum = 0;
+  for (int i = 0; i < n; ++i) {
+    S5 s = va_arg(ap, S5);
+    sum += s.x == r[i];
+  }
+  return sum;
+}
+
+S19 va_arg_struct5(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  float r[] = {1.1f, 2.2f, 3.3f, 4.4f, 5.5f, 6.6f, 7.7f, 8.8f, 9.9f, 10.1f};
+  S19 ret = {{0, 0}};
+  for (int i = 0; i < n; ++i) {
+    S7 s = va_arg(ap, S7);
+    ret.x[0] += s.x == r[i];
+    ret.x[1] += s.y;
+  }
+  return ret;
+}
+
+S13 va_arg_struct6(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  S13 ret = {{0, 0, 0}, 0, 0};
+  for (int i = 0; i < n; ++i) {
+    S13 s = va_arg(ap, S13);
+    ret.x[0] += s.x[0];
+    ret.x[1] += s.x[1];
+    ret.x[2] += s.x[2];
+    ret.y += s.y;
+    ret.z += s.z;
+  }
+  return ret;
+}
+
+S19 va_arg_struct7(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  S19 ret = {{0, 0}};
+  double r[] = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1};
+  double q[] = {-1.11, -2.22, -3.33, -4.44, -5.55,
+                -6.66, -7.77, -8.88, -9.99, -10.101};
+  for (int i = 0; i < n; ++i) {
+    S17 s = va_arg(ap, S17);
+    ret.x[0] += s.x[0] == r[i];
+    ret.x[1] += s.x[1] == q[i];
+  }
+  return ret;
+}
+
+S19 va_arg_struct8(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  S19 ret = {{0, 0}};
+  double r[] = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1};
+  for (int i = 0; i < n; ++i) {
+    S11 s = va_arg(ap, S11);
+    ret.x[0] += s.x == r[i];
+    ret.x[1] += s.y;
+  }
+  return ret;
+}
+
+S19 va_arg_struct9(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  S19 ret = {{0, 0}};
+  float r[] = {1.1f, 2.2f, 3.3f, 4.4f, 5.5f, 6.6f, 7.7f, 8.8f, 9.9f, 10.1f};
+  for (int i = 0; i < n; ++i) {
+    S9 s = va_arg(ap, S9);
+    ret.x[0] += s.x;
+    ret.x[1] += s.y == r[i];
+  }
+  return ret;
+}
+
+S20 va_arg_struct10(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  S20 ret = {{0, 0, 0, 0}};
+  double r[] = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1};
+  double q[] = {-1.1, -2.2, -3.3, -4.4, -5.5, -6.6, -7.7, -8.8, -9.9, -10.1};
+  for (int i = 0; i < n; ++i) {
+    S21 s = va_arg(ap, S21);
+    ret.x[0] += s.x[0] == r[i];
+    ret.x[1] += s.x[1] == q[i];
+    ret.x[2] += s.y;
+    ret.x[3] += s.z;
+  }
+  return ret;
+}
+
+S20 va_arg_union1x(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  S20 ret = {{0, 0, 0, 0}};
+  for (int i = 0; i < n; ++i) {
+    U1 s = va_arg(ap, U1);
+    ret.x[0] += s.x[0];
+    ret.x[1] += s.x[1];
+    ret.x[2] += s.x[2];
+  }
+  return ret;
+}
+
+int va_arg_union1y(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  double r[] = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1};
+  int ret = 0;
+  for (int i = 0; i < n; ++i) {
+    U1 s = va_arg(ap, U1);
+    ret += s.y == r[i];
+  }
+  return ret;
+}
+
+S19 va_arg_union2y(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  double r[] = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.1};
+  double q[] = {-1.1, -2.2, -3.3, -4.4, -5.5, -6.6, -7.7, -8.8, -9.9, -10.1};
+  S19 ret = {{0, 0}};
+  for (int i = 0; i < n; ++i) {
+    U2 s = va_arg(ap, U2);
+    ret.x[0] += s.y[0] == r[i];
+    ret.x[1] += s.y[1] == q[i];
+  }
+  return ret;
+}
+
+int va_arg_union2z(int n, ...) {
+  va_list ap;
+  va_start(ap, n);
+  float r[] = {1.1f, 2.2f, 3.3f, 4.4f, 5.5f, 6.6f, 7.7f, 8.8f, 9.9f, 10.1f};
+  int ret = 0;
+  for (int i = 0; i < n; ++i) {
+    U2 s = va_arg(ap, U2);
+    ret += s.z == r[i];
+  }
+  return ret;
+}

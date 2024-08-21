@@ -57,20 +57,29 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  if (input_path[strlen(input_path) - 1] == '/') {
+    fprintf(stderr, "%s is a directory\n", input_path);
+    return 1;
+  }
+
+  if (outpath && outpath[strlen(outpath) - 1] == '/') {
+    fprintf(stderr, "output path must not be a directory.\n");
+    return 1;
+  }
+
   if (outpath == NULL) {
     int len = strlen(input_path);
+    outpath = calloc(len + 3, sizeof(char));
+    strncpy(outpath, input_path, len);
     if (len >= 2 && input_path[len - 2] == '.') {
-      outpath = calloc(len + 1, sizeof(char));
-      strncpy(outpath, input_path, len);
       outpath[len - 1] = 's';
       outpath[len] = '\0';
     } else {
-      outpath = calloc(len + 3, sizeof(char));
-      strncpy(outpath, input_path, len);
       outpath[len] = '.';
       outpath[len + 1] = 's';
       outpath[len + 2] = '\0';
     }
+    outpath = basename(outpath);
   }
 
   Token *tokens = tokenize(read_file(input_path), input_path);

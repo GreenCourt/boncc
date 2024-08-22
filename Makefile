@@ -105,7 +105,7 @@ $(TEST_EXE_DIR)/%: $(addprefix $(TEST_OBJ_DIR)/,%.o common.o)
 
 $(TEST_OBJ_DIR)/%.o: test/%.c boncc
 	@mkdir -p $(TEST_OBJ_DIR)
-	./boncc $(EXTRA_TEST_FLAGS) $< -o $@
+	./boncc -c $(EXTRA_TEST_FLAGS) $< -o $@
 
 $(TEST_OBJ_DIR)/call.o: test/func.h
 $(TEST_OBJ_DIR)/func.o: test/func.h
@@ -120,7 +120,7 @@ boncc2: $(addprefix $(OBJ_DIR)/,$(addsuffix 2.o,$(DEP)))
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 $(OBJ_DIR)/%2.o: %.c boncc
-	./boncc $(EXTRA_CFLAGS) $< -o $@
+	./boncc -c $(EXTRA_CFLAGS) $< -o $@
 
 stage2test: $(addprefix $(TEST_EXE_DIR)/,$(addsuffix 2,$(TESTS)))
 	for i in $^; do echo $$i; $$i || exit $$?; done
@@ -133,7 +133,7 @@ $(TEST_EXE_DIR)/%2: $(addprefix $(TEST_OBJ_DIR)/,%2.o common2.o)
 
 $(TEST_OBJ_DIR)/%2.o: test/%.c boncc2
 	@mkdir -p $(TEST_OBJ_DIR)
-	./boncc2 $(EXTRA_TEST_FLAGS) $< -o $@
+	./boncc2 -c $(EXTRA_TEST_FLAGS) $< -o $@
 
 $(TEST_OBJ_DIR)/call2.o: test/func.h
 $(TEST_OBJ_DIR)/func2.o: test/func.h

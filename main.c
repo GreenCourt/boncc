@@ -1,4 +1,5 @@
 #include "boncc.h"
+#include <assert.h>
 #include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,7 +25,12 @@ int main(int argc, char **argv) {
 
   char *outpath = NULL;
   char *input_path = NULL;
-  bool assemble = true;
+
+  enum {
+    ASSEMBLY,
+    OBJECT_FILE,
+    EXECUTABLE,
+  } outformat = EXECUTABLE;
 
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "-o") == 0) {
@@ -47,9 +53,9 @@ int main(int argc, char **argv) {
         define_macro_from_command_line(argv[i] + 2);
       }
     } else if (strncmp(argv[i], "-c", 2) == 0) {
-      assemble = true;
+      outformat = OBJECT_FILE;
     } else if (strncmp(argv[i], "-S", 2) == 0) {
-      assemble = false;
+      outformat = ASSEMBLY;
     } else if (input_path) {
       fprintf(stderr, "invalid number of arguments\n");
       return 1;
@@ -73,20 +79,29 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  if (assemble && outpath && strcmp(outpath, "-") == 0) {
-    fprintf(stderr,
-            "output path must not be stdout for a binary object file.\n");
+  if ((outformat == OBJECT_FILE || outformat == EXECUTABLE) && outpath &&
+      strcmp(outpath, "-") == 0) {
+    fprintf(stderr, "output path must not be stdout for a binary format.\n");
     return 1;
   }
 
   char *assembly_path = NULL;
-  char *object_path = NULL;
+  char *elf_path = NULL;
 
-  if (assemble) {
-    object_path = outpath ? outpath : basename(replace_ext(input_path, "o"));
-    assembly_path = replace_ext(object_path, "s");
-  } else {
+  switch (outformat) {
+  case ASSEMBLY:
     assembly_path = outpath ? outpath : basename(replace_ext(input_path, "s"));
+    break;
+  case OBJECT_FILE:
+    elf_path = outpath ? outpath : basename(replace_ext(input_path, "o"));
+    assembly_path = replace_ext(elf_path, "s");
+    break;
+  case EXECUTABLE:
+    elf_path = outpath ? outpath : "a.out";
+    assembly_path = outpath ? replace_ext(elf_path, "s") : "a.out.s";
+    break;
+  default:
+    assert(false);
   }
 
   Token *tokens = tokenize(read_file(input_path), input_path);
@@ -99,8 +114,15 @@ int main(int argc, char **argv) {
   if (ostream != stdout)
     fclose(ostream);
 
-  if (assemble) {
-    char *cmd[] = {"as", "-g", "-o", object_path, assembly_path, NULL};
+  if (outformat == OBJECT_FILE) {
+    char *cmd[] = {"as", "-g", "-o", elf_path, assembly_path, NULL};
+    if (execvp(cmd[0], cmd) != 0) {
+      fprintf(stderr, "failed to execute assembler\n");
+      return 1;
+    }
+  } else if (outformat == EXECUTABLE) {
+    char *cmd[] = {"cc", "-g",     "-x",          "assembler", "-znoexecstack",
+                   "-o", elf_path, assembly_path, NULL};
     if (execvp(cmd[0], cmd) != 0) {
       fprintf(stderr, "failed to execute assembler\n");
       return 1;

@@ -16,7 +16,6 @@ int add12(int x, int y) {
 }
 
 int fib(int a) {
-  int r = 0;
   if (a == 0)
     return 0;
   else if (a == 1)

@@ -3,7 +3,7 @@ int line2 = __LINE__;
 
 #include "common.h"
 
-int sprintf(char *s, char *fmt, ...);
+int sprintf(char *s, const char *fmt, ...);
 #define SPRINTF(s, fmt, ...) sprintf(s, fmt, __VA_ARGS__)
 
 #define FOO 10

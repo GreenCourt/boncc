@@ -68,7 +68,7 @@ int main() {
   }
   {
     int a[3];
-    int *p = &a;
+    int *p = a;
     verify(1, !0);
     verify(0, !1);
     verify(0, !57);

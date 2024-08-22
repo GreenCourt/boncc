@@ -149,7 +149,6 @@ int main() {
   {
     int x = 2;
     int y = 0;
-    int z = 4;
     switch (x) {
     case 4 - 2:
       y = 3;

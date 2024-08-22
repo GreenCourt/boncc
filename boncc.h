@@ -353,7 +353,7 @@ bool same_string_nt(String *s, char *null_terminated);
 void define_macro_from_command_line(char *arg);
 
 Token *tokenize(char *src, char *input_path);
-Token *preprocess(Token *input);
+Token *preprocess(Token *input, Vector *included);
 void parse(Token *input);
 void generate_code(FILE *output_stream);
 

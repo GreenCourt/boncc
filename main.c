@@ -25,6 +25,7 @@ int main(int argc, char **argv) {
 
   char *outpath = NULL;
   char *input_path = NULL;
+  bool mmd = false;
 
   enum {
     ASSEMBLY,
@@ -52,10 +53,12 @@ int main(int argc, char **argv) {
       } else {
         define_macro_from_command_line(argv[i] + 2);
       }
-    } else if (strncmp(argv[i], "-c", 2) == 0) {
+    } else if (strcmp(argv[i], "-c") == 0) {
       outformat = OBJECT_FILE;
-    } else if (strncmp(argv[i], "-S", 2) == 0) {
+    } else if (strcmp(argv[i], "-S") == 0) {
       outformat = ASSEMBLY;
+    } else if (strcmp(argv[i], "-MMD") == 0) {
+      mmd = true;
     } else if (input_path) {
       fprintf(stderr, "invalid number of arguments\n");
       return 1;
@@ -87,26 +90,43 @@ int main(int argc, char **argv) {
 
   char *assembly_path = NULL;
   char *elf_path = NULL;
+  char *dep_path = NULL;
 
   switch (outformat) {
   case ASSEMBLY:
     assembly_path = outpath ? outpath : basename(replace_ext(input_path, "s"));
+    dep_path = replace_ext(assembly_path, "d");
+    outpath = assembly_path;
     break;
   case OBJECT_FILE:
     elf_path = outpath ? outpath : basename(replace_ext(input_path, "o"));
     assembly_path = replace_ext(elf_path, "s");
+    dep_path = replace_ext(elf_path, "d");
+    outpath = elf_path;
     break;
   case EXECUTABLE:
     elf_path = outpath ? outpath : "a.out";
     assembly_path = outpath ? replace_ext(elf_path, "s") : "a.out.s";
+    dep_path = outpath ? replace_ext(elf_path, "d") : "a.out.d";
+    outpath = elf_path;
     break;
   default:
     assert(false);
   }
 
   Token *tokens = tokenize(read_file(input_path), input_path);
-  tokens = preprocess(tokens);
+  Vector *included = new_vector(0, sizeof(char *)); // *char
+  tokens = preprocess(tokens, included);
   parse(tokens);
+
+  if (mmd) {
+    FILE *dep = fopen(dep_path, "w");
+    fprintf(dep, "%s: %s", outpath, input_path);
+    for (int i = 0; i < included->size; i++)
+      fprintf(dep, " %s", *(char **)vector_get(included, i));
+    fprintf(dep, "\n");
+    fclose(dep);
+  }
 
   FILE *ostream =
       strcmp(assembly_path, "-") == 0 ? stdout : fopen(assembly_path, "w");

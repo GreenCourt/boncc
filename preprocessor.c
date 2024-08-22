@@ -9,6 +9,7 @@ Node *expr(Token **nx);   // parse.c
 Number *eval(Node *node); // node.c
 
 static Map *macros;
+static Vector *included_files; // *char
 
 typedef struct Macro Macro;
 struct Macro {
@@ -900,14 +901,19 @@ Token *process_include(Token *prev) {
       char *f = calloc(strlen(directive->pos.file_name) + 1, sizeof(char));
       snprintf(f, strlen(directive->pos.file_name) + 1, "%s",
                directive->pos.file_name);
-      p = path_join(dirname(f), p);
+      char *d = dirname(f);
+      if (strcmp(d, ".") != 0)
+        p = path_join(d, p);
     }
 
-    if (access(p, R_OK) == 0) // if file is readable
+    if (access(p, R_OK) == 0) { // if file is readable
       filepath = p;
-    else
+      if (included_files)
+        vector_push(included_files, &filepath);
+    } else {
       filepath =
           search_include_path(directive->next->string_literal, directive->next);
+    }
   } else if (directive->next->kind == TK_LT && !directive->next->at_eol) {
     assert(directive->next->next->kind == TK_STR);
     assert(directive->next->next->next->kind == TK_GT);
@@ -1029,9 +1035,10 @@ bool skip_unsupported_keywords(Token *prev) {
   return false;
 }
 
-Token *preprocess(Token *input) {
+Token *preprocess(Token *input, Vector *included) {
   assert(input);
   init_macro();
+  included_files = included ? included : NULL;
 
   Token head;
   head.next = input;

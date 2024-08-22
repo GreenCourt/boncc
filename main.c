@@ -59,6 +59,9 @@ int main(int argc, char **argv) {
       outformat = ASSEMBLY;
     } else if (strcmp(argv[i], "-MMD") == 0) {
       mmd = true;
+    } else if (argv[i][0] == '-') {
+      fprintf(stderr, "unknown option %s\n", argv[i]);
+      return 1;
     } else if (input_path) {
       fprintf(stderr, "invalid number of arguments\n");
       return 1;

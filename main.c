@@ -1,5 +1,6 @@
 #include "boncc.h"
 #include <assert.h>
+#include <errno.h>
 #include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -148,6 +149,8 @@ int main(int argc, char **argv) {
 
   if (mmd) {
     FILE *dep = fopen(dep_path, "w");
+    if (!dep)
+      error(NULL, "failed to open %s: %s", dep_path, strerror(errno));
     fprintf(dep, "%s: %s", outpath, input_path);
     for (int i = 0; i < included->size; i++)
       fprintf(dep, " %s", *(char **)vector_get(included, i));
@@ -157,6 +160,8 @@ int main(int argc, char **argv) {
 
   FILE *ostream =
       strcmp(assembly_path, "-") == 0 ? stdout : fopen(assembly_path, "w");
+  if (!ostream)
+    error(NULL, "failed to open %s: %s", assembly_path, strerror(errno));
   generate_code(ostream);
   if (ostream != stdout)
     fclose(ostream);

@@ -84,7 +84,7 @@ char *read_file(char *path) {
   } else {
     fp = fopen(path, "r");
     if (!fp)
-      error(NULL, "cannot open %s: %s", path, strerror(errno));
+      error(NULL, "failed to open %s: %s", path, strerror(errno));
   }
 
   char *content;

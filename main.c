@@ -59,6 +59,30 @@ int main(int argc, char **argv) {
       outformat = ASSEMBLY;
     } else if (strcmp(argv[i], "-MMD") == 0) {
       mmd = true;
+    } else if (strncmp(argv[i], "-W", 2) == 0) {
+      // ignore
+    } else if (strncmp(argv[i], "-f", 2) == 0) {
+      // ignore
+    } else if (strcmp(argv[i], "-w") == 0) {
+      // ignore
+    } else if (strcmp(argv[i], "-g") == 0) {
+      // ignore
+    } else if (strcmp(argv[i], "-O0") == 0) {
+      // ignore
+    } else if (strcmp(argv[i], "-O1") == 0 || strcmp(argv[i], "-O") == 0) {
+      // ignore
+    } else if (strcmp(argv[i], "-O2") == 0) {
+      // ignore
+    } else if (strcmp(argv[i], "-O3") == 0) {
+      // ignore
+    } else if (strcmp(argv[i], "-Og") == 0) {
+      // ignore
+    } else if (strcmp(argv[i], "-Ofast") == 0) {
+      // ignore
+    } else if (strcmp(argv[i], "-Os") == 0) {
+      // ignore
+    } else if (strcmp(argv[i], "-Oz") == 0) {
+      // ignore
     } else if (argv[i][0] == '-') {
       fprintf(stderr, "unknown option %s\n", argv[i]);
       return 1;

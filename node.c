@@ -618,13 +618,23 @@ Node *new_node_conditional(Token *tok, Node *cond, Node *lhs, Node *rhs,
       !same_type(lhs->type, rhs->type))
     error(tok ? &tok->pos : NULL, "unmatched type");
 
-  if (!is_struct_union(lhs->type)) {
-    Type *type = implicit_type_conversion(lhs->type, rhs->type);
+  if (!castable(cond->type, base_type(TYPE_BOOL)))
+    error(tok ? &tok->pos : NULL, "boolean compatible type required");
+
+  Type *type = NULL;
+  if (lhs->type->kind == TYPE_VOID || rhs->type->kind == TYPE_VOID) {
+    type = base_type(TYPE_VOID);
+  } else if (is_struct_union(lhs->type)) {
+    assert(same_type(lhs->type, rhs->type));
+    type = lhs->type;
+  } else {
+    type = implicit_type_conversion(lhs->type, rhs->type);
     lhs = new_node_cast(NULL, type, lhs);
     rhs = new_node_cast(NULL, type, rhs);
   }
+  assert(type);
 
-  Node *node = new_node(ND_COND, lhs, rhs, lhs->type);
+  Node *node = new_node(ND_COND, lhs, rhs, type);
   node->condition = new_node_cast(tok, base_type(TYPE_BOOL), cond);
   node->token = tok;
   node->label_index = label_index;

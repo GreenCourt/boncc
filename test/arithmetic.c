@@ -268,5 +268,11 @@ int main() {
     verify(1, !x || y);
     verify(0, !x || !y);
   }
+
+  // void for conditional operator(used in macro)
+  1 ? (void)0 : (void)2;
+  1 ? (int)0 : (void)2;
+  1 ? (void)0 : (int)2;
+
   return 0;
 }

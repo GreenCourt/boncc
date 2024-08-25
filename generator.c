@@ -391,14 +391,16 @@ void gen_if(Node *node) {
   writeline("  cmp al, 0");
   if (node->else_) {
     writeline("  je .Lelse%d", node->label_index);
-    gen(node->body);
+    if (node->body)
+      gen(node->body);
     writeline("  jmp .Lend%d", node->label_index);
     writeline(".Lelse%d:", node->label_index);
     gen(node->else_);
     writeline(".Lend%d:", node->label_index);
   } else {
     writeline("  je .Lend%d", node->label_index);
-    gen(node->body);
+    if (node->body)
+      gen(node->body);
     writeline(".Lend%d:", node->label_index);
   }
 }
@@ -406,7 +408,8 @@ void gen_if(Node *node) {
 void gen_do(Node *node) {
   assert(node->condition->type->kind == TYPE_BOOL);
   writeline(".Ldo%d:", node->label_index);
-  gen(node->body);
+  if (node->body)
+    gen(node->body);
   writeline(".Lcontinue%d:", node->label_index);
   gen(node->condition);
   writeline("  cmp al, 0");
@@ -421,7 +424,8 @@ void gen_while(Node *node) {
   writeline("  cmp al, 0");
   writeline("  je .Lend%d", node->label_index);
 
-  gen(node->body);
+  if (node->body)
+    gen(node->body);
   writeline("  jmp .Lcontinue%d", node->label_index);
   writeline(".Lend%d:", node->label_index);
 }
@@ -437,7 +441,8 @@ void gen_for(Node *node) {
     writeline("  cmp al, 0");
     writeline("  je .Lend%d", node->label_index);
   }
-  gen(node->body);
+  if (node->body)
+    gen(node->body);
   writeline(".Lcontinue%d:", node->label_index);
   if (node->update)
     gen(node->update);

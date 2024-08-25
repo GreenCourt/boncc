@@ -249,5 +249,23 @@ int main() {
     goto foo;
   end:;
   }
+  {
+    if (1)
+      ;
+    else
+      ;
+    while (0)
+      ;
+    do {
+    } while (0);
+    for (int i = 0; i < 5; ++i)
+      ;
+    {
+      int x = 2;
+      switch (x) {}
+    }
+    {}
+    { ; }
+  }
   return 0;
 }

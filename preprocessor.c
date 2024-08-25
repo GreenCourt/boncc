@@ -226,13 +226,21 @@ static Token *clone_va_args(Token *head, Macro *macro, Vector *args,
   return tail;
 }
 
-static Token *apply_hash_operator(Token *operand) {
+static Token *operator_hash(Token *operand) {
   assert(operand != NULL);
   size_t len = 0;
   for (Token *tk = operand; tk != NULL; tk = tk->next) {
     if (tk->kind == TK_EMPTY)
       continue;
     len += tk->str->len + (tk->has_right_space && !tk->at_eol);
+
+    if (tk->kind == TK_NUM && tk->num->type->kind == TYPE_CHAR) {
+      // char literal
+      len += (number2char(tk->num) == '"') ? 3 : 2;
+    }
+
+    if (tk->kind == TK_STR)
+      len += 4;
   }
 
   char *string = calloc(len + 1, sizeof(char));
@@ -240,8 +248,29 @@ static Token *apply_hash_operator(Token *operand) {
   for (Token *tk = operand; tk != NULL; tk = tk->next) {
     if (tk->kind == TK_EMPTY)
       continue;
+
+    if (tk->kind == TK_NUM && tk->num->type->kind == TYPE_CHAR) {
+      string[ofs++] = '\'';
+      if (number2char(tk->num) == '"')
+        string[ofs++] = '\\';
+    }
+
+    if (tk->kind == TK_STR) {
+      string[ofs++] = '\\';
+      string[ofs++] = '"';
+    }
+
     strncpy(string + ofs, tk->str->str, tk->str->len);
     ofs += tk->str->len;
+
+    if (tk->kind == TK_NUM && tk->num->type->kind == TYPE_CHAR)
+      string[ofs++] = '\'';
+
+    if (tk->kind == TK_STR) {
+      string[ofs++] = '\\';
+      string[ofs++] = '"';
+    }
+
     if (tk->has_right_space && !tk->at_eol)
       string[ofs++] = ' ';
   }
@@ -393,7 +422,7 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
         Token *arg =
             *(Token **)vector_get(args, operand->idx - 1 /* 1-indexed */);
         assert(arg != NULL);
-        tail->next = apply_hash_operator(arg);
+        tail->next = operator_hash(arg);
         tail = tail->next;
       } else if (b->idx) {
         Token *arg = *(Token **)vector_get(args, b->idx - 1 /* 1-indexed */);

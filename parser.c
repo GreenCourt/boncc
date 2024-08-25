@@ -1156,6 +1156,9 @@ Node *declaration(Token **nx) {
 
   type = declarator(type, nx);
 
+  if (type->objdec == NULL)
+    error(&tk->pos, "declarator expected but not found");
+
   if (type->kind == TYPE_FUNC) {
     if (current_scope != global_scope)
       error(&tk->pos, "function declaration is only allowed in global scope");

@@ -274,5 +274,23 @@ int main() {
   1 ? (int)0 : (void)2;
   1 ? (void)0 : (int)2;
 
+  // statement expressions
+  verify(14, ({
+           int x = 4;
+           x + 10;
+         }));
+  verify(1, 14.45 == ({
+              double x = 14.45, y = 12.12;
+              x;
+            }));
+  verify(1, 12.12 == ({
+              double x = 14.45, y = 12.12;
+              3 < 5 ? y : x;
+            }));
+  verify(1, 14.45 == ({
+              double x = 14.45, y = 12.12;
+              3 < -5 ? y : x;
+            }));
+  ({});
   return 0;
 }

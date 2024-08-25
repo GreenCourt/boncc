@@ -75,6 +75,7 @@ tail        =  ("[" expr "]")
                | ("++") | ("--")
                | ("(" (assign ("," assign)*)? ")")
 primary     = "(" expr ")"
+              | "(" "{" stmt "}" ")"  // statement expression
               | ident
               | num
               | str
@@ -1634,14 +1635,19 @@ Node *stmt_block(Token **nx) {
   node->blk_stmts = new_vector(0, sizeof(Node *));
   node->token = NULL;
 
+  Type *vt = base_type(TYPE_VOID);
+  node->type = vt;
+
   while (!consume(TK_RBRACE, nx)) {
-    Node *s;
+    Node *s = NULL;
     if ((s = declaration(nx))) {
       if (s->kind != ND_NOP)
         vector_push(node->blk_stmts, &s);
     } else if ((s = stmt(nx))) {
       vector_push(node->blk_stmts, &s);
     }
+    // set node->type for statement expressions
+    node->type = s && s->type ? s->type : vt;
   }
 
   return node;
@@ -2041,7 +2047,16 @@ Node *unary(Token **nx) {
 
 Node *primary(Token **nx) {
   if (consume(TK_LPAREN, nx)) {
-    Node *node = expr(nx);
+    Node *node = NULL;
+    if (consume(TK_LBRACE, nx)) {
+      // statement expression
+      new_scope();
+      node = stmt_block(nx);
+      assert(node->type);
+      restore_scope();
+    } else {
+      node = expr(nx);
+    }
     expect(TK_RPAREN, nx);
     return node;
   }

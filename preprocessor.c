@@ -50,7 +50,6 @@ static void init_macro() {
 
   {
     static String idents[] = {
-        {"NDEBUG", 6},
         {"__x86_64__", 10},
         {"__LP64__", 8},
     };

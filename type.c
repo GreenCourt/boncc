@@ -253,6 +253,10 @@ bool pass_on_memory(Type *type) {
 }
 
 Type *implicit_type_conversion(Type *l, Type *r) {
+  assert(!is_struct_union(l));
+  assert(!is_struct_union(r));
+  assert(l->kind != TYPE_VOID);
+  assert(r->kind != TYPE_VOID);
   assert(!(is_float(l) && (r->kind == TYPE_ARRAY || r->kind == TYPE_PTR)));
   assert(!(is_float(r) && (l->kind == TYPE_ARRAY || l->kind == TYPE_PTR)));
 
@@ -286,4 +290,25 @@ Type *implicit_type_conversion(Type *l, Type *r) {
     return r;
 
   return l;
+}
+
+bool castable(Type *from, Type *to) {
+  assert(from->kind != TYPE_FUNC);
+  assert(to->kind != TYPE_FUNC);
+  assert(from->kind != TYPE_NONE);
+  assert(to->kind != TYPE_NONE);
+
+  if (same_type(from, to))
+    return true;
+
+  if (from->kind == TYPE_ARRAY && is_scalar(to))
+    return true;
+
+  if (!is_scalar(from) && to->kind != TYPE_VOID)
+    return false;
+
+  if (from->kind == TYPE_VOID && to->kind != TYPE_VOID)
+    return false;
+
+  return true;
 }

@@ -376,6 +376,7 @@ bool is_funcptr(Type *type);
 bool is_struct_union(Type *type);
 bool pass_on_memory(Type *type);
 Type *implicit_type_conversion(Type *l, Type *r);
+bool castable(Type *from, Type *to);
 
 Number *new_number_int(int val);
 bool is_integer_zero(Number *num);

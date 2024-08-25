@@ -1563,6 +1563,8 @@ Node *stmt(Token **nx) {
     node->return_buffer_address = current_function->return_buffer_address;
     if (!consume(TK_SEMICOLON, nx)) {
       node->lhs = expr(nx);
+      if (!castable(node->lhs->type, current_function->type->return_type))
+        error(&tok->pos, "invalid return type");
       node->lhs =
           new_node_cast(tok, current_function->type->return_type, node->lhs);
       expect(TK_SEMICOLON, nx);
@@ -1651,7 +1653,10 @@ Node *stmt_if(Token **nx) {
   node->label_index = label_index++;
 
   Token *lp = expect(TK_LPAREN, nx);
-  node->condition = new_node_cast(lp, base_type(TYPE_BOOL), expr(nx));
+  Node *cond = expr(nx);
+  if (!castable(cond->type, base_type(TYPE_BOOL)))
+    error(&lp->pos, "boolean compatible type required");
+  node->condition = new_node_cast(lp, base_type(TYPE_BOOL), cond);
   expect(TK_RPAREN, nx);
 
   new_scope();
@@ -1676,7 +1681,10 @@ Node *stmt_do(Token **nx) {
 
   expect(TK_WHILE, nx);
   Token *lp = expect(TK_LPAREN, nx);
-  node->condition = new_node_cast(lp, base_type(TYPE_BOOL), expr(nx));
+  Node *cond = expr(nx);
+  if (!castable(cond->type, base_type(TYPE_BOOL)))
+    error(&lp->pos, "boolean compatible type required");
+  node->condition = new_node_cast(lp, base_type(TYPE_BOOL), cond);
   expect(TK_RPAREN, nx);
   expect(TK_SEMICOLON, nx);
 
@@ -1694,7 +1702,10 @@ Node *stmt_while(Token **nx) {
   vector_pushi(break_label, node->label_index);
 
   Token *lp = expect(TK_LPAREN, nx);
-  node->condition = new_node_cast(lp, base_type(TYPE_BOOL), expr(nx));
+  Node *cond = expr(nx);
+  if (!castable(cond->type, base_type(TYPE_BOOL)))
+    error(&lp->pos, "boolean compatible type required");
+  node->condition = new_node_cast(lp, base_type(TYPE_BOOL), cond);
   expect(TK_RPAREN, nx);
 
   new_scope();
@@ -1733,16 +1744,18 @@ Node *stmt_for(Token **nx) {
     }
   }
 
-  Token *lp;
-  if ((lp = consume(TK_SEMICOLON, nx)) == NULL) {
-    node->condition = new_node_cast(lp, base_type(TYPE_BOOL), expr(nx));
+  if (!consume(TK_SEMICOLON, nx)) {
+    Token *tok = *nx;
+    Node *cond = expr(nx);
+    if (!castable(cond->type, base_type(TYPE_BOOL)))
+      error(&tok->pos, "boolean compatible type required");
+    node->condition = new_node_cast(tok, base_type(TYPE_BOOL), cond);
     expect(TK_SEMICOLON, nx);
   }
 
-  Token *tok = NULL;
-  if (!(tok = consume(TK_RPAREN, nx))) {
+  if (!consume(TK_RPAREN, nx)) {
     node->update = expr(nx);
-    tok = expect(TK_RPAREN, nx);
+    expect(TK_RPAREN, nx);
   }
 
   node->body = stmt(nx);
@@ -2010,8 +2023,12 @@ Node *unary(Token **nx) {
     Type *type = consume_type(nx);
     if (type) {
       type = consume_type_star(type, nx);
-      if (consume(TK_RPAREN, nx))
-        return new_node_cast(tok, type, unary(nx));
+      if (consume(TK_RPAREN, nx)) {
+        Node *operand = unary(nx);
+        if (!castable(operand->type, type))
+          error(&tok->pos, "invalid type casting");
+        return new_node_cast(tok, type, operand);
+      }
     }
     *nx = tok; // rollback
   }
@@ -2134,6 +2151,8 @@ Node *tail(Node *x, Token **nx) {
       if (f->params->size > node->args->size) {
         // argument type conversion
         Type *t = *(Type **)vector_get(f->params, node->args->size);
+        if (!castable(e->type, t))
+          error(&op->pos, "invalid argument type");
         e = new_node_cast(op, t, e);
       } else if (e->type->kind == TYPE_ARRAY) {
         // pass an array as a pointer

@@ -88,19 +88,10 @@ Node *new_node_num(Token *tok, Number *num) {
 }
 
 Node *new_node_cast(Token *tok, Type *type, Node *operand) {
-  assert(type->kind != TYPE_FUNC);
-  assert(operand->type->kind != TYPE_FUNC);
-  assert(type->kind != TYPE_NONE);
-  assert(operand->type->kind != TYPE_NONE);
+  assert(castable(operand->type, type));
 
   if (same_type(type, operand->type))
     return operand;
-
-  if (!is_scalar(type) && type->kind != TYPE_VOID)
-    error(tok ? &tok->pos : NULL, "invalid type casting");
-
-  if (operand->type->kind == TYPE_VOID && type->kind != TYPE_VOID)
-    error(tok ? &tok->pos : NULL, "invalid type casting from void");
 
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_CAST;

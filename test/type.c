@@ -113,6 +113,9 @@ int main() {
 
   verify(8, sizeof(typedef_global_unnamed_struct));
 
+  verify(8, sizeof((const char *)0));
+  verify(2, sizeof((const short)0));
+
   {
     // named enum
     enum X { X0, X1, X2 };

@@ -67,7 +67,7 @@ unary       = postfix
               | ("&" unary)
               | ("!" unary)
               | ("~" unary)
-              | ("(" type ")" unary)
+              | ("(" qualifier type ")" unary)
 postfix     = primary tail*
 tail        =  ("[" expr "]")
                | ("." ident)
@@ -2020,12 +2020,16 @@ Node *unary(Token **nx) {
     return new_node_bitnot(tok, unary(nx));
 
   if (consume(TK_LPAREN, nx)) {
+    int qualifier = consume_qualifier(nx);
     Type *type = consume_type(nx);
     if (type) {
+      type->is_const = (qualifier & IS_CONST) != 0;
       type = consume_type_star(type, nx);
       if (consume(TK_RPAREN, nx)) {
         Node *operand = unary(nx);
-        if (!castable(operand->type, type))
+
+        if ((qualifier & (IS_STATIC | IS_EXTERN)) ||
+            !castable(operand->type, type))
           error(&tok->pos, "invalid type casting");
         return new_node_cast(tok, type, operand);
       }

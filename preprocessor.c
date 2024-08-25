@@ -231,15 +231,30 @@ static Token *operator_hash(Token *operand) {
   for (Token *tk = operand; tk != NULL; tk = tk->next) {
     if (tk->kind == TK_EMPTY)
       continue;
-    len += tk->str->len + (tk->has_right_space && !tk->at_eol);
 
-    if (tk->kind == TK_NUM && tk->num->type->kind == TYPE_CHAR) {
+    len += tk->has_right_space && (tk->next != NULL);
+
+    if (tk->kind == TK_STR) {
+      char *strlit = tk->string_literal;
+      int slen = strlen(strlit);
+      len += slen;
+      for (int i = 0; i < slen; ++i)
+        len += (strlit[i] == '\\' || strlit[i] == '"');
+      len += 4; // backslash + double quote at left and right
+    } else if (tk->kind == TK_NUM && tk->num->type->kind == TYPE_CHAR) {
       // char literal
-      len += (number2char(tk->num) == '"') ? 3 : 2;
+      assert(tk->str->len <= 2);
+      if (tk->str->len == 2) { // escaped character
+        assert(tk->str->str[0] == '\\');
+        len += 5 + (tk->str->str[1] == '\\');
+      } else if (number2char(tk->num) == '"') {
+        len += 4;
+      } else {
+        len += 3;
+      }
+    } else {
+      len += tk->str->len;
     }
-
-    if (tk->kind == TK_STR)
-      len += 4;
   }
 
   char *string = calloc(len + 1, sizeof(char));
@@ -248,29 +263,46 @@ static Token *operator_hash(Token *operand) {
     if (tk->kind == TK_EMPTY)
       continue;
 
-    if (tk->kind == TK_NUM && tk->num->type->kind == TYPE_CHAR) {
+    if (tk->kind == TK_STR) {
+      char *strlit = tk->string_literal;
+      int slen = strlen(strlit);
+      string[ofs++] = '\\';
+      string[ofs++] = '"';
+
+      for (int i = 0; i < slen; ++i) {
+        if (strlit[i] == '\\' || strlit[i] == '"')
+          string[ofs++] = '\\';
+        string[ofs++] = strlit[i];
+      }
+
+      string[ofs++] = '\\';
+      string[ofs++] = '"';
+    } else if (tk->kind == TK_NUM && tk->num->type->kind == TYPE_CHAR) {
+      char *str = tk->str->str;
+      int slen = tk->str->len;
+      assert(slen <= 2);
+
       string[ofs++] = '\'';
-      if (number2char(tk->num) == '"')
+      if (slen == 2) {
+        assert(str[0] == '\\');
         string[ofs++] = '\\';
-    }
-
-    if (tk->kind == TK_STR) {
-      string[ofs++] = '\\';
-      string[ofs++] = '"';
-    }
-
-    strncpy(string + ofs, tk->str->str, tk->str->len);
-    ofs += tk->str->len;
-
-    if (tk->kind == TK_NUM && tk->num->type->kind == TYPE_CHAR)
+        string[ofs++] = '\\';
+        if (str[1] == '\\')
+          string[ofs++] = '\\';
+        string[ofs++] = str[1];
+      } else if (number2char(tk->num) == '"') {
+        string[ofs++] = '\\';
+        string[ofs++] = '"';
+      } else {
+        string[ofs++] = str[0];
+      }
       string[ofs++] = '\'';
-
-    if (tk->kind == TK_STR) {
-      string[ofs++] = '\\';
-      string[ofs++] = '"';
+    } else {
+      strncpy(string + ofs, tk->str->str, tk->str->len);
+      ofs += tk->str->len;
     }
 
-    if (tk->has_right_space && !tk->at_eol)
+    if (tk->has_right_space && (tk->next != NULL))
       string[ofs++] = ' ';
   }
   assert(strlen(string) == len);

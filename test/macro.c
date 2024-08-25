@@ -257,6 +257,52 @@ int main() {
     verify('"', buf[4]);
     verify('\0', buf[5]);
   }
+  {
+    char buf[10];
+    int x = sprintf(buf, TO_STRING_LITERAL('\n'));
+    verify(4, x);
+    verify('\'', buf[0]);
+    verify('\\', buf[1]);
+    verify('n', buf[2]);
+    verify('\'', buf[3]);
+    verify('\0', buf[4]);
+  }
+  {
+    char buf[10];
+    int x = sprintf(buf, TO_STRING_LITERAL('\\'));
+    verify(4, x);
+    verify('\'', buf[0]);
+    verify('\\', buf[1]);
+    verify('\\', buf[2]);
+    verify('\'', buf[3]);
+    verify('\0', buf[4]);
+  }
+  {
+    char buf[10];
+    int x = sprintf(buf, TO_STRING_LITERAL("ab\\c"));
+    verify(7, x);
+    verify('"', buf[0]);
+    verify('a', buf[1]);
+    verify('b', buf[2]);
+    verify('\\', buf[3]);
+    verify('\\', buf[4]);
+    verify('c', buf[5]);
+    verify('"', buf[6]);
+    verify('\0', buf[7]);
+  }
+  {
+    char buf[10];
+    int x = sprintf(buf, TO_STRING_LITERAL("ab\"c"));
+    verify(7, x);
+    verify('"', buf[0]);
+    verify('a', buf[1]);
+    verify('b', buf[2]);
+    verify('\\', buf[3]);
+    verify('"', buf[4]);
+    verify('c', buf[5]);
+    verify('"', buf[6]);
+    verify('\0', buf[7]);
+  }
 
   {
 #define BBB

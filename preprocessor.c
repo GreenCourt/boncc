@@ -226,6 +226,37 @@ static Token *clone_va_args(Token *head, Macro *macro, Vector *args,
   return tail;
 }
 
+static Token *apply_hash_operator(Token *operand) {
+  assert(operand != NULL);
+  size_t len = 0;
+  for (Token *tk = operand; tk != NULL; tk = tk->next) {
+    if (tk->kind == TK_EMPTY)
+      continue;
+    len += tk->str->len + (tk->has_right_space && !tk->at_eol);
+  }
+
+  char *string = calloc(len + 1, sizeof(char));
+  int ofs = 0;
+  for (Token *tk = operand; tk != NULL; tk = tk->next) {
+    if (tk->kind == TK_EMPTY)
+      continue;
+    strncpy(string + ofs, tk->str->str, tk->str->len);
+    ofs += tk->str->len;
+    if (tk->has_right_space && !tk->at_eol)
+      string[ofs++] = ' ';
+  }
+  assert(strlen(string) == len);
+
+  Token *tk = calloc(1, sizeof(Token));
+  tk->kind = TK_STR;
+  tk->is_identifier = false;
+  tk->pos = operand->pos;
+  tk->next = NULL;
+  tk->str = new_string(string, len);
+  tk->string_literal = string;
+  return tk;
+}
+
 static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
   // expand prev->next and return the tail of expanded tokens
   assert(!macro->is_dynamic);
@@ -353,7 +384,18 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
   { // replace
     Token *b = macro->body;
     while (b) {
-      if (b->idx) {
+      if (b->kind == TK_HASH) {
+        // # operator
+        Token *operand = b->next;
+        if (operand == NULL || operand->idx == 0)
+          error(&expanded->pos, "# operator is not allowed here");
+        b = operand;
+        Token *arg =
+            *(Token **)vector_get(args, operand->idx - 1 /* 1-indexed */);
+        assert(arg != NULL);
+        tail->next = apply_hash_operator(arg);
+        tail = tail->next;
+      } else if (b->idx) {
         Token *arg = *(Token **)vector_get(args, b->idx - 1 /* 1-indexed */);
         assert(arg != NULL);
         tail = clone_macro_argument(tail, arg, &expanded->pos);
@@ -367,37 +409,6 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
         tail->next = NULL;
       }
       b = b->next;
-    }
-    assert(tail->next == NULL);
-  }
-
-  { // # operator
-    tail = &head;
-    while (tail->next) {
-      if (tail->next->kind != TK_HASH) {
-        tail = tail->next;
-        continue;
-      }
-
-      Token *operand = tail->next->next;
-
-      if (operand == NULL)
-        error(&expanded->pos, "# operator is not allowed here");
-
-      Token *tk = calloc(1, sizeof(Token));
-      *tk = *operand;
-
-      if (operand->kind == TK_EMPTY) {
-        tk->string_literal = "";
-      } else {
-        tk->string_literal = calloc(operand->str->len + 1, sizeof(char));
-        strncpy(tk->string_literal, operand->str->str, operand->str->len);
-      }
-      tk->kind = TK_STR;
-      tk->is_identifier = false;
-      tk->pos = expanded->pos;
-      tk->next = operand->next;
-      tail->next = tk;
     }
     assert(tail->next == NULL);
   }

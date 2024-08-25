@@ -42,6 +42,10 @@ int sprintf(char *s, const char *fmt, ...);
 #define SAME(x) x
 #define THIRD(a, b, c) c
 #define THIRD4(a, b, c, d) c
+// clang-format off
+#define PATH_ABC /a/b/c
+#define PATH_ABC_WITH_SPACE /a /b/c
+// clang-format on
 
 int main() {
   verify(1, line1);
@@ -198,6 +202,31 @@ int main() {
     verify('1', buf[0]);
     verify('2', buf[1]);
     verify('\0', buf[2]);
+  }
+  {
+    char buf[10];
+    int x = sprintf(buf, MACRO_VALUE_TO_STRING_LITERAL(PATH_ABC));
+    verify(6, x);
+    verify('/', buf[0]);
+    verify('a', buf[1]);
+    verify('/', buf[2]);
+    verify('b', buf[3]);
+    verify('/', buf[4]);
+    verify('c', buf[5]);
+    verify('\0', buf[6]);
+  }
+  {
+    char buf[10];
+    int x = sprintf(buf, MACRO_VALUE_TO_STRING_LITERAL(PATH_ABC_WITH_SPACE));
+    verify(7, x);
+    verify('/', buf[0]);
+    verify('a', buf[1]);
+    verify(' ', buf[2]);
+    verify('/', buf[3]);
+    verify('b', buf[4]);
+    verify('/', buf[5]);
+    verify('c', buf[6]);
+    verify('\0', buf[7]);
   }
 
   {

@@ -3,9 +3,10 @@ TOPDIR:=$(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 CFLAGS=-std=c11 -g -static -Wall -Wextra -Werror -MMD
 LDFLAGS=-znoexecstack
-OBJ_DIR=obj
-TEST_OBJ_DIR=test/obj
-TEST_EXE_DIR=test/exe
+BUILD_DIR=build
+OBJ_DIR=$(BUILD_DIR)/obj
+TEST_OBJ_DIR=$(BUILD_DIR)/test
+TEST_EXE_DIR=$(TEST_OBJ_DIR)
 
 DEP=main common tokenizer parser generator preprocessor vector type node map number
 TESTS=$(basename $(filter-out common.c func.c,$(notdir $(wildcard test/*.c))))
@@ -16,7 +17,7 @@ boncc: $(addprefix $(OBJ_DIR)/,$(addsuffix .o,$(DEP)))
 test: boncc gtest stage1test abitest stage2test stage3test
 
 clean:
-	rm -rf boncc boncc2 boncc3 $(OBJ_DIR) $(TEST_OBJ_DIR) $(TEST_EXE_DIR)
+	rm -rf boncc boncc2 $(BUILD_DIR) $(OBJ_DIR) $(TEST_OBJ_DIR) $(TEST_EXE_DIR)
 
 fmt:
 	clang-format -i *.c *.h test/*.c test/*.h include/*.h

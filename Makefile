@@ -4,7 +4,7 @@ TOPDIR:=$(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CFLAGS=-std=c11 -g -static -Wall -Wextra -Werror -MMD
 LDFLAGS=-znoexecstack
 
-DEP=main common tokenizer parser generator preprocessor vector type node map number
+DEP=main common tokenizer parser generator preprocessor vector type node map number builtin_headers
 TESTS=$(basename $(filter-out common.c func.c,$(notdir $(wildcard test/*.c))))
 
 boncc: $(addprefix build/obj/,$(addsuffix .o,$(DEP)))
@@ -20,16 +20,16 @@ fmt:
 
 build/obj/%.o:%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+build/obj/builtin_headers.o: build/obj/embed $(wildcard include/*.h)
+	$< $(wordlist 2,$(words $^),$(^)) | $(CC) -xc -c -o $@ - $(CFLAGS)
+build/obj/embed: embed.c
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 -include build/*.d build/*/*.d build/*/*/*.d
 .PHONY: test test1 test2 test3 clean fmt gtest
-
-BONCC_INCLUDE_PATH?=$(TOPDIR)/include
-EXTRA_CFLAGS:=
-build/obj/main.o: EXTRA_CFLAGS:=-D BONCC_INCLUDE_PATH=\"$(BONCC_INCLUDE_PATH)\"
-build/obj2/main.o: EXTRA_CFLAGS:=-D BONCC_INCLUDE_PATH=\"$(BONCC_INCLUDE_PATH)\"
-build/obj3/main.s: EXTRA_CFLAGS:=-D BONCC_INCLUDE_PATH=\"$(BONCC_INCLUDE_PATH)\"
 
 TEST_MACRO=-D COMMAND_ARG_OBJ_LIKE_ONE \
 	   -D COMMAND_ARG_FUNC_LIKE_ONE\(X,Y,...\) \
@@ -106,7 +106,15 @@ boncc2: $(addprefix build/obj2/,$(addsuffix .o,$(DEP)))
 
 build/obj2/%.o: %.c boncc
 	@mkdir -p $(dir $@)
-	./boncc -MMD -c $(EXTRA_CFLAGS) $< -o $@
+	./boncc -MMD -c $< -o $@
+
+build/obj2/builtin_headers.o: boncc build/obj2/embed $(wildcard include/*.h)
+	$(word 2,$^) $(wordlist 3,$(words $^),$^) | ./boncc -MMD -c -o $@ -
+build/obj2/embed: build/obj2/embed.s
+	$(CC) -o $@ $< $(LDFLAGS)
+build/obj2/embed.s: embed.c boncc
+	@mkdir -p $(dir $@)
+	./boncc -MMD -S $< -o $@
 
 test2: $(addprefix build/test/2/,$(TESTS) call_gcc_obj called_by_gcc)
 	for i in $^; do echo $$i; $$i || exit $$?; done
@@ -126,9 +134,17 @@ build/test/2/%.o: test/%.c boncc2
 #
 #########################################
 
-test3: $(addprefix build/obj3/,$(addsuffix .s,$(DEP)))
+test3: $(addprefix build/obj3/,$(addsuffix .s,$(DEP)) embed.s)
 	for i in $^; do diff -sq "$${i}" "build/obj2/$${i##*/}" || exit $$?; done
 
 build/obj3/%.s: %.c boncc2
 	@mkdir -p $(dir $@)
-	./boncc2 -MMD -S $(EXTRA_CFLAGS) $< -o $@
+	./boncc2 -MMD -S $< -o $@
+
+build/obj3/builtin_headers.s: boncc2 build/obj3/embed $(wildcard include/*.h)
+	$(word 2,$^) $(wordlist 3,$(words $^),$^) | ./boncc2 -MMD -S -o $@ -
+build/obj3/embed: build/obj3/embed.s
+	$(CC) -o $@ $< $(LDFLAGS)
+build/obj3/embed.s: embed.c boncc2
+	@mkdir -p $(dir $@)
+	./boncc2 -MMD -S $< -o $@

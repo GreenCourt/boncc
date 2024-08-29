@@ -5,6 +5,12 @@
 #include <string.h>
 #include <unistd.h>
 
+// builtin-headers.o -->
+extern char stdarg_h[];
+extern char stddef_h[];
+extern char stdbool_h[];
+// <-- builtin-headers.o
+
 Node *expr(Token **nx);   // parse.c
 Number *eval(Node *node); // node.c
 
@@ -946,13 +952,26 @@ Token *undef_macro(Token *prev) {
   return prev;
 }
 
-char *search_include_path(char *fname, Token *t) {
+Token *builtin_header(char *fname) {
+  assert(fname);
+  if (strcmp(fname, "stdarg.h") == 0)
+    return tokenize(stdarg_h, NULL);
+
+  if (strcmp(fname, "stddef.h") == 0)
+    return tokenize(stddef_h, NULL);
+
+  if (strcmp(fname, "stdbool.h") == 0)
+    return tokenize(stdbool_h, NULL);
+
+  return NULL;
+}
+
+Token *search_include_path(char *fname) {
   for (int i = 0; i < include_path->size; ++i) {
     char *p = path_join(*(char **)vector_get(include_path, i), fname);
     if (access(p, R_OK) == 0) // if file is readable
-      return p;
+      return tokenize(read_file(p), p);
   }
-  error(&t->pos, "failed to include file: %s", fname);
   return NULL;
 }
 
@@ -963,7 +982,7 @@ Token *process_include(Token *prev) {
   if (directive->at_eol)
     error(&directive->pos, "filename required after #include but not found.");
 
-  char *filepath = NULL;
+  Token *content = NULL;
   if (directive->next->kind == TK_STR) {
     char *p = directive->next->string_literal;
 
@@ -978,27 +997,34 @@ Token *process_include(Token *prev) {
     }
 
     if (access(p, R_OK) == 0) { // if file is readable
-      filepath = p;
+      content = tokenize(read_file(p), p);
       if (included_files)
-        vector_push(included_files, &filepath);
+        vector_push(included_files, &p);
     } else {
-      filepath =
-          search_include_path(directive->next->string_literal, directive->next);
+      content = builtin_header(directive->next->string_literal);
+      if (content == NULL)
+        content = search_include_path(directive->next->string_literal);
     }
+    if (content == NULL)
+      error(&directive->next->pos, "failed to include file: %s",
+            directive->next->string_literal);
   } else if (directive->next->kind == TK_LT && !directive->next->at_eol) {
     assert(directive->next->next->kind == TK_STR);
     assert(directive->next->next->next->kind == TK_GT);
-    filepath = search_include_path(directive->next->next->string_literal,
-                                   directive->next);
+    content = builtin_header(directive->next->next->string_literal);
+    if (content == NULL)
+      content = search_include_path(directive->next->next->string_literal);
+    if (content == NULL)
+      error(&directive->next->next->pos, "failed to include file: %s",
+            directive->next->next->string_literal);
   } else {
     error(&directive->next->pos,
           "filename required after #include but not found.");
   }
 
-  assert(filepath);
+  assert(content);
   Token *next_line = get_eol(directive)->next;
-
-  prev->next = tokenize(read_file(filepath), filepath);
+  prev->next = content;
   Token *t = prev->next;
   while (t->next->kind != TK_EOF)
     t = t->next;

@@ -17,7 +17,6 @@ int main(int argc, char **argv) {
       "/usr/include",
       "/usr/local/include",
       "/usr/include/x86_64-linux-gnu",
-      BONCC_INCLUDE_PATH,
   };
 
   include_path = new_vector(0, sizeof(char *));

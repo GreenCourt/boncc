@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
       // ignore
     } else if (strcmp(argv[i], "-Oz") == 0) {
       // ignore
-    } else if (argv[i][0] == '-') {
+    } else if (strcmp(argv[i], "-") != 0 && argv[i][0] == '-') {
       fprintf(stderr, "unknown option %s\n", argv[i]);
       return 1;
     } else if (input_path) {
@@ -151,7 +151,9 @@ int main(int argc, char **argv) {
     FILE *dep = fopen(dep_path, "w");
     if (!dep)
       error(NULL, "failed to open %s: %s", dep_path, strerror(errno));
-    fprintf(dep, "%s: %s", outpath, input_path);
+    fprintf(dep, "%s: ", outpath);
+    if (strcmp(input_path, "-") != 0)
+      fprintf(dep, "%s", input_path);
     for (int i = 0; i < included->size; i++)
       fprintf(dep, " %s", *(char **)vector_get(included, i));
     fprintf(dep, "\n");

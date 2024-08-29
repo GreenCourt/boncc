@@ -3,38 +3,33 @@ TOPDIR:=$(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 CFLAGS=-std=c11 -g -static -Wall -Wextra -Werror -MMD
 LDFLAGS=-znoexecstack
-BUILD_DIR=build
-OBJ_DIR=$(BUILD_DIR)/obj
-TEST_OBJ_DIR=$(BUILD_DIR)/test
-TEST_EXE_DIR=$(TEST_OBJ_DIR)
 
 DEP=main common tokenizer parser generator preprocessor vector type node map number
 TESTS=$(basename $(filter-out common.c func.c,$(notdir $(wildcard test/*.c))))
 
-boncc: $(addprefix $(OBJ_DIR)/,$(addsuffix .o,$(DEP)))
+boncc: $(addprefix build/obj/,$(addsuffix .o,$(DEP)))
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-test: boncc gtest stage1test abitest stage2test stage3test
+test: boncc gtest test1 test2 test3
 
 clean:
-	rm -rf boncc boncc2 $(BUILD_DIR) $(OBJ_DIR) $(TEST_OBJ_DIR) $(TEST_EXE_DIR)
+	rm -rf boncc boncc2 build
 
 fmt:
 	clang-format -i *.c *.h test/*.c test/*.h include/*.h
 
-$(OBJ_DIR)/%.o:%.c
-	@mkdir -p $(OBJ_DIR)
+build/obj/%.o:%.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
 
--include $(OBJ_DIR)/*.d
--include $(TEST_OBJ_DIR)/*.d
-.PHONY: test stage1test stage2test stage3test abitest clean fmt gtest
+-include build/*.d build/*/*.d build/*/*/*.d
+.PHONY: test test1 test2 test3 clean fmt gtest
 
 BONCC_INCLUDE_PATH?=$(TOPDIR)/include
 EXTRA_CFLAGS:=
-$(OBJ_DIR)/main.o: EXTRA_CFLAGS:=-D BONCC_INCLUDE_PATH=\"$(BONCC_INCLUDE_PATH)\"
-$(OBJ_DIR)/main2.o: EXTRA_CFLAGS:=-D BONCC_INCLUDE_PATH=\"$(BONCC_INCLUDE_PATH)\"
-$(OBJ_DIR)/main3.s: EXTRA_CFLAGS:=-D BONCC_INCLUDE_PATH=\"$(BONCC_INCLUDE_PATH)\"
+build/obj/main.o: EXTRA_CFLAGS:=-D BONCC_INCLUDE_PATH=\"$(BONCC_INCLUDE_PATH)\"
+build/obj2/main.o: EXTRA_CFLAGS:=-D BONCC_INCLUDE_PATH=\"$(BONCC_INCLUDE_PATH)\"
+build/obj3/main.s: EXTRA_CFLAGS:=-D BONCC_INCLUDE_PATH=\"$(BONCC_INCLUDE_PATH)\"
 
 TEST_MACRO=-D COMMAND_ARG_OBJ_LIKE_ONE \
 	   -D COMMAND_ARG_FUNC_LIKE_ONE\(X,Y,...\) \
@@ -48,9 +43,9 @@ TEST_MACRO=-D COMMAND_ARG_OBJ_LIKE_ONE \
 	   -D COMMAND_ARG_FUNC_LIKE_JOIN\(X,Y\)=X\#\#Y \
 	   -DCOMMAND_ARG_OBJ_LIKE_24=24 \
 	   -DCOMMAND_ARG_FUNC_LIKE_MINUS\(X\)=-X
-$(TEST_EXE_DIR)/gcc_macro: EXTRA_TEST_FLAGS=$(TEST_MACRO)
-$(TEST_OBJ_DIR)/macro.o: EXTRA_TEST_FLAGS=$(TEST_MACRO)
-$(TEST_OBJ_DIR)/macro2.o: EXTRA_TEST_FLAGS=$(TEST_MACRO)
+build/test/gcc/macro.o: EXTRA_TEST_FLAGS=$(TEST_MACRO)
+build/test/1/macro.o: EXTRA_TEST_FLAGS=$(TEST_MACRO)
+build/test/2/macro.o: EXTRA_TEST_FLAGS=$(TEST_MACRO)
 
 #########################################
 #
@@ -58,19 +53,17 @@ $(TEST_OBJ_DIR)/macro2.o: EXTRA_TEST_FLAGS=$(TEST_MACRO)
 #
 #########################################
 
-gtest: $(addprefix $(TEST_EXE_DIR)/,$(addprefix gcc_,$(TESTS)))
+gtest: $(addprefix build/test/gcc/,$(TESTS))
 	for i in $^; do echo $$i; $$i || exit $$?; done
 
-
-$(TEST_OBJ_DIR)/gcc_%.o: test/%.c
-	@mkdir -p $(TEST_OBJ_DIR)
+build/test/gcc/%.o: test/%.c
+	@mkdir -p $(dir $@)
 	gcc -c -w -MMD $(EXTRA_TEST_FLAGS) -o $@ $<
 
-$(TEST_EXE_DIR)/gcc_call: $(TEST_OBJ_DIR)/gcc_func.o
-$(TEST_EXE_DIR)/gcc_vector: $(OBJ_DIR)/vector.o
-$(TEST_EXE_DIR)/gcc_%: $(TEST_OBJ_DIR)/gcc_%.o $(TEST_OBJ_DIR)/gcc_common.o
-	@mkdir -p $(TEST_EXE_DIR)
-	gcc -w $(EXTRA_TEST_FLAGS) -o $@ $^
+build/test/gcc/call: build/test/gcc/func.o
+build/test/gcc/vector: build/obj/vector.o
+build/test/gcc/%: build/test/gcc/%.o build/test/gcc/common.o
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 
 #########################################
@@ -78,15 +71,10 @@ $(TEST_EXE_DIR)/gcc_%: $(TEST_OBJ_DIR)/gcc_%.o $(TEST_OBJ_DIR)/gcc_common.o
 # ABI compatibility test
 #
 #########################################
-abitest: $(TEST_EXE_DIR)/call_gcc_obj $(TEST_EXE_DIR)/called_by_gcc
-	for i in $^; do echo $$i; $$i || exit $$?; done
-
-$(TEST_EXE_DIR)/called_by_gcc: $(TEST_OBJ_DIR)/gcc_call.o $(TEST_OBJ_DIR)/func.o $(TEST_OBJ_DIR)/common.o
-	@mkdir -p $(TEST_EXE_DIR)
+build/test/%/called_by_gcc: build/test/gcc/call.o build/test/%/func.o build/test/%/common.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-$(TEST_EXE_DIR)/call_gcc_obj: $(TEST_OBJ_DIR)/call.o $(TEST_OBJ_DIR)/gcc_func.o $(TEST_OBJ_DIR)/gcc_common.o
-	@mkdir -p $(TEST_EXE_DIR)
+build/test/%/call_gcc_obj: build/test/%/call.o build/test/gcc/func.o build/test/gcc/common.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 #########################################
@@ -95,17 +83,16 @@ $(TEST_EXE_DIR)/call_gcc_obj: $(TEST_OBJ_DIR)/call.o $(TEST_OBJ_DIR)/gcc_func.o 
 #
 #########################################
 
-stage1test: $(addprefix $(TEST_EXE_DIR)/,$(TESTS))
+test1: $(addprefix build/test/1/,$(TESTS) called_by_gcc call_gcc_obj)
 	for i in $^; do echo $$i; $$i || exit $$?; done
 
-$(TEST_EXE_DIR)/call: $(TEST_OBJ_DIR)/func.o
-$(TEST_EXE_DIR)/vector: $(OBJ_DIR)/vector.o
-$(TEST_EXE_DIR)/%: $(addprefix $(TEST_OBJ_DIR)/,%.o common.o)
-	@mkdir -p $(TEST_EXE_DIR)
+build/test/1/call: build/test/1/func.o
+build/test/1/vector: build/obj/vector.o
+build/test/1/%: $(addprefix build/test/1/,%.o common.o)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-$(TEST_OBJ_DIR)/%.o: test/%.c boncc
-	@mkdir -p $(TEST_OBJ_DIR)
+build/test/1/%.o: test/%.c boncc
+	@mkdir -p $(dir $@)
 	./boncc -MMD -c $(EXTRA_TEST_FLAGS) $< -o $@
 
 #########################################
@@ -114,23 +101,23 @@ $(TEST_OBJ_DIR)/%.o: test/%.c boncc
 #
 #########################################
 
-boncc2: $(addprefix $(OBJ_DIR)/,$(addsuffix 2.o,$(DEP)))
+boncc2: $(addprefix build/obj2/,$(addsuffix .o,$(DEP)))
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-$(OBJ_DIR)/%2.o: %.c boncc
+build/obj2/%.o: %.c boncc
+	@mkdir -p $(dir $@)
 	./boncc -MMD -c $(EXTRA_CFLAGS) $< -o $@
 
-stage2test: $(addprefix $(TEST_EXE_DIR)/,$(addsuffix 2,$(TESTS)))
+test2: $(addprefix build/test/2/,$(TESTS) call_gcc_obj called_by_gcc)
 	for i in $^; do echo $$i; $$i || exit $$?; done
 
-$(TEST_EXE_DIR)/call2: $(TEST_OBJ_DIR)/func2.o
-$(TEST_EXE_DIR)/vector2: $(OBJ_DIR)/vector2.o
-$(TEST_EXE_DIR)/%2: $(addprefix $(TEST_OBJ_DIR)/,%2.o common2.o)
-	@mkdir -p $(TEST_EXE_DIR)
+build/test/2/call: build/test/2/func.o
+build/test/2/vector: build/obj2/vector.o
+build/test/2/%: $(addprefix build/test/2/,%.o common.o)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-$(TEST_OBJ_DIR)/%2.o: test/%.c boncc2
-	@mkdir -p $(TEST_OBJ_DIR)
+build/test/2/%.o: test/%.c boncc2
+	@mkdir -p $(dir $@)
 	./boncc2 -MMD -c $(EXTRA_TEST_FLAGS) $< -o $@
 
 #########################################
@@ -139,8 +126,9 @@ $(TEST_OBJ_DIR)/%2.o: test/%.c boncc2
 #
 #########################################
 
-stage3test: $(addprefix $(OBJ_DIR)/,$(addsuffix 3.s,$(DEP)))
-	for i in $(DEP); do diff -sq $(OBJ_DIR)/$${i}2.s $(OBJ_DIR)/$${i}3.s || exit $$?; done
+test3: $(addprefix build/obj3/,$(addsuffix .s,$(DEP)))
+	for i in $^; do diff -sq "$${i}" "build/obj2/$${i##*/}" || exit $$?; done
 
-$(OBJ_DIR)/%3.s: %.c boncc2
+build/obj3/%.s: %.c boncc2
+	@mkdir -p $(dir $@)
 	./boncc2 -MMD -S $(EXTRA_CFLAGS) $< -o $@

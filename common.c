@@ -9,8 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-Map *functions;
-Map *strings;
+HashMap *functions;
+HashMap *strings;
 Scope *global_scope;
 Vector *static_local_variables;
 Vector *include_path;

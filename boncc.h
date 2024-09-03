@@ -1,3 +1,4 @@
+#include "hashmap.h"
 #include "vector.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -307,26 +308,18 @@ struct Node {
   Member *member; // ND_MEMBER
 };
 
-typedef struct Vector Map;
-
 typedef struct Scope Scope;
 struct Scope {
   Scope *prev;
-  Map *objects;       // Object*
-  Map *types;         // Type*
-  Map *enum_elements; // int*
-  Map *typedefs;      // Type*
-  int offset;         // local variable offset
+  HashMap *objects;       // Object*
+  HashMap *types;         // Type*
+  HashMap *enum_elements; // int*
+  HashMap *typedefs;      // Type*
+  int offset;             // local variable offset
 };
 
-Map *new_map();
-void *map_geti(Map *map, int idx);
-void *map_get(Map *map, char *key);
-void map_push(Map *map, char *key, void *val);
-void map_erase(Map *map, char *key);
-
 extern Scope *global_scope;
-extern Map *strings;                   // Variable*
+extern HashMap *strings;               // Variable*
 extern Vector *static_local_variables; // Variable*
 extern Vector *include_path;           // char*
 

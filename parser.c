@@ -179,10 +179,10 @@ static Vector *switch_nodes;   // stack of Node*
 void new_scope() {
   Scope *s = calloc(1, sizeof(Scope));
   s->prev = current_scope;
-  s->objects = new_map();
-  s->types = new_map();
-  s->enum_elements = new_map();
-  s->typedefs = new_map();
+  s->objects = new_hashmap();
+  s->types = new_hashmap();
+  s->enum_elements = new_hashmap();
+  s->typedefs = new_hashmap();
   if (current_scope)
     s->offset = current_scope->offset;
   current_scope = s;
@@ -212,9 +212,11 @@ Token *expect(TokenKind kind, Token **nx) {
 Type *find_typedef(char *id) {
   Scope *scope = current_scope;
   while (scope) {
-    Type *t = map_get(scope->typedefs, id);
-    if (t)
+    if (hashmap_contains(scope->typedefs, id)) {
+      Type *t = hashmap_get(scope->typedefs, id);
+      assert(t);
       return t;
+    }
     scope = scope->prev;
   }
   return NULL;
@@ -223,9 +225,11 @@ Type *find_typedef(char *id) {
 Type *find_type(char *id) {
   Scope *scope = current_scope;
   while (scope) {
-    Type *t = map_get(scope->types, id);
-    if (t)
+    if (hashmap_contains(scope->types, id)) {
+      Type *t = hashmap_get(scope->types, id);
+      assert(t);
       return t;
+    }
     scope = scope->prev;
   }
   return NULL;
@@ -234,9 +238,11 @@ Type *find_type(char *id) {
 int *find_enum_element(char *id) {
   Scope *scope = current_scope;
   while (scope) {
-    int *e = map_get(scope->enum_elements, id);
-    if (e)
+    if (hashmap_contains(scope->enum_elements, id)) {
+      int *e = hashmap_get(scope->enum_elements, id);
+      assert(e);
       return e;
+    }
     scope = scope->prev;
   }
   return NULL;
@@ -263,10 +269,12 @@ Type *consume_struct(TypeKind kind, Token **nx) {
     if (consume(TK_LBRACE, nx)) {
       // define struct/union
       // struct/union can be defined only for the current-scope
-      st = map_get(current_scope->types, tag->str);
+      st = hashmap_contains(current_scope->types, tag->str)
+               ? hashmap_get(current_scope->types, tag->str)
+               : NULL;
       if (st == NULL) {
         st = kind == TYPE_UNION ? union_type(false) : struct_type(false);
-        map_push(current_scope->types, tag->str, st);
+        hashmap_set(current_scope->types, tag->str, st);
       } else if (kind != st->kind || st->size > 0) {
         error(&tag->pos, "conflicted type tag");
       }
@@ -276,7 +284,7 @@ Type *consume_struct(TypeKind kind, Token **nx) {
       st = find_type(tag->str);
       if (st == NULL) {
         st = kind == TYPE_UNION ? union_type(false) : struct_type(false);
-        map_push(current_scope->types, tag->str, st);
+        hashmap_set(current_scope->types, tag->str, st);
       } else if (kind != st->kind) {
         error(&tag->pos, "conflicted type tag");
       }
@@ -439,10 +447,12 @@ Type *consume_enum(Token **nx) {
     if (consume(TK_LBRACE, nx)) {
       // define enum
       // enum can be defined only for the current-scope
-      et = map_get(current_scope->types, tag->str);
+      et = hashmap_contains(current_scope->types, tag->str)
+               ? hashmap_get(current_scope->types, tag->str)
+               : NULL;
       if (et == NULL) {
         et = enum_type(false);
-        map_push(current_scope->types, tag->str, et);
+        hashmap_set(current_scope->types, tag->str, et);
       } else if (et->kind != TYPE_ENUM || et->size > 0) {
         error(&tag->pos, "conflicted type tag");
       }
@@ -452,7 +462,7 @@ Type *consume_enum(Token **nx) {
       et = find_type(tag->str);
       if (et == NULL) {
         et = enum_type(false);
-        map_push(current_scope->types, tag->str, et);
+        hashmap_set(current_scope->types, tag->str, et);
       } else if (et->kind != TYPE_ENUM) {
         error(&tag->pos, "conflicted type tag");
       }
@@ -470,7 +480,7 @@ Type *consume_enum(Token **nx) {
   int val = -1;
   while (true) {
     Token *id = expect(TK_IDENT, nx);
-    if (map_get(current_scope->enum_elements, id->str))
+    if (hashmap_contains(current_scope->enum_elements, id->str))
       error(&id->pos, "duplicated identifier for enum element");
 
     if (consume(TK_ASSIGN, nx)) {
@@ -483,7 +493,7 @@ Type *consume_enum(Token **nx) {
     }
     int *v = calloc(1, sizeof(int));
     *v = ++val;
-    map_push(current_scope->enum_elements, id->str, v);
+    hashmap_set(current_scope->enum_elements, id->str, v);
     if (consume(TK_COMMA, nx)) {
       if (consume(TK_RBRACE, nx))
         break;
@@ -665,13 +675,15 @@ void expect_typedef(Token **nx) {
   base->is_const = (qualifier & IS_CONST) != 0;
   do {
     Type *type = declarator(base, nx);
-    Type *pre = map_get(current_scope->typedefs, type->objdec->str);
+    Type *pre = hashmap_contains(current_scope->typedefs, type->objdec->str)
+                    ? hashmap_get(current_scope->typedefs, type->objdec->str)
+                    : NULL;
 
     // multiple typedef for same type is allowed
     if (pre && !same_type(type, pre))
       error(&type->objdec->pos, "duplicated typedef identifier");
     if (!pre)
-      map_push(current_scope->typedefs, type->objdec->str, type);
+      hashmap_set(current_scope->typedefs, type->objdec->str, type);
   } while (consume(TK_COMMA, nx));
   expect(TK_SEMICOLON, nx);
 }
@@ -681,7 +693,9 @@ Object *find_object(Token *tok) {
   assert(tok->str);
   Scope *scope = current_scope;
   while (scope) {
-    Object *obj = map_get(scope->objects, tok->str);
+    Object *obj = hashmap_contains(scope->objects, tok->str)
+                      ? hashmap_get(scope->objects, tok->str)
+                      : NULL;
     if (obj)
       return obj;
     scope = scope->prev;
@@ -708,7 +722,9 @@ Variable *new_local_variable(Type *type, int qualifier) {
   bool is_extern = qualifier & IS_EXTERN;
   bool is_static = qualifier & IS_STATIC;
 
-  Variable *prev = map_get(current_scope->objects, type->objdec->str);
+  Variable *prev = hashmap_contains(current_scope->objects, type->objdec->str)
+                       ? hashmap_get(current_scope->objects, type->objdec->str)
+                       : NULL;
   if (prev) {
     if (!is_extern || !prev->is_extern || !same_type(type, prev->type))
       error(&type->objdec->pos, "conflicted identifier %s", type->objdec->str);
@@ -716,7 +732,7 @@ Variable *new_local_variable(Type *type, int qualifier) {
   }
 
   Variable *var = new_variable(type, OBJ_LVAR, qualifier);
-  map_push(current_scope->objects, var->ident, var);
+  hashmap_set(current_scope->objects, var->ident, var);
 
   static int idx = 0;
   if (is_static) {
@@ -748,7 +764,9 @@ Variable *new_global(Type *type, int qualifier) {
   bool is_extern = qualifier & IS_EXTERN;
   bool is_static = qualifier & IS_STATIC;
 
-  Variable *prev = map_get(global_scope->objects, type->objdec->str);
+  Variable *prev = hashmap_contains(global_scope->objects, type->objdec->str)
+                       ? hashmap_get(global_scope->objects, type->objdec->str)
+                       : NULL;
   if (prev) {
     if (is_static != prev->is_static || !same_type(type, prev->type))
       error(&type->objdec->pos, "conflicted identifier");
@@ -762,7 +780,7 @@ Variable *new_global(Type *type, int qualifier) {
   }
 
   Variable *var = new_variable(type, OBJ_GVAR, qualifier);
-  map_push(global_scope->objects, var->ident, var);
+  hashmap_set(global_scope->objects, var->ident, var);
   return var;
 }
 
@@ -772,9 +790,12 @@ Variable *new_string_literal(Token *tok) {
 
   char *key = tok->string_literal;
 
-  Variable *var = map_get(strings, key);
-  if (var)
+  Variable *var;
+  if (hashmap_contains(strings, key)) {
+    var = hashmap_get(strings, key);
+    assert(var);
     return var;
+  }
 
   var = calloc(1, sizeof(Variable));
 
@@ -804,7 +825,7 @@ Variable *new_string_literal(Token *tok) {
     }
   }
   var->type = array_type(base_type(TYPE_CHAR), array_length);
-  map_push(strings, key, var);
+  hashmap_set(strings, key, var);
   return var;
 }
 
@@ -892,7 +913,9 @@ void func(Type *type, int qualifier, Token **nx) {
   f->ident = type->objdec->str;
   f->is_static = (qualifier & IS_STATIC) != 0;
 
-  Function *prev = map_get(global_scope->objects, f->ident);
+  Function *prev = hashmap_contains(global_scope->objects, f->ident)
+                       ? hashmap_get(global_scope->objects, f->ident)
+                       : NULL;
   if (prev && prev->kind != OBJ_FUNC)
     error(&type->objdec->pos, "duplicated identifier");
 
@@ -900,7 +923,7 @@ void func(Type *type, int qualifier, Token **nx) {
     error(&type->objdec->pos, "conflicted function declaration");
 
   if (prev == NULL)
-    map_push(global_scope->objects, f->ident, f);
+    hashmap_set(global_scope->objects, f->ident, f);
 
   if (!consume(TK_LBRACE, nx)) {
     expect(TK_SEMICOLON, nx);
@@ -2225,14 +2248,14 @@ void register_builtin_functions() {
     f->ident = "__builtin_va_arg";
     vector_push(f->type->params, &vp);
     vector_push(f->type->params, &vp);
-    map_push(global_scope->objects, f->ident, f);
+    hashmap_set(global_scope->objects, f->ident, f);
   }
 }
 
 void parse(Token *input) {
   assert(input);
   Token *cur = input;
-  strings = new_map();
+  strings = new_hashmap();
   static_local_variables = new_vector(0, sizeof(Variable *));
   break_label = new_vector(0, sizeof(int));
   continue_label = new_vector(0, sizeof(int));

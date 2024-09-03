@@ -2259,15 +2259,16 @@ void generate_code(FILE *output_stream) {
   writeline(".intel_syntax noprefix");
 
   // string literals
-  for (int i = 0; i < strings->size; i++) {
-    Variable *v = map_geti(strings, i);
+  for (HashMapItem *i = hashmap_begin(strings); i; i = hashmap_next(i)) {
+    Variable *v = i->value;
     writeline("%s:", v->ident);
     writeline("  .string \"%s\"", v->string_literal);
   }
 
   // global variables
-  for (int i = 0; i < global_scope->objects->size; i++) {
-    Variable *v = map_geti(global_scope->objects, i);
+  for (HashMapItem *i = hashmap_begin(global_scope->objects); i;
+       i = hashmap_next(i)) {
+    Variable *v = i->value;
     if (v->kind != OBJ_GVAR)
       continue;
     if (v->is_extern)
@@ -2297,8 +2298,9 @@ void generate_code(FILE *output_stream) {
 
   // functions
   writeline(".text");
-  for (int i = 0; i < global_scope->objects->size; i++) {
-    Function *f = map_geti(global_scope->objects, i);
+  for (HashMapItem *i = hashmap_begin(global_scope->objects); i;
+       i = hashmap_next(i)) {
+    Function *f = i->value;
     if (f->kind != OBJ_FUNC)
       continue;
     gen_func(f);

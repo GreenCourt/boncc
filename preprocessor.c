@@ -14,7 +14,7 @@ extern char stdbool_h[];
 Node *expr(Token **nx);   // parse.c
 Number *eval(Node *node); // node.c
 
-static Map *macros;
+static HashMap *macros;
 static Vector *included_files; // *char
 
 typedef struct Macro Macro;
@@ -32,9 +32,7 @@ static Macro *new_macro(char *ident, Token *body) {
   Macro *m = calloc(1, sizeof(Macro));
   m->ident = ident;
   m->body = body;
-  if (map_get(macros, ident))
-    map_erase(macros, ident); // overwrite
-  map_push(macros, ident, m);
+  hashmap_set(macros, ident, m);
   return m;
 }
 
@@ -42,7 +40,7 @@ static void init_macro() {
   if (macros != NULL)
     return;
 
-  macros = new_map();
+  macros = new_hashmap();
   {
     static char *idents[] = {
         "__LINE__",
@@ -548,9 +546,10 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
 static Token *expand(Token *prev, Token **stop) {
   // expand prev->next and return the tail of expanded tokens
   Token *token = prev->next;
-  if (token->kind == TK_IDENT) {
-    Macro *m = map_get(macros, token->str);
-    if (m && !m->flag) {
+  if (token->kind == TK_IDENT && hashmap_contains(macros, token->str)) {
+    Macro *m = hashmap_get(macros, token->str);
+    assert(m);
+    if (!m->flag) {
       if (m->is_dynamic)
         return expand_dynamic(prev, m);
       else if (m->is_function_like)
@@ -645,7 +644,7 @@ Token *process_if(Token *prev) { // #if and #elif
     Token *e = calloc(1, sizeof(Token));
     e->kind = TK_NUM;
     e->pos = t->pos;
-    e->num = new_number_int(map_get(macros, ident->str) != NULL);
+    e->num = new_number_int(hashmap_contains(macros, ident->str));
     e->type = e->num->type;
     e->next = nx;
     t->next = e;
@@ -716,7 +715,9 @@ Token *process_ifdef(Token *prev) { // #ifdef and #ifndef
     error(&macro_ident->pos, "identifier expected but not found.");
 
   Token *before_hash = find_elif_or_else_or_endif(prev->next);
-  Macro *macro = map_get(macros, macro_ident->str);
+  Macro *macro = hashmap_contains(macros, macro_ident->str)
+                     ? hashmap_get(macros, macro_ident->str)
+                     : NULL;
   if ((!is_ifndef && macro != NULL) || (is_ifndef && macro == NULL)) {
     prev->next = get_eol(macro_ident)->next;
     Token *last = before_hash;
@@ -945,8 +946,8 @@ Token *undef_macro(Token *prev) {
   if (!macro_ident->is_identifier)
     error(&macro_ident->pos, "identifier expected but not found.");
 
-  if (map_get(macros, macro_ident->str))
-    map_erase(macros, macro_ident->str);
+  if (hashmap_contains(macros, macro_ident->str))
+    hashmap_erase(macros, macro_ident->str);
 
   prev->next = get_eol(macro_ident)->next;
   return prev;

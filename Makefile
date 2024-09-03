@@ -4,7 +4,7 @@ TOPDIR:=$(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CFLAGS=-std=c11 -g -static -Wall -Wextra -Werror -MMD
 LDFLAGS=-znoexecstack
 
-DEP=main common tokenizer parser generator preprocessor vector type node map number builtin_headers
+DEP=main common tokenizer parser generator preprocessor vector type node hashmap number builtin_headers
 TESTS=$(basename $(filter-out common.c func.c,$(notdir $(wildcard test/*.c))))
 
 boncc: $(addprefix build/obj/,$(addsuffix .o,$(DEP)))
@@ -62,6 +62,7 @@ build/test/gcc/%.o: test/%.c
 
 build/test/gcc/call: build/test/gcc/func.o
 build/test/gcc/vector: build/obj/vector.o
+build/test/gcc/hashmap: build/obj/hashmap.o
 build/test/gcc/%: build/test/gcc/%.o build/test/gcc/common.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
@@ -88,6 +89,7 @@ test1: $(addprefix build/test/1/,$(TESTS) called_by_gcc call_gcc_obj)
 
 build/test/1/call: build/test/1/func.o
 build/test/1/vector: build/obj/vector.o
+build/test/1/hashmap: build/obj/hashmap.o
 build/test/1/%: $(addprefix build/test/1/,%.o common.o)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
@@ -121,6 +123,7 @@ test2: $(addprefix build/test/2/,$(TESTS) call_gcc_obj called_by_gcc)
 
 build/test/2/call: build/test/2/func.o
 build/test/2/vector: build/obj2/vector.o
+build/test/2/hashmap: build/obj2/hashmap.o
 build/test/2/%: $(addprefix build/test/2/,%.o common.o)
 	$(CC) -o $@ $^ $(LDFLAGS)
 

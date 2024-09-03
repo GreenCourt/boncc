@@ -26,5 +26,6 @@ int main(int argc, char **argv) {
         printf("0x%x, ", buf[j]);
     }
     printf("0x0 };\n");
+    fclose(fp);
   }
 }

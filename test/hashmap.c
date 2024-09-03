@@ -1,3 +1,4 @@
+#undef NDEBUG
 #include "../hashmap.h"
 #include <assert.h>
 #include <stdio.h>

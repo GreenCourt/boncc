@@ -134,21 +134,3 @@ char *replace_ext(const char *path, const char *ext) {
   }
   return ret;
 }
-
-String *new_string(char *str, int len) {
-  String *s = calloc(1, sizeof(String));
-  s->str = str;
-  if (len == 0)
-    s->len = strlen(str); // must be null-terminated
-  else
-    s->len = len;
-  return s;
-}
-
-bool same_string(String *a, String *b) {
-  return a->len == b->len && strncmp(a->str, b->str, a->len) == 0;
-}
-bool same_string_nt(String *s, char *null_terminated) {
-  int len = strlen(null_terminated);
-  return len == s->len && strncmp(s->str, null_terminated, len) == 0;
-}

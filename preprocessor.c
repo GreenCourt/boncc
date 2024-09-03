@@ -19,7 +19,7 @@ static Vector *included_files; // *char
 
 typedef struct Macro Macro;
 struct Macro {
-  String *ident;
+  char *ident;
   Token *body; // NULL-terminated linked list
   bool is_dynamic;
   bool is_function_like;
@@ -28,7 +28,7 @@ struct Macro {
   bool flag; // used in recursive manner
 };
 
-static Macro *new_macro(String *ident, Token *body) {
+static Macro *new_macro(char *ident, Token *body) {
   Macro *m = calloc(1, sizeof(Macro));
   m->ident = ident;
   m->body = body;
@@ -44,23 +44,23 @@ static void init_macro() {
 
   macros = new_map();
   {
-    static String idents[] = {
-        {"__LINE__", 8},
-        {"__FILE__", 8},
+    static char *idents[] = {
+        "__LINE__",
+        "__FILE__",
     };
-    for (int i = 0; i < (int)(sizeof(idents) / sizeof(String)); ++i) {
-      Macro *m = new_macro(&idents[i], NULL);
+    for (int i = 0; i < (int)(sizeof(idents) / sizeof(char *)); ++i) {
+      Macro *m = new_macro(idents[i], NULL);
       m->is_dynamic = true;
     }
   }
 
   {
-    static String idents[] = {
-        {"__x86_64__", 10},
-        {"__LP64__", 8},
+    static char *idents[] = {
+        "__x86_64__",
+        "__LP64__",
     };
-    for (int i = 0; i < (int)(sizeof(idents) / sizeof(String)); ++i)
-      new_macro(&idents[i], NULL);
+    for (int i = 0; i < (int)(sizeof(idents) / sizeof(char *)); ++i)
+      new_macro(idents[i], NULL);
   }
 }
 
@@ -72,13 +72,13 @@ static Token *expand_dynamic(Token *prev, Macro *macro) {
 
   Token *token = prev->next;
 
-  if (same_string_nt(macro->ident, "__FILE__")) {
+  if (strcmp(macro->ident, "__FILE__") == 0) {
     token->kind = TK_STR;
     token->string_literal = token->pos.file_name;
     return token;
   }
 
-  if (same_string_nt(macro->ident, "__LINE__")) {
+  if (strcmp(macro->ident, "__LINE__") == 0) {
     token->kind = TK_NUM;
     token->num = new_number_int(token->pos.line_number);
     token->type = token->num->type;
@@ -92,11 +92,12 @@ static Token *expand_dynamic(Token *prev, Macro *macro) {
 Token *operator_double_hash(Token const *left, Token const *right) {
   assert(left->next->kind == TK_2HASH);
   assert(left->next->next == right);
-  int len = left->str->len + right->str->len;
+  int left_len = strlen(left->str);
+  int right_len = strlen(right->str);
+  int len = left_len + right_len;
   char *p = calloc(len + 2, sizeof(char));
-  char *q = p + snprintf(p, left->str->len + 1, "%.*s", left->str->len,
-                         left->str->str);
-  snprintf(q, right->str->len + 1, "%.*s", right->str->len, right->str->str);
+  char *q = p + snprintf(p, left_len + 1, "%s", left->str);
+  snprintf(q, right_len + 1, "%s", right->str);
   p[len] = '\n';
   p[len + 1] = '\0';
   Token *t = tokenize(p, left->pos.file_name);
@@ -249,17 +250,17 @@ static Token *operator_hash(Token *operand) {
       len += 4; // backslash + double quote at left and right
     } else if (tk->kind == TK_NUM && tk->num->type->kind == TYPE_CHAR) {
       // char literal
-      assert(tk->str->len <= 2);
-      if (tk->str->len == 2) { // escaped character
-        assert(tk->str->str[0] == '\\');
-        len += 5 + (tk->str->str[1] == '\\');
+      assert(strlen(tk->str) <= 2);
+      if (strlen(tk->str) == 2) { // escaped character
+        assert(tk->str[0] == '\\');
+        len += 5 + (tk->str[1] == '\\');
       } else if (number2char(tk->num) == '"') {
         len += 4;
       } else {
         len += 3;
       }
     } else {
-      len += tk->str->len;
+      len += strlen(tk->str);
     }
   }
 
@@ -284,12 +285,11 @@ static Token *operator_hash(Token *operand) {
       string[ofs++] = '\\';
       string[ofs++] = '"';
     } else if (tk->kind == TK_NUM && tk->num->type->kind == TYPE_CHAR) {
-      char *str = tk->str->str;
-      int slen = tk->str->len;
-      assert(slen <= 2);
+      char *str = tk->str;
+      assert(strlen(str) <= 2);
 
       string[ofs++] = '\'';
-      if (slen == 2) {
+      if (strlen(str) == 2) {
         assert(str[0] == '\\');
         string[ofs++] = '\\';
         string[ofs++] = '\\';
@@ -304,8 +304,8 @@ static Token *operator_hash(Token *operand) {
       }
       string[ofs++] = '\'';
     } else {
-      strncpy(string + ofs, tk->str->str, tk->str->len);
-      ofs += tk->str->len;
+      strcpy(string + ofs, tk->str);
+      ofs += strlen(tk->str);
     }
 
     if (tk->has_right_space && (tk->next != NULL))
@@ -318,7 +318,7 @@ static Token *operator_hash(Token *operand) {
   tk->is_identifier = false;
   tk->pos = operand->pos;
   tk->next = NULL;
-  tk->str = new_string(string, len);
+  tk->str = string;
   tk->string_literal = string;
   return tk;
 }
@@ -465,7 +465,7 @@ static Token *expand_function_like(Token *prev, Macro *macro, Token **stop) {
         Token *arg = *(Token **)vector_get(args, b->idx - 1 /* 1-indexed */);
         assert(arg != NULL);
         tail = clone_macro_argument(tail, arg, &expanded->pos);
-      } else if (b->is_identifier && same_string_nt(b->str, "__VA_ARGS__")) {
+      } else if (b->is_identifier && strcmp(b->str, "__VA_ARGS__") == 0) {
         tail = clone_va_args(tail, macro, args, &expanded->pos);
       } else {
         tail->next = calloc(1, sizeof(Token));
@@ -565,7 +565,7 @@ static Token *expand(Token *prev, Token **stop) {
 
 bool match_directive(Token *t, char *directive) {
   return t->at_bol && !t->at_eol && t->kind == TK_HASH &&
-         t->next->is_identifier && same_string_nt(t->next->str, directive);
+         t->next->is_identifier && strcmp(t->next->str, directive) == 0;
 }
 
 Token *get_eol(Token *t) {
@@ -621,7 +621,7 @@ Token *process_if(Token *prev) { // #if and #elif
 
   // expand defined operator
   for (Token *t = directive; t->next->kind != TK_EOF;) {
-    if (!t->next->is_identifier || !same_string_nt(t->next->str, "defined")) {
+    if (!t->next->is_identifier || strcmp(t->next->str, "defined") != 0) {
       t = t->next;
       continue;
     }
@@ -776,7 +776,7 @@ Token *parse_function_like_macro_body(Token *prev, Vector *params) {
     if (macro_tail->is_identifier) {
       for (int i = 0; i < params->size; i++) {
         Token *p = *(Token **)vector_get(params, i);
-        if (same_string(macro_tail->str, p->str)) {
+        if (strcmp(macro_tail->str, p->str) == 0) {
           macro_tail->idx = i + 1; // 1-indexed
           break;
         }
@@ -850,7 +850,7 @@ Token *dummy_token_one() {
   one->kind = TK_NUM;
   char *c = calloc(2, sizeof(char));
   c[0] = '1';
-  one->str = new_string(c, 1);
+  one->str = c;
   one->at_eol = true;
   return one;
 }
@@ -1039,24 +1039,24 @@ Token *process_directive(Token *prev) {
     error(&directive->pos, "invalid directive");
 
   // #define
-  if (same_string_nt(directive->str, "define"))
+  if (strcmp(directive->str, "define") == 0)
     return define_macro(prev);
 
   // #if
-  if (same_string_nt(directive->str, "if"))
+  if (strcmp(directive->str, "if") == 0)
     return process_if(prev);
 
   // #ifdef or #ifndef
-  if (same_string_nt(directive->str, "ifdef") ||
-      same_string_nt(directive->str, "ifndef"))
+  if (strcmp(directive->str, "ifdef") == 0 ||
+      strcmp(directive->str, "ifndef") == 0)
     return process_ifdef(prev);
 
   // #undef
-  if (same_string_nt(directive->str, "undef"))
+  if (strcmp(directive->str, "undef") == 0)
     return undef_macro(prev);
 
   // #include
-  if (same_string_nt(directive->str, "include"))
+  if (strcmp(directive->str, "include") == 0)
     return process_include(prev);
 
   error(&prev->next->pos, "unknown directive");
@@ -1068,27 +1068,27 @@ bool skip_unsupported_keywords(Token *prev) {
   if (prev->next->kind != TK_IDENT)
     return false;
 
-  if (same_string_nt(prev->next->str, "volatile")) {
+  if (strcmp(prev->next->str, "volatile") == 0) {
     prev->next = prev->next->next;
     return true;
   }
 
-  if (same_string_nt(prev->next->str, "__restrict")) {
+  if (strcmp(prev->next->str, "__restrict") == 0) {
     prev->next = prev->next->next;
     return true;
   }
 
-  if (same_string_nt(prev->next->str, "__inline")) {
+  if (strcmp(prev->next->str, "__inline") == 0) {
     prev->next = prev->next->next;
     return true;
   }
 
-  if (same_string_nt(prev->next->str, "__extension__")) {
+  if (strcmp(prev->next->str, "__extension__") == 0) {
     prev->next = prev->next->next;
     return true;
   }
 
-  if (same_string_nt(prev->next->str, "__attribute__") &&
+  if (strcmp(prev->next->str, "__attribute__") == 0 &&
       prev->next->next->kind == TK_LPAREN &&
       prev->next->next->next->kind == TK_LPAREN) {
     int count = 2;
@@ -1109,7 +1109,7 @@ bool skip_unsupported_keywords(Token *prev) {
     return true;
   }
 
-  if (same_string_nt(prev->next->str, "__asm__")) {
+  if (strcmp(prev->next->str, "__asm__") == 0) {
     Token *p = prev->next->next;
     while (p->kind != TK_LPAREN) {
       if (p->kind == TK_EOF)

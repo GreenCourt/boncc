@@ -110,20 +110,13 @@ struct Number {
   } value;
 };
 
-typedef struct String String;
-struct String {
-  // a string that is not null-terminated
-  char *str;
-  int len;
-};
-
 typedef struct Type Type;
 typedef struct Token Token;
 struct Token {
   TokenKind kind;
   Token *next;
   Position pos;
-  String *str;
+  char *str;
   bool is_identifier;   // true iff TK_IDENT or reserved identifiers
   Number *num;          // only for TK_NUM
   char *string_literal; // null terminated, only for TK_STR
@@ -137,7 +130,7 @@ struct Token {
 typedef struct Type Type;
 typedef struct Member Member;
 struct Member {
-  String *ident;
+  char *ident;
   Type *type;
   int offset;
   int padding;
@@ -205,7 +198,7 @@ typedef struct Object Variable;
 typedef struct Object Function;
 typedef struct Object Object;
 struct Object { // variable or function
-  String *ident;
+  char *ident;
   Type *type;
   Token *token; // for error messages
   ObjectKind kind;
@@ -213,9 +206,9 @@ struct Object { // variable or function
   int offset; // OBJ_LVAR, OBJ_FUNC
 
   // variable
-  char *string_literal;   // null terminated, only for OBJ_STRLIT
-  VariableInit *init;     // OBJ_GVAR, OBJ_LVAR
-  String *internal_ident; // for static local
+  char *string_literal; // null terminated, only for OBJ_STRLIT
+  VariableInit *init;   // OBJ_GVAR, OBJ_LVAR
+  char *internal_ident; // for static local
   bool is_extern;
 
   // function
@@ -328,9 +321,9 @@ struct Scope {
 
 Map *new_map();
 void *map_geti(Map *map, int idx);
-void *map_get(Map *map, String *key);
-void map_push(Map *map, String *key, void *val);
-void map_erase(Map *map, String *key);
+void *map_get(Map *map, char *key);
+void map_push(Map *map, char *key, void *val);
+void map_erase(Map *map, char *key);
 
 extern Scope *global_scope;
 extern Map *strings;                   // Variable*
@@ -345,10 +338,6 @@ __attribute__((format(printf, 2, 3))) void error(Position *pos, char *fmt, ...);
 char *read_file(char *path);
 char *path_join(char *dir, char *file);
 char *replace_ext(const char *path, const char *ext);
-
-String *new_string(char *str, int len);
-bool same_string(String *a, String *b);
-bool same_string_nt(String *s, char *null_terminated);
 
 void define_macro_from_command_line(char *arg);
 

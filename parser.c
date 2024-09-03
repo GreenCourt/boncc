@@ -209,7 +209,7 @@ Token *expect(TokenKind kind, Token **nx) {
   return tok;
 }
 
-Type *find_typedef(String *id) {
+Type *find_typedef(char *id) {
   Scope *scope = current_scope;
   while (scope) {
     Type *t = map_get(scope->typedefs, id);
@@ -220,7 +220,7 @@ Type *find_typedef(String *id) {
   return NULL;
 }
 
-Type *find_type(String *id) {
+Type *find_type(char *id) {
   Scope *scope = current_scope;
   while (scope) {
     Type *t = map_get(scope->types, id);
@@ -231,7 +231,7 @@ Type *find_type(String *id) {
   return NULL;
 }
 
-int *find_enum_element(String *id) {
+int *find_enum_element(char *id) {
   Scope *scope = current_scope;
   while (scope) {
     int *e = map_get(scope->enum_elements, id);
@@ -247,7 +247,7 @@ Member *find_member(Type *st, Token *tok) {
   assert(tok->kind == TK_IDENT);
   Member *member = st->member;
   while (member) {
-    if (same_string(member->ident, tok->str))
+    if (strcmp(member->ident, tok->str) == 0)
       return member;
     member = member->next;
   }
@@ -711,8 +711,7 @@ Variable *new_local_variable(Type *type, int qualifier) {
   Variable *prev = map_get(current_scope->objects, type->objdec->str);
   if (prev) {
     if (!is_extern || !prev->is_extern || !same_type(type, prev->type))
-      error(&type->objdec->pos, "conflicted identifier %.*s",
-            type->objdec->str->len, type->objdec->str->str);
+      error(&type->objdec->pos, "conflicted identifier %s", type->objdec->str);
     return prev;
   }
 
@@ -724,10 +723,10 @@ Variable *new_local_variable(Type *type, int qualifier) {
     vector_push(static_local_variables, &var);
 
     // give internal ident
-    char *id = calloc(var->ident->len + 21, sizeof(char));
+    char *id = calloc(strlen(var->ident) + 21, sizeof(char));
     sprintf(id, ".static_%d_", idx++);
-    strncpy(id + strlen(id), var->ident->str, var->ident->len);
-    var->internal_ident = new_string(id, 0);
+    strcpy(id + strlen(id), var->ident);
+    var->internal_ident = id;
   }
 
   return var;
@@ -771,7 +770,7 @@ Variable *new_string_literal(Token *tok) {
   static int idx = 0;
   assert(tok->kind == TK_STR);
 
-  String *key = new_string(tok->string_literal, 0);
+  char *key = tok->string_literal;
 
   Variable *var = map_get(strings, key);
   if (var)
@@ -781,7 +780,7 @@ Variable *new_string_literal(Token *tok) {
 
   char *id = calloc(15, sizeof(char));
   sprintf(id, ".LC%d", idx++);
-  var->ident = new_string(id, 0);
+  var->ident = id;
 
   var->kind = OBJ_STRLIT;
   var->string_literal = tok->string_literal;
@@ -944,7 +943,7 @@ void func(Type *type, int qualifier, Token **nx) {
     Type *t = base_type(TYPE_UCHAR);
     Token *dummy_tok = calloc(1, sizeof(Token));
     *dummy_tok = *type->objdec;
-    dummy_tok->str = new_string("__hidden_va_area__", 0);
+    dummy_tok->str = "__hidden_va_area__";
 
     t->objdec = dummy_tok;
     static const int sizeof_register_save_area =
@@ -964,7 +963,7 @@ void func(Type *type, int qualifier, Token **nx) {
     Type *t = base_type(TYPE_ULONG);
     Token *dummy_tok = calloc(1, sizeof(Token));
     *dummy_tok = *type->objdec;
-    dummy_tok->str = new_string("", 0);
+    dummy_tok->str = "";
 
     t->objdec = dummy_tok;
     Variable *var = new_local_variable(t, 0);
@@ -987,7 +986,7 @@ void func(Type *type, int qualifier, Token **nx) {
 
     for (int j = 0; j < label_in_current_function->size; ++j) {
       Node *node_label = *(Node **)vector_get(label_in_current_function, j);
-      if (same_string(node_goto->token->str, node_label->token->str)) {
+      if (strcmp(node_goto->token->str, node_label->token->str) == 0) {
         node_goto->label_index = node_label->label_index;
         break;
       }
@@ -1619,7 +1618,7 @@ Node *stmt(Token **nx) {
 
     for (int i = 0; i < label_in_current_function->size; ++i) {
       Node *prev = *(Node **)vector_get(label_in_current_function, i);
-      if (same_string(label_name->str, prev->token->str))
+      if (strcmp(label_name->str, prev->token->str) == 0)
         error(&label_name->pos, "duplicated label");
     }
 
@@ -2072,8 +2071,7 @@ Node *primary(Token **nx) {
 
     Variable *var = find_object(tok);
     if (!var)
-      error(&tok->pos, "undefined identifier: '%.*s'", tok->str->len,
-            tok->str->str);
+      error(&tok->pos, "undefined identifier: '%s'", tok->str);
     return new_node_var(tok, var);
   }
 
@@ -2224,7 +2222,7 @@ void register_builtin_functions() {
     Function *f = calloc(1, sizeof(Function));
     f->type = func_type(vp);
     f->kind = OBJ_FUNC;
-    f->ident = new_string("__builtin_va_arg", 0);
+    f->ident = "__builtin_va_arg";
     vector_push(f->type->params, &vp);
     vector_push(f->type->params, &vp);
     map_push(global_scope->objects, f->ident, f);

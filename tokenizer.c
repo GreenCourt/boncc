@@ -35,7 +35,8 @@ static void new_token(TokenKind kind, Token **tail, Position *p, int len,
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
   tok->pos = *p;
-  tok->str = new_string(p->pos, len);
+  tok->str = calloc(len + 1, sizeof(char));
+  strncpy(tok->str, p->pos, len);
   tok->is_identifier = is_identifier;
   tok->at_bol = (*tail)->at_eol;
 

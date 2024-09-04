@@ -14,7 +14,6 @@ static int strhash(char *s) {
 
 HashMap *new_hashmap() {
   HashMap *map = calloc(1, sizeof(HashMap));
-  map->iter_tail = &map->iter_head;
   return map;
 }
 
@@ -23,18 +22,18 @@ static HashMapItem *new_item(char *key, void *value) {
   item->key = key;
   item->value = value;
   item->hash = strhash(key);
-  item->next = NULL;
+  item->hash_next = NULL;
   item->iter_prev = NULL;
   item->iter_next = NULL;
   return item;
 }
 
 bool hashmap_contains(HashMap *map, char *key) {
-  HashMapItem *item = map->table[strhash(key)].next;
+  HashMapItem *item = map->table[strhash(key)].hash_next;
   while (item) {
     if (strcmp(key, item->key) == 0)
       return true;
-    item = item->next;
+    item = item->hash_next;
   }
   return false;
 }
@@ -42,11 +41,11 @@ bool hashmap_contains(HashMap *map, char *key) {
 void *hashmap_get(HashMap *map, char *key) {
   int hash = strhash(key);
   assert(map->size);
-  HashMapItem *item = map->table[hash].next;
+  HashMapItem *item = map->table[hash].hash_next;
   while (item) {
     if (strcmp(key, item->key) == 0)
       return item->value;
-    item = item->next;
+    item = item->hash_next;
   }
   assert(false);
   return NULL;
@@ -55,22 +54,33 @@ void *hashmap_get(HashMap *map, char *key) {
 void hashmap_set(HashMap *map, char *key, void *value) {
   int hash = strhash(key);
   HashMapItem *item = &map->table[hash];
-  while (item->next) {
-    item = item->next;
+  while (item->hash_next) {
+    item = item->hash_next;
     if (strcmp(key, item->key) == 0) {
       item->value = value;
       return;
     }
   }
 
-  item->next = new_item(key, value);
+  item->hash_next = new_item(key, value);
   map->size++;
-  item = item->next;
+  item = item->hash_next;
 
   // add the new item to the doubly linked-list for iterators
-  map->iter_tail->iter_next = item;
-  item->iter_prev = map->iter_tail;
-  map->iter_tail = item;
+  if (map->size == 1) {
+    assert(map->iter_head == NULL);
+    assert(map->iter_tail == NULL);
+    map->iter_head = map->iter_tail = item;
+  } else {
+    assert(map->iter_head != NULL);
+    assert(map->iter_tail != NULL);
+    map->iter_tail->iter_next = item;
+    item->iter_prev = map->iter_tail;
+    map->iter_tail = item;
+  }
+  assert(map->iter_head != NULL);
+  assert(map->iter_tail != NULL);
+  assert(map->iter_head->iter_prev == NULL);
   assert(map->iter_tail->iter_next == NULL);
 }
 
@@ -79,25 +89,36 @@ void hashmap_erase(HashMap *map, char *key) {
   assert(map->size);
 
   HashMapItem *item = &map->table[hash];
-  while (item->next) {
-    if (strcmp(key, item->next->key) == 0) {
-      HashMapItem *removed = item->next;
-      item->next = item->next->next;
-      map->size--;
-
-      // remove from the doubly linked-list for iterators
-      removed->iter_prev->iter_next = removed->iter_next;
-      if (removed == map->iter_tail)
-        map->iter_tail = removed->iter_prev;
-      else
-        removed->iter_next->iter_prev = removed->iter_prev;
-      assert(map->iter_tail->iter_next == NULL);
-      return;
+  while (item->hash_next) {
+    if (strcmp(key, item->hash_next->key) != 0) {
+      item = item->hash_next;
+      continue;
     }
-    item = item->next;
+
+    HashMapItem *removed = item->hash_next;
+    item->hash_next = item->hash_next->hash_next;
+    map->size--;
+
+    // remove from the doubly linked-list for iterators
+    if (map->size == 0) {
+      assert(map->iter_head == removed);
+      assert(map->iter_tail == removed);
+      map->iter_head = map->iter_tail = NULL;
+    } else if (removed == map->iter_head) {
+      map->iter_head = removed->iter_next;
+      map->iter_head->iter_prev = NULL;
+    } else if (removed == map->iter_tail) {
+      map->iter_tail = removed->iter_prev;
+      map->iter_tail->iter_next = NULL;
+    } else {
+      assert(map->size >= 2);
+      removed->iter_prev->iter_next = removed->iter_next;
+      removed->iter_next->iter_prev = removed->iter_prev;
+    }
+
+    assert(map->iter_head == NULL || map->iter_head->iter_prev == NULL);
+    assert(map->iter_tail == NULL || map->iter_tail->iter_next == NULL);
+    return;
   }
   assert(false);
 }
-
-HashMapItem *hashmap_begin(HashMap *map) { return map->iter_head.iter_next; }
-HashMapItem *hashmap_next(HashMapItem *item) { return item->iter_next; }

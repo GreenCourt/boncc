@@ -2259,15 +2259,14 @@ void generate_code(FILE *output_stream) {
   writeline(".intel_syntax noprefix");
 
   // string literals
-  for (HashMapItem *i = hashmap_begin(strings); i; i = hashmap_next(i)) {
+  for (HashMapItem *i = strings->iter_head; i; i = i->iter_next) {
     Variable *v = i->value;
     writeline("%s:", v->ident);
     writeline("  .string \"%s\"", v->string_literal);
   }
 
   // global variables
-  for (HashMapItem *i = hashmap_begin(global_scope->objects); i;
-       i = hashmap_next(i)) {
+  for (HashMapItem *i = global_scope->objects->iter_head; i; i = i->iter_next) {
     Variable *v = i->value;
     if (v->kind != OBJ_GVAR)
       continue;
@@ -2298,8 +2297,7 @@ void generate_code(FILE *output_stream) {
 
   // functions
   writeline(".text");
-  for (HashMapItem *i = hashmap_begin(global_scope->objects); i;
-       i = hashmap_next(i)) {
+  for (HashMapItem *i = global_scope->objects->iter_head; i; i = i->iter_next) {
     Function *f = i->value;
     if (f->kind != OBJ_FUNC)
       continue;

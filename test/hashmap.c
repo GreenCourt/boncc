@@ -39,7 +39,7 @@ int main() {
 
   {
     int a = 0, b = 0, c = 0;
-    for (HashMapItem *i = hashmap_begin(map); i; i = hashmap_next(i)) {
+    for (HashMapItem *i = map->iter_head; i; i = i->iter_next) {
       if (strcmp(i->key, "aa") == 0) {
         a++;
         assert(strcmp(i->value, "AA") == 0);
@@ -69,7 +69,7 @@ int main() {
 
   {
     int a = 0, c = 0, d = 0;
-    for (HashMapItem *i = hashmap_begin(map); i; i = hashmap_next(i)) {
+    for (HashMapItem *i = map->iter_head; i; i = i->iter_next) {
       if (strcmp(i->key, "aa") == 0) {
         a++;
         assert(strcmp(i->value, "AA") == 0);
@@ -100,7 +100,8 @@ int main() {
   assert(map->size == 0);
   assert(!hashmap_contains(map, "aa"));
 
-  assert(hashmap_begin(map) == NULL);
+  assert(map->iter_head == NULL);
+  assert(map->iter_tail == NULL);
 
   {
     // register many values to test hash collision
@@ -121,7 +122,7 @@ int main() {
     }
 
     int *cnt = calloc(2000, sizeof(int));
-    for (HashMapItem *i = hashmap_begin(map); i; i = hashmap_next(i)) {
+    for (HashMapItem *i = map->iter_head; i; i = i->iter_next) {
       int value = *(int *)i->value;
       sprintf(str, "%d", value);
       assert(strcmp(i->key, str) == 0);
@@ -142,7 +143,7 @@ int main() {
     {
       // check if the insertion order is kept
       int v = 1;
-      for (HashMapItem *i = hashmap_begin(map); i; i = hashmap_next(i)) {
+      for (HashMapItem *i = map->iter_head; i; i = i->iter_next) {
         int value = *(int *)i->value;
         assert(value == v);
         v += 2;

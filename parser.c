@@ -1554,7 +1554,9 @@ Node *stmt(Token **nx) {
     Node *c = sw->next_case;
     while (c) {
       assert(c->condition->kind == ND_NUM);
-      if (number2bool(number_eq(c->condition->num, e->num)))
+      Type *t = implicit_type_conversion(c->condition->num->type, e->num->type);
+      if (number2bool(number_eq(number_cast(c->condition->num, t),
+                                number_cast(e->num, t))))
         error(&tok->pos, "duplicated case value detected");
       c = c->next_case;
     }

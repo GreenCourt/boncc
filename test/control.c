@@ -267,5 +267,17 @@ int main() {
     {}
     { ; }
   }
+  {
+    int x = 65;
+    switch (x) {
+    case 64:
+      x = 4;
+      break;
+    case 'A':
+      x = 5;
+      break;
+    }
+    verify(5, x);
+  }
   return 0;
 }

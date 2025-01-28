@@ -1008,6 +1008,13 @@ void gen_global_pointer_init(VariableInit *init, Type *type) {
     return;
   }
 
+  if (init->expr->type->kind == TYPE_ARRAY && init->expr->kind == ND_VAR &&
+      init->expr->variable->kind == OBJ_GVAR) {
+    // initilize the pointer to a global array
+    writeline("  .quad %s", init->expr->variable->ident);
+    return;
+  }
+
   if (init->expr->kind == ND_ADD) {
     Variable *left_addr = is_const_var_addr(init->expr->lhs);
     Variable *right_addr = is_const_var_addr(init->expr->rhs);

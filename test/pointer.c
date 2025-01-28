@@ -20,6 +20,9 @@ int *p_array[][2] = {{&a + 1, &a + 2}, {&a + 3, &a + 4}};
 int **pp_array[][2] = {{&p + 1, &p + 2}, {&p + 3, &p + 4}};
 long long global_pointer_sub = &a - &a;
 
+char arr[2] = {11, 22};
+char *p_arr = arr; // initialize a global pointer to a global array
+
 int main() {
   verify(&a, p);
   verify(&a + 1, p_addr_num);
@@ -49,6 +52,10 @@ int main() {
   verify(12, **(pp_array[1][1] - 4));
 
   verify(0, global_pointer_sub);
+  verify(11, arr[0]);
+  verify(22, arr[1]);
+  verify(11, p_arr[0]);
+  verify(22, p_arr[1]);
 
   {
     int x = 3;

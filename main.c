@@ -83,6 +83,12 @@ int main(int argc, char **argv) {
       // ignore
     } else if (strcmp(argv[i], "-Oz") == 0) {
       // ignore
+    } else if (strncmp(argv[i], "-std=", 5) == 0) {
+      // ignore
+    } else if (strcmp(argv[i], "-pedantic") == 0) {
+      // ignore
+    } else if (strcmp(argv[i], "-pedantic-errors") == 0) {
+      // ignore
     } else if (strcmp(argv[i], "-") != 0 && argv[i][0] == '-') {
       fprintf(stderr, "unknown option %s\n", argv[i]);
       return 1;
